@@ -1,0 +1,27 @@
+tp-system/
+│
+├── config/
+│   └── db.php                  # PDO connection
+│
+├── auth/
+│   ├── login.php
+│   ├── logout.php
+│   └── check_login.php
+│
+├── dashboard.php              # ແຜ່ນຄວບຄຸມ (ແຍກຕາມ role)
+│
+├── temples/                   # ຈັດການວັດ (SuperAdmin)
+├── monks/                     # ພະ
+├── events/                    # ກິດຈະກຳ
+├── subscriptions/             # ຄ່າສະໝັກ
+├── users/                     # ຜູ້ໃຊ້ລະບົບ
+│
+├── reports/
+│   └── subscription_pdf.php   # PDF ລາຍງານ
+│
+├── assets/
+│   ├── css/
+│   ├── js/
+│   └── images/
+│
+└── index.php                  # ໜ້າ login
