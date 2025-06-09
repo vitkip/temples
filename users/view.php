@@ -118,6 +118,34 @@ $can_delete = ($is_superadmin ||
                     </div>
                 </div>
                 
+                <!-- ເພີ່ມຂໍ້ມູນອີເມວ ແລະ ເບີໂທລະສັບ -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">ອີເມວ</p>
+                        <?php if (!empty($user['email'])): ?>
+                        <p class="mt-1 text-gray-800">
+                            <a href="mailto:<?= htmlspecialchars($user['email']) ?>" class="hover:text-indigo-600">
+                                <?= htmlspecialchars($user['email']) ?>
+                            </a>
+                        </p>
+                        <?php else: ?>
+                        <p class="mt-1 text-gray-500 italic">ບໍ່ມີຂໍ້ມູນ</p>
+                        <?php endif; ?>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">ເບີໂທລະສັບ</p>
+                        <?php if (!empty($user['phone'])): ?>
+                        <p class="mt-1 text-gray-800">
+                            <a href="tel:<?= htmlspecialchars($user['phone']) ?>" class="hover:text-indigo-600">
+                                <?= htmlspecialchars($user['phone']) ?>
+                            </a>
+                        </p>
+                        <?php else: ?>
+                        <p class="mt-1 text-gray-500 italic">ບໍ່ມີຂໍ້ມູນ</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
                 <!-- ບົດບາດແລະວັນທີສ້າງ -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -141,6 +169,16 @@ $can_delete = ($is_superadmin ||
                         <p class="mt-1 text-gray-800"><?= date('d/m/Y H:i', strtotime($user['created_at'])) ?></p>
                     </div>
                 </div>
+                
+                <!-- ສະແດງຂໍ້ມູນການເຂົ້າລະບົບຫຼ້າສຸດ (ຖ້າມີ) -->
+                <?php if (!empty($user['last_login'])): ?>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">ເຂົ້າລະບົບຫຼ້າສຸດ</p>
+                        <p class="mt-1 text-gray-800"><?= date('d/m/Y H:i', strtotime($user['last_login'])) ?></p>
+                    </div>
+                </div>
+                <?php endif; ?>
                 
                 <!-- ຂໍ້ມູນວັດ (ຖ້າມີ) -->
                 <?php if (!empty($user['temple_id'])): ?>
@@ -178,6 +216,49 @@ $can_delete = ($is_superadmin ||
             </div>
         </div>
     </div>
+    
+    <!-- ຂໍ້ມູນການຕິດຕໍ່ -->
+    <?php if (!empty($user['email']) || !empty($user['phone'])): ?>
+    <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
+        <div class="p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">ຊ່ອງທາງການຕິດຕໍ່</h2>
+            
+            <div class="space-y-4">
+                <?php if (!empty($user['email'])): ?>
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="bg-blue-100 rounded-md p-2">
+                            <i class="fas fa-envelope text-blue-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">ອີເມວ</p>
+                        <a href="mailto:<?= htmlspecialchars($user['email']) ?>" class="mt-1 text-gray-800 hover:text-indigo-600">
+                            <?= htmlspecialchars($user['email']) ?>
+                        </a>
+                    </div>
+                </div>
+                <?php endif; ?>
+                
+                <?php if (!empty($user['phone'])): ?>
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="bg-green-100 rounded-md p-2">
+                            <i class="fas fa-phone-alt text-green-600"></i>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-500">ເບີໂທລະສັບ</p>
+                        <a href="tel:<?= htmlspecialchars($user['phone']) ?>" class="mt-1 text-gray-800 hover:text-indigo-600">
+                            <?= htmlspecialchars($user['phone']) ?>
+                        </a>
+                    </div>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     
     <!-- ຂໍ້ມູນເພີ່ມເຕີມ -->
     <div class="bg-white rounded-lg shadow-sm overflow-hidden">

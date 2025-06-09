@@ -48,6 +48,8 @@ $errors = [];
 $form_data = [
     'username' => '',
     'name' => '',
+    'email' => '',    // เพิ่มฟิลด์อีเมล
+    'phone' => '',    // เพิ่มฟิลด์เบอร์โทรศัพท์
     'role' => $is_admin ? 'user' : '', // Admin ສາມາດເພີ່ມໄດ້ສະເພາະ user
     'temple_id' => $is_admin ? $_SESSION['user']['temple_id'] : '',
     'password' => '',
@@ -67,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form_data = [
         'username' => trim($_POST['username'] ?? ''),
         'name' => trim($_POST['name'] ?? ''),
+        'email' => trim($_POST['email'] ?? ''),    // เพิ่มการรับค่าอีเมล
+        'phone' => trim($_POST['phone'] ?? ''),    // เพิ่มการรับค่าเบอร์โทรศัพท์
         'role' => $_POST['role'] ?? ($is_admin ? 'user' : ''),
         'temple_id' => isset($_POST['temple_id']) ? (int)$_POST['temple_id'] : ($is_admin ? $_SESSION['user']['temple_id'] : ''),
         'password' => $_POST['password'] ?? '',
@@ -88,6 +92,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ກວດສອບຊື່
     if (empty($form_data['name'])) {
         $errors[] = "ກະລຸນາປ້ອນຊື່-ນາມສະກຸນ";
+    }
+    
+    // ກວດສອບອີເມລ (ຖ້າມີ)
+    if (!empty($form_data['email']) && !filter_var($form_data['email'], FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "ຮູບແບບອີເມວບໍ່ຖືກຕ້ອງ";
+    }
+    
+    // ກວດສອບເບີໂທລະສັບ (ຖ້າມີ)
+    if (!empty($form_data['phone']) && !preg_match('/^[0-9]{8,10}$/', $form_data['phone'])) {
+        $errors[] = "ຮູບແບບເບີໂທລະສັບບໍ່ຖືກຕ້ອງ (8-10 ຕົວເລກ)";
     }
     
     // ກວດສອບລະຫັດຜ່ານ
@@ -120,22 +134,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // ສ້າງ SQL ສໍາລັບການເພີ່ມຜູ້ໃຊ້ໃໝ່
             if ($form_data['role'] === 'superadmin') {
                 // Superadmin ບໍ່ມີ temple_id
-                $sql = "INSERT INTO users (username, password, name, role, created_at) 
-                        VALUES (?, ?, ?, ?, NOW())";
+                $sql = "INSERT INTO users (username, password, name, email, phone, role, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, NOW())";
                 $params = [
                     $form_data['username'],
                     password_hash($form_data['password'], PASSWORD_DEFAULT),
                     $form_data['name'],
+                    $form_data['email'],    // เพิ่มอีเมล
+                    $form_data['phone'],    // เพิ่มเบอร์โทรศัพท์
                     $form_data['role']
                 ];
             } else {
                 // Admin ແລະ User ມີ temple_id
-                $sql = "INSERT INTO users (username, password, name, role, temple_id, created_at) 
-                        VALUES (?, ?, ?, ?, ?, NOW())";
+                $sql = "INSERT INTO users (username, password, name, email, phone, role, temple_id, created_at) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
                 $params = [
                     $form_data['username'],
                     password_hash($form_data['password'], PASSWORD_DEFAULT),
                     $form_data['name'],
+                    $form_data['email'],    // เพิ่มอีเมล
+                    $form_data['phone'],    // เพิ่มเบอร์โทรศัพท์
                     $form_data['role'],
                     $form_data['temple_id']
                 ];
@@ -204,6 +222,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່-ນາມສະກຸນ <span class="text-red-600">*</span></label>
                     <input type="text" name="name" id="name" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['name']) ?>" required>
+                </div>
+                
+                <!-- เพิ่มฟิลด์อีเมล -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">ອີເມວ</label>
+                    <input type="email" name="email" id="email" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['email']) ?>" placeholder="example@domain.com">
+                </div>
+                
+                <!-- เพิ่มฟิลด์เบอร์โทรศัพท์ -->
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">ເບີໂທລະສັບ</label>
+                    <input type="tel" name="phone" id="phone" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['phone']) ?>" placeholder="02012345678">
+                    <p class="text-xs text-gray-500 mt-1">ປ້ອນແຕ່ຕົວເລກ 8-10 ຕົວ</p>
                 </div>
                 
                 <div>

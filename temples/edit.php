@@ -58,37 +58,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Process photo upload
         $photo = $temple['photo'];
         if (!empty($_FILES['photo']['name'])) {
-            $photo_name = time() . '_' . $_FILES['photo']['name'];
-            $photo_tmp = $_FILES['photo']['tmp_name'];
-            $photo_path = '../uploads/temples/' . $photo_name;
+            // ตรวจสอบนามสกุลไฟล์
+            $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+            $ext = pathinfo($_FILES['photo']['name'], PATHINFO_EXTENSION);
             
-            // Create directory if it doesn't exist
-            if (!is_dir('../uploads/temples/')) {
-                mkdir('../uploads/temples/', 0777, true);
-            }
-            
-            if (move_uploaded_file($photo_tmp, $photo_path)) {
-                // Delete old photo if exists
-                if ($temple['photo'] && file_exists('../' . $temple['photo'])) {
-                    unlink('../' . $temple['photo']);
+            if (in_array(strtolower($ext), $allowed)) {
+                $photo_name = time() . '_' . preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $_FILES['photo']['name']);
+                $photo_tmp = $_FILES['photo']['tmp_name'];
+                $photo_path = '../uploads/temples/' . $photo_name;
+                
+                // Create directory if it doesn't exist
+                if (!is_dir('../uploads/temples/')) {
+                    mkdir('../uploads/temples/', 0777, true);
                 }
-                $photo = 'uploads/temples/' . $photo_name;
+                
+                if (move_uploaded_file($photo_tmp, $photo_path)) {
+                    // Delete old photo if exists and is different from default
+                    if (!empty($temple['photo']) && file_exists('../' . $temple['photo'])) {
+                        // ป้องกันการลบไฟล์ที่อยู่นอกโฟลเดอร์ที่กำหนด
+                        if (strpos($temple['photo'], 'uploads/temples/') === 0) {
+                            unlink('../' . $temple['photo']);
+                        }
+                    }
+                    $photo = 'uploads/temples/' . $photo_name;
+                }
+            } else {
+                $error = 'ປະເພດໄຟລ໌ບໍ່ຮອງຮັບ. ອະນຸຍາດສະເພາະ JPG, JPEG, PNG ແລະ GIF ເທົ່ານັ້ນ';
             }
         }
         
         // Process logo upload
         $logo = $temple['logo'];
         if (!empty($_FILES['logo']['name'])) {
-            $logo_name = time() . '_logo_' . $_FILES['logo']['name'];
-            $logo_tmp = $_FILES['logo']['tmp_name'];
-            $logo_path = '../uploads/temples/' . $logo_name;
+            // ตรวจสอบนามสกุลไฟล์
+            $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+            $ext = pathinfo($_FILES['logo']['name'], PATHINFO_EXTENSION);
             
-            if (move_uploaded_file($logo_tmp, $logo_path)) {
-                // Delete old logo if exists
-                if ($temple['logo'] && file_exists('../' . $temple['logo'])) {
-                    unlink('../' . $temple['logo']);
+            if (in_array(strtolower($ext), $allowed)) {
+                $logo_name = time() . '_logo_' . preg_replace('/[^a-zA-Z0-9_\-\.]/', '', $_FILES['logo']['name']);
+                $logo_tmp = $_FILES['logo']['tmp_name'];
+                $logo_path = '../uploads/temples/' . $logo_name;
+                
+                if (move_uploaded_file($logo_tmp, $logo_path)) {
+                    // Delete old logo if exists
+                    if (!empty($temple['logo']) && file_exists('../' . $temple['logo'])) {
+                        // ป้องกันการลบไฟล์ที่อยู่นอกโฟลเดอร์ที่กำหนด
+                        if (strpos($temple['logo'], 'uploads/temples/') === 0) {
+                            unlink('../' . $temple['logo']);
+                        }
+                    }
+                    $logo = 'uploads/temples/' . $logo_name;
                 }
-                $logo = 'uploads/temples/' . $logo_name;
+            } else {
+                $error = 'ປະເພດໄຟລ໌ບໍ່ຮອງຮັບ. ອະນຸຍາດສະເພາະ JPG, JPEG, PNG ແລະ GIF ເທົ່ານັ້ນ';
             }
         }
         

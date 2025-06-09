@@ -54,22 +54,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $event_check->execute([$temple_id]);
         $has_events = $event_check->fetchColumn() > 0;
         
+        // ดึงข้อมูลไฟล์รูปภาพก่อนลบ
+        $photo_stmt = $pdo->prepare("SELECT photo, logo FROM temples WHERE id = ?");
+        $photo_stmt->execute([$temple_id]);
+        $temple_files = $photo_stmt->fetch();
+        
         // If there are related records, use soft delete (update status)
         if ($has_monks || $has_events) {
             $stmt = $pdo->prepare("UPDATE temples SET status = 'inactive' WHERE id = ?");
             $stmt->execute([$temple_id]);
             $_SESSION['success'] = "ອັບເດດສະຖານະວັດເປັນ 'ປິດໃຊ້ງານ' ແລ້ວ ເນື່ອງຈາກມີຂໍ້ມູນພະສົງ ຫຼື ກິດຈະກຳທີ່ກ່ຽວຂ້ອງ";
+            // ในกรณี soft delete ไม่ต้องลบไฟล์รูปภาพ
         } else {
-            // Hard delete if no related records
+            // Hard delete - ลบไฟล์รูปภาพก่อนลบ
+            
+            // ลบรูปภาพหลัก (photo) ถ้ามี
+            if (!empty($temple_files['photo']) && file_exists('../' . $temple_files['photo'])) {
+                unlink('../' . $temple_files['photo']);
+            }
+            
+            // ลบรูปโลโก้ (logo) ถ้ามี
+            if (!empty($temple_files['logo']) && file_exists('../' . $temple_files['logo'])) {
+                unlink('../' . $temple_files['logo']);
+            }
+            
+            // Hard delete from database
             $stmt = $pdo->prepare("DELETE FROM temples WHERE id = ?");
             $stmt->execute([$temple_id]);
-            $_SESSION['success'] = "ລຶບຂໍ້ມູນວັດສຳເລັດແລ້ວ";
+            $_SESSION['success'] = "ລຶບຂໍ້ມູນວັດແລະຮູບພາບທີ່ກ່ຽວຂ້ອງສຳເລັດແລ້ວ";
         }
         
         header('Location: ' . $base_url . 'temples/');
         exit;
     } catch (PDOException $e) {
-        $_SESSION['error'] = "ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນ";
+        $_SESSION['error'] = "ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນ: " . $e->getMessage();
         header('Location: ' . $base_url . 'temples/delete.php?id=' . $temple_id);
         exit;
     }

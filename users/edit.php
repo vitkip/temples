@@ -19,7 +19,7 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-// ກວດສອບສິດໃນການແກ້ໄຂຂໍ້ມູນ - superadmin ສາມາດແກ້ໄຂທຸກຄົນ, admin ແກ້ໄຂໄດ້ສະເພາະຜູ້ໃຊ້ໃນວັດຂອງຕົນ
+// ກວດສອບສິດໃນການແກ້ໄຂຂໍ້ມູນ - superadmin ສາມາດແກ້ໄຂທຸກຄົນ, admin ແກ້ໄຂໄດ້ສະເພາະຜູໃຊ້ໃນວັດຂອງຕົນ
 $is_superadmin = $_SESSION['user']['role'] === 'superadmin';
 $is_admin = $_SESSION['user']['role'] === 'admin';
 
@@ -32,7 +32,7 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 
 $user_id = (int)$_GET['id'];
 
-// ດຶງຂໍ້ມູນຜູ້ໃຊ້
+// ດຶງຂໍ້ມູນຜູ້ໃຊ້ (เพิ่มฟิลด์ email และ phone)
 $stmt = $pdo->prepare("
     SELECT u.*, t.name as temple_name 
     FROM users u 
@@ -71,11 +71,13 @@ if ($is_superadmin) {
     $temples = $temple_stmt->fetchAll();
 }
 
-// ກໍານົດຕົວແປເລີ່ມຕົ້ນ
+// ກໍານົດຕົວແປເລີ່ມຕົ້ນ (เพิ่มฟิลด์ email และ phone)
 $errors = [];
 $form_data = [
     'username' => $user['username'],
     'name' => $user['name'],
+    'email' => $user['email'] ?? '', // เพิ่มฟิลด์อีเมล
+    'phone' => $user['phone'] ?? '', // เพิ่มฟิลด์เบอร์โทร
     'role' => $user['role'],
     'temple_id' => $user['temple_id'],
     'password' => '',
@@ -91,10 +93,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    // ກວດສອບຂໍ້ມູນທີ່ສົ່ງມາ
+    // ກວດສອບຂໍ້ມູນທີ່ສົ່ງມາ (เพิ่มฟิลด์ email และ phone)
     $form_data = [
         'username' => trim($_POST['username'] ?? ''),
         'name' => trim($_POST['name'] ?? ''),
+        'email' => trim($_POST['email'] ?? ''), // เพิ่มฟิลด์อีเมล
+        'phone' => trim($_POST['phone'] ?? ''), // เพิ่มฟิลด์เบอร์โทร
         'role' => $_POST['role'] ?? $user['role'],
         'temple_id' => isset($_POST['temple_id']) ? (int)$_POST['temple_id'] : $user['temple_id'],
         'password' => $_POST['password'] ?? '',
@@ -116,6 +120,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ກວດສອບຊື່
     if (empty($form_data['name'])) {
         $errors[] = "ກະລຸນາປ້ອນຊື່";
+    }
+    
+    // ກວດສອບອີເມວ (ຖ້າມີ) - เพิ่มการตรวจสอบอีเมล
+    if (!empty($form_data['email']) && !filter_var($form_data['email'], FILTER_VALIDATE_EMAIL)) {
+        $errors[] = "ຮູບແບບອີເມວບໍ່ຖືກຕ້ອງ";
+    }
+    
+    // ກວດສອບເບີໂທລະສັບ (ຖ້າມີ) - เพิ่มการตรวจสอบเบอร์โทร
+    if (!empty($form_data['phone']) && !preg_match('/^[0-9]{8,10}$/', $form_data['phone'])) {
+        $errors[] = "ຮູບແບບເບີໂທລະສັບບໍ່ຖືກຕ້ອງ (8-10 ຕົວເລກ)";
     }
     
     // ກວດສອບລະຫັດຜ່ານ (ຖ້າມີການປ່ຽນແປງ)
@@ -140,17 +154,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ຖ້າບໍ່ມີຂໍ້ຜິດພາດ
     if (empty($errors)) {
         try {
-            // ກຽມຄໍາສັ່ງ SQL ສໍາລັດການອັບເດດ
+            // ກຽມຄໍາສັ່ງ SQL ສໍາລັດການອັບເດຕ (เพิ่มฟิลด์ email และ phone)
             $sql_fields = [
                 "username = ?",
-                "name = ?"
+                "name = ?",
+                "email = ?",  // เพิ่มฟิลด์อีเมล
+                "phone = ?"   // เพิ่มฟิลด์เบอร์โทร
             ];
             $sql_params = [
                 $form_data['username'],
-                $form_data['name']
+                $form_data['name'],
+                $form_data['email'],  // เพิ่มพารามิเตอร์อีเมล
+                $form_data['phone']   // เพิ่มพารามิเตอร์เบอร์โทร
             ];
             
-            // ອັບເດດລະຫັດຜ່ານຖ້າມີການປ່ຽນແປງ
+            // ອັບເດຕລະຫັດຜ່ານຖ້າມີການປ່ຽນແປງ
             if (!empty($form_data['password'])) {
                 $sql_fields[] = "password = ?";
                 $sql_params[] = password_hash($form_data['password'], PASSWORD_DEFAULT);
@@ -184,6 +202,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($_SESSION['user']['id'] == $user_id) {
                 $_SESSION['user']['username'] = $form_data['username'];
                 $_SESSION['user']['name'] = $form_data['name'];
+                $_SESSION['user']['email'] = $form_data['email']; // เพิ่มการอัปเดตอีเมลใน session
+                $_SESSION['user']['phone'] = $form_data['phone']; // เพิ่มการอัปเดตเบอร์โทรใน session
                 if ($is_superadmin) {
                     $_SESSION['user']['role'] = $form_data['role'];
                     if (in_array($form_data['role'], ['admin', 'user'])) {
@@ -253,6 +273,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່-ນາມສະກຸນ <span class="text-red-600">*</span></label>
                     <input type="text" name="name" id="name" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['name']) ?>" required>
+                </div>
+                
+                <!-- เพิ่มฟิลด์อีเมล -->
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">ອີເມວ</label>
+                    <input type="email" name="email" id="email" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['email']) ?>" placeholder="example@domain.com">
+                </div>
+                
+                <!-- เพิ่มฟิลด์เบอร์โทรศัพท์ -->
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">ເບີໂທລະສັບ</label>
+                    <input type="tel" name="phone" id="phone" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['phone']) ?>" placeholder="02012345678">
+                    <p class="text-xs text-gray-500 mt-1">ປ້ອນແຕ່ຕົວເລກ 8-10 ຕົວ</p>
                 </div>
                 
                 <div>

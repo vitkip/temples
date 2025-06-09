@@ -91,6 +91,10 @@ if (!isset($_SESSION['user'])) {
                         <i class="fas fa-calendar-alt mr-3 w-5 text-center"></i>
                         <span>ກິດຈະກໍາ</span>
                     </a>
+                    <a href="<?= $base_url ?>reports/" class="sidebar-link <?= isActiveNav($current_path, '/events/') ? 'reports' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                        <i class="fas fa-chart-bar mr-3 w-5 text-center"></i>
+                        <span>ລາຍງານ</span>
+                    </a>
                 </div>
                 
                 <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
@@ -107,6 +111,10 @@ if (!isset($_SESSION['user'])) {
                         <a href="<?= $base_url ?>subscription_plans/" class="sidebar-link <?= isActiveNav($current_path, '/subscription_plans/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                             <i class="fas fa-list mr-3 w-5 text-center"></i>
                             <span>ຈັດແພກເກດ</span>
+                        </a>
+                        <a href="<?= $base_url ?>subscription_payments/" class="sidebar-link <?= isActiveNav($current_path, '/subscription_payments/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                            <i class="fas fa-money-bill-wave mr-3 w-5 text-center"></i>
+                            <span>ຈັດການການຊຳລະເງິນ</span>
                         </a>
                         <a href="<?= $base_url ?>temples/" class="sidebar-link flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                             <i class="fas fa-gopuram mr-3 w-5 text-center"></i>
