@@ -95,7 +95,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
         
         .temple-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
         }
         
         .feature-icon {
@@ -132,7 +132,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(to right, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 100%);
+            background: linear-gradient(to right, rgb(239, 131, 30) 0%, rgba(42, 61, 231, 0.3) 100%);
         }
     </style>
 </head>
