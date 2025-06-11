@@ -50,6 +50,21 @@ if (!isset($_SESSION['user'])) {
             background-clip: text;
             -webkit-text-fill-color: transparent;
         }
+      /* Toast notification styles */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .toast-notification {
+            animation: slideUp 0.3s ease-out forwards;
+        }
     </style>
 </head>
 <body>

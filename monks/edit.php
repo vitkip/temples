@@ -72,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     // ກວດສອບຂໍ້ມູນທີ່ປ້ອນເຂົ້າມາ
+    $prefix = trim($_POST['prefix'] ?? '');
     $name = trim($_POST['name'] ?? '');
     $lay_name = trim($_POST['lay_name'] ?? '');
     $pansa = trim($_POST['pansa'] ?? '');
@@ -137,6 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // ອັບເດດຂໍ້ມູນພະສົງ
                 $stmt = $pdo->prepare("
                     UPDATE monks SET 
+                    prefix = ?,
                     name = ?, 
                     lay_name = ?, 
                     pansa = ?, 
@@ -154,6 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 
                 $stmt->execute([
+                    $prefix,
                     $name,
                     $lay_name,
                     $pansa,
@@ -227,14 +230,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- ຂໍ້ມູນພື້ນຖານ -->
                 <div class="space-y-6">
                     <h2 class="text-xl font-semibold text-gray-800 border-b pb-3">ຂໍ້ມູນພື້ນຖານ</h2>
-                    
+                   <div class="mb-4">
+                        <label for="prefix" class="block text-sm font-medium text-gray-700 mb-2">ຄຳນຳໜ້າ</label>
+                        <select name="prefix" id="prefix" class="form-select rounded-md w-full">
+                            <option value="">-- ເລືອກຄຳນຳໜ້າ --</option>
+                            <option value="ພຣະ" <?= $monk['prefix'] === 'ພຣະ' ? 'selected' : '' ?>>ພຣະ</option>
+                            <option value="ຄຸນແມ່ຂາວ" <?= $monk['prefix'] === 'ຄຸນແມ່ຂາວ' ? 'selected' : '' ?>>ຄຸນແມ່ຂາວ</option>
+                            <option value="ສ.ນ" <?= $monk['prefix'] === 'ສ.ນ' ? 'selected' : '' ?>>ສ.ນ</option>
+                            <option value="ສັງກະລີ" <?= $monk['prefix'] === 'ສັງກະລີ' ? 'selected' : '' ?>>ສັງກະລີ</option>
+                        </select>
+                    </div>
                     <div class="mb-4">
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ພະສົງ <span class="text-red-600">*</span></label>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ <span class="text-red-600">*</span></label>
                         <input type="text" name="name" id="name" class="form-input rounded-md w-full" value="<?= htmlspecialchars($monk['name']) ?>" required>
                     </div>
                     
-                    <div class="mb-4">
-                        <label for="lay_name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ຄາວາດ</label>
+                  <div class="mb-4">
+                        <label for="lay_name" class="block text-sm font-medium text-gray-700 mb-2">ນາມສະກຸນ</label>
                         <input type="text" name="lay_name" id="lay_name" class="form-input rounded-md w-full" value="<?= htmlspecialchars($monk['lay_name'] ?? '') ?>">
                     </div>
                     
@@ -263,8 +275,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="mb-4">
                         <label for="status" class="block text-sm font-medium text-gray-700 mb-2">ສະຖານະ</label>
                         <select name="status" id="status" class="form-select rounded-md w-full">
-                            <option value="active" <?= $monk['status'] === 'active' ? 'selected' : '' ?>>ເປີດໃຊ້ງານ</option>
-                            <option value="inactive" <?= $monk['status'] === 'inactive' ? 'selected' : '' ?>>ປິດໃຊ້ງານ</option>
+                            <option value="active" <?= $monk['status'] === 'active' ? 'selected' : '' ?>>ຍັງບວດຢູ່</option>
+                            <option value="inactive" <?= $monk['status'] === 'inactive' ? 'selected' : '' ?>>ສິກແລ້ວ</option>
                         </select>
                     </div>
                 </div>

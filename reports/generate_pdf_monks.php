@@ -117,7 +117,7 @@ $pdf->setPrintFooter(false);
 $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
 // Set margins
-$pdf->SetMargins(10, 10, 10);
+$pdf->SetMargins(5, 10, 5);
 
 // Set auto page breaks
 $pdf->SetAutoPageBreak(TRUE, 10);
@@ -160,12 +160,13 @@ $pdf->Ln(5);
 $pdf->SetFont('dejavusans', 'B', 12);
 $pdf->SetFillColor(200, 220, 255);
 $pdf->Cell(10, 10, 'ລຳດັບ', 1, 0, 'C', true);
-$pdf->Cell(50, 10, 'ຊື່ພຣະສົງ', 1, 0, 'C', true);
-$pdf->Cell(40, 10, 'ຊື່ກ່ອນບວດ', 1, 0, 'C', true);
+$pdf->Cell(20, 10, 'ຄຳນຳໜ້າ', 1, 0, 'C', true); // เพิ่มคอลัมน์ prefix
+$pdf->Cell(45, 10, 'ຊື່', 1, 0, 'C', true); // ลดความกว้างลงเล็กน้อย
+$pdf->Cell(35, 10, 'ນາມສະກຸນ', 1, 0, 'C', true); // ปรับความกว้างลง
 $pdf->Cell(20, 10, 'ພັນສາ', 1, 0, 'C', true);
 $pdf->Cell(30, 10, 'ວັນບວດ', 1, 0, 'C', true);
 $pdf->Cell(40, 10, 'ຕໍາແໜ່ງ', 1, 0, 'C', true);
-$pdf->Cell(60, 10, 'ວັດ', 1, 0, 'C', true);
+$pdf->Cell(50, 10, 'ວັດ', 1, 0, 'C', true); // ปรับความกว้างลง
 $pdf->Cell(20, 10, 'ສະຖານະ', 1, 1, 'C', true);
 
 // Table content
@@ -174,21 +175,24 @@ $pdf->SetFont('dejavusans', '', 10);
 if (count($monks) > 0) {
     foreach($monks as $i => $monk) {
         $pdf->Cell(10, 8, $i + 1, 1, 0, 'C');
-        $pdf->Cell(50, 8, $monk['name'], 1, 0, 'L');
-        $pdf->Cell(40, 8, $monk['lay_name'] ?? '-', 1, 0, 'L');
+        $pdf->Cell(20, 8, $monk['prefix'] ?? '-', 1, 0, 'C'); // เพิ่มคอลัมน์ prefix
+        $pdf->Cell(45, 8, $monk['name'], 1, 0, 'L'); // ลดความกว้างลงเล็กน้อย
+        $pdf->Cell(35, 8, $monk['lay_name'] ?? '-', 1, 0, 'L'); // ปรับความกว้างลง
         $pdf->Cell(20, 8, $monk['pansa'] . ' ພັນສາ', 1, 0, 'C');
         
         $ordination_date = $monk['ordination_date'] ? date('d/m/Y', strtotime($monk['ordination_date'])) : '-';
         $pdf->Cell(30, 8, $ordination_date, 1, 0, 'C');
         
         $pdf->Cell(40, 8, $monk['position'] ?? '-', 1, 0, 'L');
-        $pdf->Cell(60, 8, $monk['temple_name'], 1, 0, 'L');
+        $pdf->Cell(50, 8, $monk['temple_name'], 1, 0, 'L'); // ปรับความกว้างลง
         
         $status_text = $monk['status'] == 'active' ? 'ບວດຢູ່' : 'ສຶກແລ້ວ';
         $pdf->Cell(20, 8, $status_text, 1, 1, 'C');
     }
 } else {
-    $pdf->Cell(270, 10, 'ບໍ່ພົບຂໍ້ມູນພຣະສົງທີ່ຕົງຕາມເງື່ອນໄຂ', 1, 1, 'C');
+    // คำนวณความกว้างทั้งหมดของคอลัมน์
+    $total_width = 10 + 20 + 45 + 35 + 20 + 30 + 40 + 50 + 20; // 270
+    $pdf->Cell($total_width, 10, 'ບໍ່ພົບຂໍ້ມູນພຣະສົງທີ່ຕົງຕາມເງື່ອນໄຂ', 1, 1, 'C');
 }
 
 // Summary
@@ -197,6 +201,46 @@ $pdf->SetFont('saysettha_ot', 'B', 12);
 $pdf->Cell(0, 8, 'ສະຫຼຸບ:', 0, 1);
 $pdf->SetFont('saysettha_ot', '', 10);
 $pdf->Cell(0, 6, 'ຈໍານວນພຣະສົງທັງໝົດ: ' . count($monks) . ' ລາຍການ', 0, 1);
+
+// นับจำนวนแยกตาม prefix
+$prefix_count = [];
+foreach ($monks as $monk) {
+    $prefix = $monk['prefix'] ?: 'ບໍ່ໄດ້ລະບຸ'; // 'ไม่ได้ระบุ' ในภาษาลาว
+    if (!isset($prefix_count[$prefix])) {
+        $prefix_count[$prefix] = 0;
+    }
+    $prefix_count[$prefix]++;
+}
+
+// เพิ่มตารางสรุปจำแนกตาม prefix
+$pdf->Ln(5);
+$pdf->SetFont('saysettha_ot', 'B', 12);
+$pdf->Cell(0, 8, 'ສະຫຼຸບຕາມຄຳນຳໜ້າ:', 0, 1);
+
+// สร้างตารางสรุป
+$pdf->SetFont('dejavusans', 'B', 10);
+$pdf->SetFillColor(200, 220, 255);
+
+// หัวตารางสรุป
+$pdf->Cell(20, 8, 'ລຳດັບ', 1, 0, 'C', true);
+$pdf->Cell(40, 8, 'ຄຳນຳໜ້າ', 1, 0, 'C', true);
+$pdf->Cell(30, 8, 'ຈຳນວນ', 1, 1, 'C', true);
+
+// เนื้อหาตารางสรุป
+$pdf->SetFont('dejavusans', '', 10);
+$i = 1;
+$total = 0;
+foreach ($prefix_count as $prefix => $count) {
+    $pdf->Cell(20, 8, $i++, 1, 0, 'C');
+    $pdf->Cell(40, 8, $prefix, 1, 0, 'C');
+    $pdf->Cell(30, 8, $count . ' ລາຍການ', 1, 1, 'C');
+    $total += $count;
+}
+
+// แสดงยอดรวม
+$pdf->SetFont('dejavusans', 'B', 10);
+$pdf->Cell(60, 8, 'ລວມທັງໝົດ', 1, 0, 'C', true);
+$pdf->Cell(30, 8, $total . ' ລາຍການ', 1, 1, 'C', true);
 
 // Output the PDF
 $pdf->Output('ລາຍງານຂໍ້ມູນພຣະສົງ.pdf', 'I');

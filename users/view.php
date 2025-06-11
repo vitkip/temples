@@ -147,7 +147,7 @@ $can_delete = ($is_superadmin ||
                 </div>
                 
                 <!-- ບົດບາດແລະວັນທີສ້າງ -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <p class="text-sm font-medium text-gray-500">ບົດບາດ</p>
                         <div class="mt-1">
@@ -164,6 +164,25 @@ $can_delete = ($is_superadmin ||
                             </span>
                         </div>
                     </div>
+                    
+                    <!-- ເພີ່ມສ່ວນແບ່ງສະຖານະຜູ້ໃຊ້ -->
+                    <div>
+                        <p class="text-sm font-medium text-gray-500">ສະຖານະຜູ້ໃຊ້</p>
+                        <div class="mt-1">
+                            <?php
+                            $status_labels = [
+                                'active' => ['ໃຊ້ງານໄດ້', 'bg-green-100 text-green-800'],
+                                'pending' => ['ລໍຖ້າອະນຸມັດ', 'bg-yellow-100 text-yellow-800'],
+                                'inactive' => ['ປິດໃຊ້ງານ', 'bg-red-100 text-red-800']
+                            ];
+                            $status_data = $status_labels[$user['status'] ?? 'active'] ?? ['ບໍ່ກໍານົດ', 'bg-gray-100 text-gray-800'];
+                            ?>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status_data[1] ?>">
+                                <?= $status_data[0] ?>
+                            </span>
+                        </div>
+                    </div>
+                    
                     <div>
                         <p class="text-sm font-medium text-gray-500">ວັນທີສ້າງບັນຊີ</p>
                         <p class="mt-1 text-gray-800"><?= date('d/m/Y H:i', strtotime($user['created_at'])) ?></p>
@@ -275,7 +294,7 @@ $can_delete = ($is_superadmin ||
                         <span>ປ່ຽນລະຫັດຜ່ານ</span>
                     </a>
                     <?php else: ?>
-                    <p class="text-sm text-gray-500 italic">ທ່ານບໍ່ສາມາດປ່ຽນລະຫັດຜ່ານຂອງຜູ້ໃຊ້ນີ້ໄດ້</p>
+                    <p class="text-sm text-gray-500 italic">ທ່ານບໍ່ສາມາດປ່ຽນລະຫັດຜ່ານຂອງຜູໃຊ້ນີ້ໄດ້</p>
                     <?php endif; ?>
                 </div>
                 
@@ -306,15 +325,36 @@ $can_delete = ($is_superadmin ||
             <div class="border-t border-gray-200 pt-4 mt-4">
                 <h3 class="text-lg font-medium text-gray-800 mb-3">ການຈັດການບັນຊີ</h3>
                 
-                <div class="flex space-x-3 mt-2">
-                    <?php if ($user['role'] !== 'superadmin'): ?>
+                <div class="flex flex-wrap gap-3 mt-2">
+                    <?php if ($user['role'] !== 'superadmin' && $is_superadmin): ?>
                     <a href="<?= $base_url ?>users/edit.php?id=<?= $user['id'] ?>" class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <i class="fas fa-user-shield mr-2"></i> ປ່ຽນບົດບາດ
                     </a>
                     <?php endif; ?>
                     
+                    <?php if (isset($user['status']) && $user['status'] === 'pending'): ?>
+                    <!-- ปุ่มอนุมัติผู้ใช้งาน -->
+                    <a href="<?= $base_url ?>users/approve.php?id=<?= $user['id'] ?>" class="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        <i class="fas fa-check-circle mr-2"></i> ອະນຸມັດຜູ້ໃຊ້
+                    </a>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($user['status']) && $user['status'] === 'active'): ?>
+                    <!-- ปุ่มระงับการใช้งาน -->
+                    <a href="<?= $base_url ?>users/suspend.php?id=<?= $user['id'] ?>" class="inline-flex items-center px-4 py-2 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-800 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500">
+                        <i class="fas fa-user-clock mr-2"></i> ລະງັບຜູ້ໃຊ້
+                    </a>
+                    <?php endif; ?>
+                    
+                    <?php if (isset($user['status']) && $user['status'] === 'inactive'): ?>
+                    <!-- ปุ่มเปิดใช้งาน -->
+                    <a href="<?= $base_url ?>users/activate.php?id=<?= $user['id'] ?>" class="inline-flex items-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <i class="fas fa-user-check mr-2"></i> ເປີດໃຊ້ງານ
+                    </a>
+                    <?php endif; ?>
+                    
                     <?php if (!$is_self): ?>
-                    <a href="<?= $base_url ?>users/delete.php?id=<?= $user['id'] ?>" class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <a href="<?= $base_url ?>users/delete.php?id=<?= $user['id'] ?>" onclick="return confirm('ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຜູ້ໃຊ້ນີ້?')" class="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                         <i class="fas fa-trash mr-2"></i> ລຶບບັນຊີ
                     </a>
                     <?php endif; ?>

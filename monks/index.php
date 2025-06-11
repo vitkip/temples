@@ -10,7 +10,7 @@ require_once '../includes/header.php';
 // ກວດສອບການຕັ້ງຄ່າຕົວກອງ temple_id
 $temple_filter = isset($_GET['temple_id']) ? (int)$_GET['temple_id'] : null;
 
-// ກຽມຄິວລີຕາມຕົວກອງ ແລະ ສິດທິຂອງຜູ້ໃຊ້
+// ກຽມຄິວລີຕາມຕົວກອງ ແລະ ສິດທິຂອງຜູ່ໃຊ້
 $params = [];
 $query = "SELECT m.*, t.name as temple_name FROM monks m 
           LEFT JOIN temples t ON m.temple_id = t.id WHERE 1=1";
@@ -21,7 +21,7 @@ if ($temple_filter) {
     $params[] = $temple_filter;
 }
 
-// ຖ້າຜູ້ໃຊ້ເປັນຜູ້ດູແລວັດ, ສະແດງສະເພາະພະສົງໃນວັດຂອງເຂົາເທົ່ານັ້ນ
+// ຖ້າຜູໃຊເປັນຜູ້ດູແລວັດ, ສະແດງສະເພາະພະສົງໃນວັດຂອງເຂົາເທົ່ານັ້ນ
 if ($_SESSION['user']['role'] === 'admin') {
     $query .= " AND m.temple_id = ?";
     $params[] = $_SESSION['user']['temple_id'];
@@ -36,7 +36,7 @@ if (isset($_GET['search']) && !empty($_GET['search'])) {
 }
 
 // ນໍາໃຊ້ຕົວກອງສະຖານະຖ້າມີການລະບຸ
-$status_filter = isset($_GET['status']) ? $_GET['status'] : 'active';
+$status_filter = isset($_GET['status']) ? $_GET['status'] : 'all';
 if ($status_filter !== 'all') {
     $query .= " AND m.status = ?";
     $params[] = $status_filter;
@@ -50,7 +50,7 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $monks = $stmt->fetchAll();
 
-// ດຶງຂໍ້ມູນວັດສຳລັບ dropdown ຕົວກອງ (ຖ້າຜູ້ໃຊເປັນ superadmin)
+// ດຶງຂໍ້ມູນວັດສຳລັບ dropdown ຕົວກອງ (ຖ້າຜູໃຊເປັນ superadmin)
 $temples = [];
 if ($_SESSION['user']['role'] === 'superadmin') {
     $temple_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active' ORDER BY name");
@@ -67,7 +67,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
         <h1 class="text-3xl font-bold text-indigo-800 flex items-center">
             <i class="fas fa-users-class mr-3"></i> ຈັດການພະສົງ
         </h1>
-        <p class="text-sm text-gray-600 mt-1">ຈັດການຂໍ້ມູນທັງໝົດຂອງພະສົງ</p>
+        <p class="text-sm text-gray-600 mt-1">ຈັດການຂໍໍາູນທັງໝົດຂອງພະສົງ</p>
     </div>
     <div class="flex flex-wrap gap-3">
         <!-- เพิ่มปุ่มส่งออก PDF -->
@@ -89,7 +89,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
 <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-6 border border-gray-100">
     <div class="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 border-b border-gray-100">
         <h2 class="text-lg font-semibold text-indigo-800">
-            <i class="fas fa-filter mr-2"></i> ຕົວກອງຂໍ້ມູນ
+            <i class="fas fa-filter mr-2"></i> ຕົວກອງຂໍໍາູນ
         </h2>
     </div>
     <div class="p-6">
@@ -104,7 +104,20 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                        placeholder="ພິມຊື່ພະສົງ..." 
                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition">
             </div>
-            
+            <!-- ตัวกรอง prefix -->
+            <div>
+                <label for="prefix" class="block text-sm font-medium text-gray-700 mb-1">
+                    <i class="fas fa-user-tag text-indigo-600 mr-1"></i> ຄຳນຳໜ້າ
+                </label>
+                <select name="prefix" id="prefix" 
+                        class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition">
+                    <option value="">-- ທັງໝົດ --</option>
+                    <option value="ພະ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ພະ' ? 'selected' : '' ?>>ພະ</option>
+                    <option value="ຄຸນແມ່ຂາວ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ຄຸນແມ່ຂາວ' ? 'selected' : '' ?>>ຄຸນແມ່ຂາວ</option>
+                    <option value="ສ.ນ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສ.ນ' ? 'selected' : '' ?>>ສ.ນ</option>
+                    <option value="ພະອາຈານ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສັງກະລີ' ? 'selected' : '' ?>>ສັງກະລີ</option>
+                </select>
+            </div>
             <!-- ตัวกรองสถานะ -->
             <div>
                 <label for="status" class="block text-sm font-medium text-gray-700 mb-1">
@@ -204,7 +217,8 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
             <thead>
                 <tr class="bg-gradient-to-r from-indigo-50 to-blue-50">
                     <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">ຮູບພາບ</th>
-                    <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">ພະສົງ</th>
+                    <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">ຄຳນຳໜ້າ</th>
+                    <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">ຊື່ ແລະ ນາມສະກຸນ</th>
                     <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">ພັນສາ</th>
                     <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">ວັດ</th>
                     <th class="px-6 py-3.5 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">ສະຖານະ</th>
@@ -226,6 +240,9 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                             <?php endif; ?>
                         </div>
                     </td>
+                       <td class="px-6 py-4">
+                        <div class="text-gray-500 font-medium"><?= htmlspecialchars($monk['prefix'] ?? '-') ?> <span class="text-xs"></span></div>
+                    </td>
                     <td class="px-6 py-4">
                         <div class="font-medium text-gray-900 hover:text-indigo-700">
                             <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>"><?= htmlspecialchars($monk['name']) ?></a>
@@ -244,16 +261,34 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                         </div>
                     </td>
                     <td class="px-6 py-4">
-                        <?php if($monk['status'] === 'active'): ?>
-                            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full border border-green-200">
-                                <i class="fas fa-circle text-xs mr-1 text-green-500"></i> ບວດຢູ່
-                            </span>
-                        <?php else: ?>
-                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200">
-                                <i class="fas fa-circle text-xs mr-1 text-gray-500"></i> ສິກແລ້ວ
-                            </span>
-                        <?php endif; ?>
-                    </td>
+                        <?php if ($can_edit && ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['temple_id'] == $monk['temple_id'])): ?>
+        <button type="button" class="toggle-status-btn w-full text-left" data-monk-id="<?= $monk['id'] ?>" data-current-status="<?= $monk['status'] ?>">
+            <?php if($monk['status'] === 'active'): ?>
+                <span class="status-badge bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full border border-green-200 hover:bg-green-200 transition-all duration-200">
+                    <i class="fas fa-circle text-xs mr-1 text-green-500"></i> ບວດຢູ່
+                    <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>
+                </span>
+            <?php else: ?>
+                <span class="status-badge bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 hover:bg-gray-200 transition-all duration-200">
+                    <i class="fas fa-circle text-xs mr-1 text-gray-500"></i> ສິກແລ້ວ
+                    <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>
+                </span>
+            <?php endif; ?>
+        </button>
+    <?php else: ?>
+        <div>
+            <?php if($monk['status'] === 'active'): ?>
+                <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full border border-green-200">
+                    <i class="fas fa-circle text-xs mr-1 text-green-500"></i> ບວດຢູ່
+                </span>
+            <?php else: ?>
+                <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200">
+                    <i class="fas fa-circle text-xs mr-1 text-gray-500"></i> ສິກແລ້ວ
+                </span>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+</td>
                     <td class="px-6 py-4 whitespace-nowrap text-gray-500">
                         <div class="flex items-center space-x-3">
                             <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>" 
@@ -285,7 +320,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
     <div class="py-12 px-8 text-center">
         <div class="bg-gray-50 rounded-xl py-10 max-w-md mx-auto">
             <i class="fas fa-pray text-5xl mb-4 text-gray-300"></i>
-            <p class="text-gray-500 mb-4">ບໍ່ພົບຂໍ້ມູນພະສົງ</p>
+            <p class="text-gray-500 mb-4">ບໍ່ພົບຂໍໍາູນພະສົງ</p>
             <?php if (!empty($_GET['search']) || !empty($_GET['temple_id']) || (isset($_GET['status']) && $_GET['status'] !== 'active')): ?>
             <a href="<?= $base_url ?>monks/" 
                class="inline-block mt-2 text-indigo-600 hover:text-indigo-800 border border-indigo-300 hover:border-indigo-400 px-4 py-2 rounded-lg transition">
@@ -302,14 +337,14 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
     <div class="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl transform transition-all">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold text-gray-900 flex items-center">
-                <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i> ຢືນຢັນການລຶບຂໍ້ມູນ
+                <i class="fas fa-exclamation-triangle text-red-500 mr-2"></i> ຢືນຢັນການລຶບຂໍໍາູນ
             </h3>
             <button type="button" class="close-modal text-gray-400 hover:text-gray-500 hover:bg-gray-100 rounded-full p-1.5 transition">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div class="py-3">
-            <p class="text-gray-700">ທ່ານຕ້ອງການລຶບຂໍ້ມູນພະສົງ <span id="deleteMonkNameDisplay" class="font-medium text-red-600"></span> ແທ້ບໍ່?</p>
+            <p class="text-gray-700">ທ່ານຕ້ອງການລຶບຂໍໍາູນພະສົງ <span id="deleteMonkNameDisplay" class="font-medium text-red-600"></span> ແທ້ບໍ່?</p>
             <p class="text-sm text-red-600 mt-2 bg-red-50 p-3 rounded border border-red-100 flex items-center">
                 <i class="fas fa-info-circle mr-1.5"></i> ຂໍ້ມູນທີ່ຖືກລຶບບໍ່ສາມາດກູ້ຄືນໄດ້.
             </p>
@@ -393,10 +428,212 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-</script>
+// ระบบเปลี่ยนสถานะพระสงฆ์แบบ AJAX
+document.querySelectorAll('.toggle-status-btn').forEach(button => {
+    button.addEventListener('click', async function() {
+        const monkId = this.getAttribute('data-monk-id');
+        const currentStatus = this.getAttribute('data-current-status');
+        const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+        const statusBadge = this.querySelector('.status-badge');
+        
+        // แสดงการโหลด
+        const originalHTML = statusBadge.innerHTML;
+        statusBadge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ກຳລັງປ່ຽນ...';
+        button.disabled = true;
+        
+        try {
+            const response = await fetch('<?= $base_url ?>monks/update_status.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    monk_id: monkId,
+                    status: newStatus
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // อัพเดทหน้าเว็บเมื่อเปลี่ยนสถานะสำเร็จ
+                if (newStatus === 'active') {
+                    statusBadge.className = 'status-badge bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full border border-green-200 hover:bg-green-200 transition-all duration-200';
+                    statusBadge.innerHTML = '<i class="fas fa-circle text-xs mr-1 text-green-500"></i> ບວດຢູ່ <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>';
+                } else {
+                    statusBadge.className = 'status-badge bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 hover:bg-gray-200 transition-all duration-200';
+                    statusBadge.innerHTML = '<i class="fas fa-circle text-xs mr-1 text-gray-500"></i> ສິກແລ້ວ <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>';
+                }
+                
+                // อัพเดทแอตทริบิวต์ data-current-status
+                this.setAttribute('data-current-status', newStatus);
+                
+                // สร้าง toast notification พร้อมปุ่มให้ไปที่มุมมอง "ทั้งหมด" เมื่อเปลี่ยนสถานะ
+                if ('<?= $status_filter ?>' !== 'all') {
+                    createActionToast(
+                        result.message, 
+                        'success', 
+                        'ເບິ່ງທັງໝົດ', 
+                        '<?= $base_url ?>monks/?status=all'
+                    );
+                } else {
+                    showToast(result.message, 'success');
+                }
+                
+                // ไฮไลท์แถวที่เปลี่ยนแปลง
+                const row = this.closest('tr');
+                row.style.backgroundColor = '#FFEDD5'; 
+                row.style.boxShadow = '0 0 8px rgba(251, 146, 60, 0.7)';
 
-<?php
-// ສິ້ນສຸດການ buffer ທີ່ທ້າຍຂອງໄຟລ໌
-ob_end_flush();
-require_once '../includes/footer.php';
-?>
+                // เพิ่มการกระพริบ
+                let flash = 0;
+                const flashInterval = setInterval(() => {
+                  if (flash >= 3) {
+                    clearInterval(flashInterval);
+                    row.style.transition = 'all 0.5s ease-out';
+                    row.style.backgroundColor = '';
+                    row.style.boxShadow = '';
+                    return;
+                  }
+                  
+                  row.style.backgroundColor = flash % 2 === 0 ? '#ffffff' : '#FFEDD5';
+                  flash++;
+                }, 500);
+            } else {
+                // กลับสู่สถานะเดิมเมื่อเกิดข้อผิดพลาด
+                statusBadge.innerHTML = originalHTML;
+                showToast(result.message || 'ເກີດຂໍ້ຜິດພາດໃນການປ່ຽນສະຖານະ', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            statusBadge.innerHTML = originalHTML;
+            showToast('ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ກັບເຊີບເວີ', 'error');
+        }
+        
+        button.disabled = false;
+    });
+});
+
+// ຟັງຊັນສະແດງ Toast notification
+function showToast(message, type = 'success') {
+    // ส้าง toast notification
+    const toast = document.createElement('div');
+    
+    // เพิ่มประเภท 'info' สีฟ้า
+    let bgColor = 'bg-green-600';
+    let iconClass = 'fa-check-circle';
+    
+    if (type === 'error') {
+        bgColor = 'bg-red-600';
+        iconClass = 'fa-exclamation-circle';
+    } else if (type === 'info') {
+        bgColor = 'bg-blue-600';
+        iconClass = 'fa-info-circle';
+    }
+    
+    toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg text-white flex items-center z-50 ${bgColor}`;
+    
+    const icon = document.createElement('i');
+    icon.className = `fas ${iconClass} mr-2`;
+    
+    const text = document.createElement('span');
+    text.textContent = message;
+    
+    toast.appendChild(icon);
+    toast.appendChild(text);
+    document.body.appendChild(toast);
+    
+    // เพิ่มการเคลื่อนไหว
+    requestAnimationFrame(() => {
+        toast.style.transition = 'all 0.3s ease-in-out';
+        toast.style.transform = 'translateY(0)';
+        toast.style.opacity = '1';
+    });
+    
+    // ลบ toast หลังจาก 3 วินาที
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+}
+
+// เพิ่มฟังก์ชันนี้ในโค้ด JavaScript
+function createActionToast(message, type = 'success', actionText = null, actionURL = null) {
+    // สร้าง toast notification พร้อมปุ่มกด
+    const toast = document.createElement('div');
+    
+    let bgColor = 'bg-green-600';
+    let iconClass = 'fa-check-circle';
+    
+    if (type === 'error') {
+        bgColor = 'bg-red-600';
+        iconClass = 'fa-exclamation-circle';
+    } else if (type === 'info') {
+        bgColor = 'bg-blue-600';
+        iconClass = 'fa-info-circle';
+    }
+    
+    toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg text-white flex items-center z-50 ${bgColor}`;
+    
+    const content = document.createElement('div');
+    content.className = 'flex items-center';
+    
+    const icon = document.createElement('i');
+    icon.className = `fas ${iconClass} mr-2`;
+    
+    const text = document.createElement('span');
+    text.textContent = message;
+    
+    content.appendChild(icon);
+    content.appendChild(text);
+    toast.appendChild(content);
+    
+    // เพิ่มปุ่มกดถ้ามีข้อความปุ่ม
+    if (actionText && actionURL) {
+        const button = document.createElement('a');
+        button.href = actionURL;
+        button.className = 'ml-4 px-3 py-1 bg-white bg-opacity-25 rounded-lg text-sm font-medium transition hover:bg-opacity-50 flex items-center';
+        button.innerHTML = `<i class="fas fa-arrow-right mr-1"></i> ${actionText}`;
+        toast.appendChild(button);
+    }
+    
+    document.body.appendChild(toast);
+    
+    // เพิ่มการเคลื่อนไหว
+    requestAnimationFrame(() => {
+        toast.style.transition = 'all 0.3s ease-in-out';
+        toast.style.transform = 'translateY(0)';
+        toast.style.opacity = '1';
+    });
+    
+    // ลบ toast หลังจาก 3 วินาที
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+            document.body.removeChild(toast);
+        }, 300);
+    }, 3000);
+}
+
+function reloadTable() {
+    // เพิ่มตัวแสดงการโหลด
+    const table = document.querySelector('table');
+    table.style.opacity = '0.6';
+    
+    // ดึงข้อมูลใหม่
+    fetch('<?= $base_url ?>monks/get_monks_data.php?status=all')
+        .then(response => response.json())
+        .then(data => {
+            // อัพเดตตารางด้วยข้อมูลใหม่...
+            table.style.opacity = '1';
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            table.style.opacity = '1';
+        });
+}
+</script>

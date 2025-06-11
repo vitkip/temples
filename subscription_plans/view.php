@@ -242,7 +242,14 @@ require_once '../includes/header.php';
                                 </div>
                                 <div class="ml-4">
                                     <h3 class="text-sm font-medium text-gray-500">ລາຍຮັບທັງໝົດ</h3>
-                                    <p class="text-2xl font-semibold text-gray-900"><?= number_format($total_subs * $plan['price'], 0, ',', '.') ?> ກີບ</p>
+                                    <?php
+                                    // Get the actual total revenue from subscriptions for this plan
+                                    $revenue_sql = "SELECT COALESCE(SUM(amount), 0) as total_revenue FROM subscriptions WHERE plan_id = ?";
+                                    $revenue_stmt = $pdo->prepare($revenue_sql);
+                                    $revenue_stmt->execute([$plan_id]);
+                                    $total_revenue = $revenue_stmt->fetchColumn();
+                                    ?>
+                                    <p class="text-2xl font-semibold text-gray-900"><?= number_format($total_revenue, 0, ',', '.') ?> ກີບ</p>
                                 </div>
                             </div>
                         </div>

@@ -42,9 +42,10 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800"><?= htmlspecialchars($monk['name']) ?></h1>
+           
+           <h1 class="text-2xl font-bold text-gray-800"><?= htmlspecialchars($monk['prefix']) ?>  <?= htmlspecialchars($monk['name']) ?></h1>
             <?php if (!empty($monk['lay_name'])): ?>
-            <p class="text-sm text-gray-600">ຊື່ຄາວາດ: <?= htmlspecialchars($monk['lay_name']) ?></p>
+            <p class="text-sm text-gray-600">ນາມສະກຸນ: <?= htmlspecialchars($monk['lay_name']) ?></p>
             <?php endif; ?>
         </div>
         <div class="flex space-x-2">

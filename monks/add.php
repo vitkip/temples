@@ -39,6 +39,7 @@ if ($_SESSION['user']['role'] === 'superadmin') {
 // Initialize variables
 $errors = [];
 $form_data = [
+    'prefix' => '',  // เพิ่มฟิลด์ prefix
     'name' => '',
     'lay_name' => '',
     'pansa' => '',
@@ -63,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     // Validate input
     $form_data = [
+        'prefix' => trim($_POST['prefix'] ?? ''),  // เพิ่มรับค่า prefix
         'name' => trim($_POST['name'] ?? ''),
         'lay_name' => trim($_POST['lay_name'] ?? ''),
         'pansa' => trim($_POST['pansa'] ?? ''),
@@ -124,6 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Insert monk data
                 $stmt = $pdo->prepare("
                     INSERT INTO monks (
+                        prefix,      
                         name, 
                         lay_name, 
                         pansa, 
@@ -139,6 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         created_at,
                         updated_at
                     ) VALUES (
+                        :prefix,    
                         :name,
                         :lay_name,
                         :pansa,
@@ -157,6 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ");
                 
                 $stmt->execute([
+                    ':prefix' => $form_data['prefix'] ?: null,  // ใช้ค่า prefix ถ้ามี ไม่งั้นใช้ null
                     ':name' => $form_data['name'],
                     ':lay_name' => $form_data['lay_name'],
                     ':pansa' => $form_data['pansa'],
@@ -227,14 +232,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- Basic Information -->
                 <div class="space-y-6">
                     <h2 class="text-xl font-semibold text-gray-800 border-b pb-3">ຂໍ້ມູນພື້ນຖານ</h2>
-                    
+                <div class="mb-4">
+                    <label for="prefix" class="block text-sm font-medium text-gray-700 mb-2">ຄຳນຳໜ້າ</label>
+                    <select name="prefix" id="prefix" class="form-select rounded-md w-full">
+                        <option value="">-- ເລືອກຄຳນຳໜ້າ --</option>
+                        <option value="ພຣະ" <?= $form_data['prefix'] === 'ພຣະ' ? 'selected' : '' ?>>ພຣະ</option>
+                        <option value="ຄຸນແມ່ຂາວ" <?= $form_data['prefix'] === 'ຄຸນແມ່ຂາວ' ? 'selected' : '' ?>>ຄຸນແມ່ຂາວ</option>
+                        <option value="ສ.ນ" <?= $form_data['prefix'] === 'ສ.ນ' ? 'selected' : '' ?>>ສ.ນ</option>
+                        <option value="ສັງກະລີ" <?= $form_data['prefix'] === 'ສັງກະລີ' ? 'selected' : '' ?>>ສັງກະລີ</option>
+                    </select>
+                </div>
                     <div class="mb-4">
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ພະສົງ <span class="text-red-600">*</span></label>
+                        <label for="name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ <span class="text-red-600">*</span></label>
                         <input type="text" name="name" id="name" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['name']) ?>" required>
                     </div>
                     
                     <div class="mb-4">
-                        <label for="lay_name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ຄາວາດ</label>
+                        <label for="lay_name" class="block text-sm font-medium text-gray-700 mb-2">ນາມສະກຸນ</label>
                         <input type="text" name="lay_name" id="lay_name" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['lay_name']) ?>">
                     </div>
                     
