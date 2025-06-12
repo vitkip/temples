@@ -30,12 +30,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $stmt->execute([$username]);
             $user = $stmt->fetch();
 
-            if ($user && hash('sha256', $password) === $user['password']) {
+            if ($user && password_verify($password, $user['password'])) {
                 // Set remember me cookie if requested
-                if (isset($_POST['remember_me']) && $_POST['remember_me'] == 'on') {
-                    $token = bin2hex(random_bytes(32));
-                    // Store token in database (implementation would be needed)
-                    setcookie('remember_token', $token, time() + 30 * 24 * 60 * 60, '/');
+                if ($user['status'] !== 'active') {
+                    $error = "ບັນຊີຂອງທ່ານຍັງບໍ່ໄດ້ຮັບການອະນຸມັດ ຈາກຜູ້ດູແລລະບົບ ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບ";                   
                 }
 
                 $_SESSION['user'] = [

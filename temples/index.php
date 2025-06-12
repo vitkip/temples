@@ -2,8 +2,14 @@
 $page_title = 'ຈັດການວັດ';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
+require_once '../auth/check_superadmin.php';
 require_once '../includes/header.php';
 
+if ($_SESSION['user']['role'] !== 'superadmin') {
+    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃນການເຂົ້າເຖິງໜ້າຈັດການວັດ";
+    header('Location: ' . $base_url . 'dashboard.php');
+    exit;
+}
 // Filter parameters
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $province = isset($_GET['province']) ? trim($_GET['province']) : '';

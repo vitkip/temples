@@ -17,8 +17,11 @@ if (!isset($_SESSION['user'])) {
     <title>ລະບົບຈັດການຂໍ້ມູນວັດ - <?= $page_title ?? 'ໜ້າຫຼັກ' ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700&display=swap" rel="stylesheet">
+   
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@100..900&display=swap" rel="stylesheet">
+
     <style>
         body {
             font-family: 'Noto Sans Lao', sans-serif;
@@ -65,6 +68,249 @@ if (!isset($_SESSION['user'])) {
         .toast-notification {
             animation: slideUp 0.3s ease-out forwards;
         }
+        
+.page-container {
+  background-image: url('../images/thai-pattern.svg');
+  background-repeat: repeat;
+  background-size: 200px;
+  background-opacity: 0.05;
+}
+
+.card {
+  border-radius: 1rem;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(200, 169, 126, 0.15);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+:root {
+  /* สีหลัก - โทนอุ่น */
+  --color-primary: #D4A762;
+  --color-primary-dark: #B08542;
+  --color-secondary: #9B7C59;
+  --color-accent: #E9CDA8;
+  
+  /* สีพื้นหลัง */
+  --color-light: #F9F5F0;
+  --color-lightest: #FFFCF7;
+  
+  /* สีข้อความ */
+  --color-dark: #4E3E2E;
+  --color-muted: #8E7D6A;
+  
+  /* สีสถานะ */
+  --color-success: #7A9B78;
+  --color-danger: #C57B70;
+}
+
+body {
+  color: var(--color-dark);
+  background-color: var(--color-lightest);
+}
+
+.header-section {
+  background: linear-gradient(135deg, #F0E5D3, #FFFBF5);
+}
+.data-table {
+  border: none;
+  box-shadow: 0 2px 20px rgba(138, 103, 57, 0.05);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.table-header {
+  background: linear-gradient(90deg, rgba(212, 167, 98, 0.1), rgba(212, 167, 98, 0.05));
+}
+
+.table-row {
+  border-bottom: 1px solid rgba(212, 167, 98, 0.1);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+.form-input, .form-select {
+  border: 2px solid rgba(212, 167, 98, 0.2);
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+}
+
+.form-input:focus, .form-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(212, 167, 98, 0.15);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px rgba(212, 167, 98, 0.3);
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(212, 167, 98, 0.35);
+}
+.icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #F5EFE6, #E9DFC7);
+  color: var(--color-primary-dark);
+  margin-right: 1rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.status-active {
+  background-color: rgba(122, 155, 120, 0.15);
+  color: #5C856A;
+  border: 1px solid rgba(122, 155, 120, 0.3);
+}
+.sidebar {
+  background: linear-gradient(180deg, #D4A762 0%, #B08542 100%);
+}
+
+.sidebar-link {
+  border-radius: 0.75rem;
+  margin: 0.25rem 0;
+  transition: all 0.3s;
+}
+
+.sidebar-link:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateX(3px);
+}
+
+.sidebar-link.active {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-left: 4px solid #FFF;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+.header-section {
+  background-image: url('../images/temple-pattern-light.svg');
+  background-position: right bottom;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.category-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #D4A762, #B08542);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+}
+/* เพิ่มอนิเมชันเมื่อโหลดเพจ */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header-section {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.filter-section {
+  animation: fadeInUp 0.5s 0.1s ease-out forwards;
+  opacity: 0;
+}
+
+.data-table {
+  animation: fadeInUp 0.5s 0.2s ease-out forwards;
+  opacity: 0;
+}
+
+/* อนิเมชันสำหรับปุ่มและองค์ประกอบโต้ตอบ */
+.btn {
+  overflow: hidden;
+  position: relative;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 0;
+  padding-bottom: 100%;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  opacity: 0;
+  transition: transform 0.4s, opacity 0.3s;
+}
+
+.btn:active::after {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  transition: 0s;
+}
+/* การปรับแต่งสำหรับหน้าจอขนาดเล็ก */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 0.5rem;
+  }
+  
+  .header-section {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .header-title {
+    font-size: 1.5rem;
+  }
+  
+  .filter-section .p-6 {
+    padding: 1rem;
+  }
+  
+  .data-table {
+    border-radius: 0.5rem;
+  }
+  
+  .btn-group {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+}
+
     </style>
 </head>
 <body>
@@ -141,7 +387,7 @@ if (!isset($_SESSION['user'])) {
                         </a>
                     </div>
                 </div>
-                <?php endif; ?>
+               
                 
                 <!-- Settings Section -->
                 <div class="mt-8">
@@ -152,6 +398,7 @@ if (!isset($_SESSION['user'])) {
                         </a>
                     </div>
                 </div>
+                 <?php endif; ?>
             </nav>
             
             <div class="border-t border-indigo-800 p-4">

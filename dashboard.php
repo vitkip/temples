@@ -145,11 +145,12 @@ if ($userTempleId) {
 <div class="mt-6">
     <h3 class="text-xl font-semibold text-gray-800 mb-4">ເຂົ້າເຖິງດ່ວນ</h3>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+         <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
         <a href="<?= $base_url ?>temples/add.php" class="bg-white rounded-lg shadow-sm p-6 text-center hover:bg-indigo-50 transition card">
             <i class="fas fa-plus-circle text-3xl text-indigo-600 mb-3"></i>
             <h4 class="font-medium">ເພີ່ມວັດໃໝ່</h4>
         </a>
-        
+         <?php endif; ?>
         <a href="<?= $base_url ?>monks/add.php" class="bg-white rounded-lg shadow-sm p-6 text-center hover:bg-indigo-50 transition card">
             <i class="fas fa-user-plus text-3xl text-indigo-600 mb-3"></i>
             <h4 class="font-medium">ເພີ່ມພະສົງໃໝ່</h4>

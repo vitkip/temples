@@ -85,6 +85,24 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
+        :root {
+  /* โทนสีหลักที่อบอุ่นและนุ่มนวลขึ้น */
+  --color-primary: #D4A762;         /* ทองอ่อนอบอุ่น */
+  --color-primary-dark: #B08542;    /* ทองเข้ม */
+  --color-secondary: #8D6E48;       /* น้ำตาลอบอุ่น */
+  --color-accent: #E6C695;          /* ทองนวลสว่าง */
+  --color-light: #F9F5F0;           /* ครีมอ่อน */
+  --color-lightest: #FDFAF5;        /* ครีมสว่าง */
+  --color-dark: #483626;            /* น้ำตาลเข้ม */
+  --color-success: #7E9F7E;         /* เขียวอ่อนนุ่ม */
+  --color-danger: #D68F84;          /* แดงอ่อนนุ่ม */
+}
+
+body {
+  background-color: var(--color-lightest);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100' fill-opacity='0.03'%3E%3Cpath fill='%23D4A762' d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z'/%3E%3C/svg%3E");
+}
+
         body {
             font-family: 'Noto Sans Lao', sans-serif;
         }
@@ -134,6 +152,270 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
             height: 100%;
             background: linear-gradient(to right, rgb(239, 131, 30) 0%, rgba(42, 61, 231, 0.3) 100%);
         }
+
+.header-section {
+  background: linear-gradient(135deg, #F5EFE6, #E9DFC7);
+  border: none;
+  box-shadow: 0 4px 20px rgba(176, 133, 66, 0.1);
+  border-radius: 1rem;
+  position: relative;
+  overflow: hidden;
+  animation: fadeInDown 0.6s ease-out forwards;
+}
+
+.header-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 200px;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 24 24' fill='none' stroke='%23D4A762' stroke-width='0.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2'%3E%3C/path%3E%3Ccircle cx='9' cy='7' r='4'%3E%3C/circle%3E%3Cpath d='M23 21v-2a4 4 0 0 0-3-3.87'%3E%3C/path%3E%3Cpath d='M16 3.13a4 4 0 0 1 0 7.75'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: repeat;
+  opacity: 0.07;
+}
+
+.header-title {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: var(--color-secondary);
+  text-shadow: 1px 1px 0px rgba(255, 255, 255, 0.5);
+}
+
+.filter-section {
+  animation: fadeInUp 0.6s 0.2s ease-out forwards;
+  opacity: 0;
+}
+
+.data-table {
+  animation: fadeInUp 0.6s 0.3s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.data-table {
+  border: none;
+  box-shadow: 0 3px 15px rgba(176, 133, 66, 0.07);
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.table-header {
+  background: linear-gradient(to right, rgba(212, 167, 98, 0.15), rgba(212, 167, 98, 0.05));
+}
+
+.table-header th {
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--color-secondary);
+  padding: 1rem 1.25rem;
+}
+
+.table-cell {
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid rgba(212, 167, 98, 0.1);
+}
+
+.table-row:hover {
+  background-color: rgba(249, 245, 240, 0.7);
+}
+
+/* อนิเมชั่นแถวแบบละมุน */
+.table-row {
+  transition: transform 0.15s, background-color 0.15s;
+}
+
+.table-row:hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #D4A762, #B08542);
+  border: none;
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.6rem;
+  box-shadow: 0 4px 10px rgba(176, 133, 66, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  font-weight: 500;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(176, 133, 66, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: 0.5s;
+}
+
+.btn-primary:hover::after {
+  left: 100%;
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #F5EFE6, #E9DFC7);
+  border: 1px solid rgba(177, 137, 73, 0.15);
+  color: var(--color-secondary);
+  font-weight: 500;
+}
+
+/* Status badges */
+.status-active {
+  background: linear-gradient(to right, rgba(126, 159, 126, 0.15), rgba(126, 159, 126, 0.05));
+  color: #4d7a4d;
+  border: 1px solid rgba(126, 159, 126, 0.25);
+  padding: 0.3rem 0.85rem;
+  border-radius: 2rem;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.status-inactive {
+  background: linear-gradient(to right, rgba(169, 169, 169, 0.15), rgba(169, 169, 169, 0.05));
+  color: #696969;
+  border: 1px solid rgba(169, 169, 169, 0.25);
+  padding: 0.3rem 0.85rem;
+  border-radius: 2rem;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.monk-image {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  transition: transform 0.2s;
+}
+
+.monk-image:hover {
+  transform: scale(1.05);
+}
+
+.monk-placeholder {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #F5EFE6, #E9DFC7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary-dark);
+  font-size: 1.4rem;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+  border: 3px solid rgba(255, 255, 255, 0.8);
+}
+
+.modal-overlay {
+  background-color: rgba(69, 53, 37, 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.modal-container {
+  background: linear-gradient(135deg, #FFFCF7, #F9F5F0);
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  transform: scale(0.95);
+  opacity: 0;
+  transition: all 0.3s;
+}
+
+.modal-container.show {
+  transform: scale(1);
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 0.75rem;
+  }
+  
+  .header-section {
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .header-title {
+    font-size: 1.5rem;
+  }
+  
+  .filter-section .p-6 {
+    padding: 1rem;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .btn-group {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .data-table {
+    border-radius: 0.75rem;
+  }
+  
+  .table-cell {
+    padding: 0.75rem 1rem;
+  }
+  
+  /* ทำให้ตารางเลื่อนได้บนมือถือ */
+  .data-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  table {
+    min-width: 800px;
+  }
+}
     </style>
 </head>
 <body class="bg-gray-50">
@@ -360,7 +642,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                         </div>
                         <h3 class="text-xl font-semibold text-gray-900 mb-2">ຈັດການຂໍ້ມູນວັດ</h3>
                         <p class="text-gray-500">
-                            ເກັບກຳຂໍ້ມູນວັດ ແລະ ສະຖານທີ່ສໍາຄັນທາງພຸດທະສາສະໜາຢ່າງເປັນລະບົບ, ພ້ອມລາຍລະອຽດ ແລະ ຮູບພາບ.
+                            ເກັບກຳຂໍ້ມູນວັດ ແລະ ສະຖານທີໍາຄັນທາງພຸດທະສາສະໜາຢ່າງເປັນລະບົບ, ພ້ອມລາຍລະອຽດ ແລະ ຮູບພາບ.
                         </p>
                     </div>
                 </div>
@@ -399,7 +681,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                         </div>
                         <h3 class="text-xl font-semibold text-gray-900 mb-2">ແຜງຄວບຄຸມ ແລະ ການວິເຄາະ</h3>
                         <p class="text-gray-500">
-                            ເຂົ້າເຖິງຂໍ້ມູນສະຖິຕິ ແລະ ການວິເຄາະທີ່ສໍາຄັນເພື່ອຊ່ວຍໃນການວາງແຜນ ແລະ ຕັດສິນໃຈ.
+                            ເຂົ້າເຖິບຂໍ້ມູນສະຖິຕິ ແລະ ການວິເຄາະທີໍາຄັນເພື່ອຊ່ວຍໃນການວາງແຜນ ແລະ ຕັດສິນໃຈ.
                         </p>
                     </div>
                 </div>
@@ -425,7 +707,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                         </div>
                         <h3 class="text-xl font-semibold text-gray-900 mb-2">ໃຊ້ງານໄດ້ທຸກອຸປະກອນ</h3>
                         <p class="text-gray-500">
-                            ເຂົ້າເຖິງລະບົບໄດ້ທຸກທີ່ທຸກເວລາ ໂດຍຜ່ານຄອມພິວເຕີ, ແທັບເລັດ, ຫຼື ສະມາດໂຟນ.
+                            ເຂົ້າເຖິບລະບົບໄດ້ທຸກທີ່ທຸກເວລາ ໂດຍຜ່ານຄອມພິວເຕີ, ແທັບເລັດ, ຫຼື ສະມາດໂຟນ.
                         </p>
                     </div>
                 </div>

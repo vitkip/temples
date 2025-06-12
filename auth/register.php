@@ -81,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else if (!filter_var($form_data['email'], FILTER_VALIDATE_EMAIL)) {
         $errors[] = "ຮູບແບບອີເມວບໍ່ຖືກຕ້ອງ";
     } else {
-        // ກວດສອບວ່າອີເມລຊໍ້າກັນຫຼືບໍ່
+        // ກວດສອບວ່າອີເມວຊໍ້າກັນຫຼືບໍ່
         $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ?");
         $check_stmt->execute([$form_data['email']]);
         if ($check_stmt->fetchColumn() > 0) {
@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $params = [
                 $form_data['username'],
-                password_hash($form_data['password'], PASSWORD_DEFAULT),
+                hash('sha256', $form_data['password']), // เปลี่ยนเป็น sha256 ให้ตรงกับ login
                 $form_data['name'],
                 $form_data['email'],
                 $form_data['phone'],
@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // ສົ່ງອີເມວແຈ້ງເຕືອນຜູ້ດູແລລະບົບ (ໃນໂຄດຕົວຈິງຄວນເພີ່ມສ່ວນນີ້)
             
-            $_SESSION['success'] = "ລົງທະບຽນສໍາເລັດແລ້ວ ກະລຸນາລໍຖ້າການອະນຸມັດຈາກຜູ້ດູແລລະບົບ";
+            $_SESSION['success'] = "ລົງທະບຽນສໍາເລັດແລ້ວ ກະລຸນາລໍຖ້າການອະນຸມັດຈາກຜູ່ດູແລລະບົບ";
             header('Location: ' . $base_url . 'auth/login.php');
             exit;
             
@@ -345,7 +345,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
                                 value="<?= htmlspecialchars($form_data['username']) ?>" required>
                         </div>
-                        <p class="mt-1 text-xs text-gray-500">ຊື່ຜູ້ໃຊ້ສໍາລັບເຂົ້າສູ່ລະບົບ</p>
+                        <p class="mt-1 text-xs text-gray-500">ຊື່ຜູໃຊ້ສໍາລັບເຂົ້າສູ່ລະບົບ</p>
                     </div>
                     
                     <!-- ຊື່-ນາມສະກຸນ -->

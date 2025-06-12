@@ -2,14 +2,15 @@
 $page_title = 'ແກ້ໄຂຂໍ້ມູນວັດ';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
+require_once '../auth/check_superadmin.php';
 require_once '../includes/header.php';
 
 // Check if user has permission
-if ($_SESSION['user']['role'] !== 'superadmin' && $_SESSION['user']['role'] !== 'admin') {
+if ($_SESSION['user']['role'] !== 'superadmin') {
+    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃນການແກ້ໄຂຂໍ້ມູນວັດ";
     header('Location: ' . $base_url . 'temples/');
     exit;
 }
-
 // Check if ID was provided
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     header('Location: ' . $base_url . 'temples/');

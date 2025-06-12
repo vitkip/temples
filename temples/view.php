@@ -2,7 +2,17 @@
 $page_title = 'ລາຍລະອຽດວັດ';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
+require_once '../auth/check_superadmin.php';
 require_once '../includes/header.php';
+
+if ($_SESSION['user']['role'] !== 'superadmin') {
+    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃນການເຂົ້າເຖິງຂໍ້ມູນລາຍລະອຽດວັດ";
+    header('Location: ' . $base_url . 'dashboard.php');
+    exit;
+}
+
+// แก้ไขตัวแปร can_edit ให้เป็นเฉพาะ superadmin เท่านั้น
+$can_edit = ($_SESSION['user']['role'] === 'superadmin');
 
 // Check if ID was provided
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
@@ -38,11 +48,6 @@ $event_stmt = $pdo->prepare("
 ");
 $event_stmt->execute([$temple_id]);
 $events = $event_stmt->fetchAll();
-
-// Check if user has edit permissions
-$can_edit = ($_SESSION['user']['role'] === 'superadmin' || 
-            ($_SESSION['user']['role'] === 'admin' && 
-             $_SESSION['user']['temple_id'] == $temple_id));
 ?>
 
 <!-- Page Header -->
