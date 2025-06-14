@@ -361,6 +361,14 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
                 <?= $monk['birth_date'] ? date('d/m/Y', strtotime($monk['birth_date'])) : '-' ?>
               </p>
             </div>
+                        <!-- เพิ่มหลังจากส่วนแสดงวันเดือนปีเกิด -->
+            <div>
+                <span class="info-label">ແຂວງເກີດ</span>
+                <p class="info-value flex items-center">
+                    <i class="fas fa-map-marker-alt text-amber-500 mr-2"></i>
+                    <?= htmlspecialchars($monk['birth_province'] ?? '-') ?>
+                </p>
+            </div>
             
             <div>
               <span class="info-label">ວັນບວດ</span>

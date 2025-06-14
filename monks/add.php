@@ -44,6 +44,7 @@ $form_data = [
     'lay_name' => '',
     'pansa' => '',
     'birth_date' => '',
+    'birth_province' => '',  // เพิ่มฟิลด์สำหรับจังหวัดเกิด
     'ordination_date' => '',
     'education' => '',
     'contact_number' => '',
@@ -69,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'lay_name' => trim($_POST['lay_name'] ?? ''),
         'pansa' => trim($_POST['pansa'] ?? ''),
         'birth_date' => trim($_POST['birth_date'] ?? ''),
+        'birth_province' => trim($_POST['birth_province'] ?? ''),  // รับค่าจังหวัดเกิด
         'ordination_date' => trim($_POST['ordination_date'] ?? ''),
         'education' => trim($_POST['education'] ?? ''),
         'contact_number' => trim($_POST['contact_number'] ?? ''),
@@ -130,7 +132,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         name, 
                         lay_name, 
                         pansa, 
-                        birth_date, 
+                        birth_date,
+                        birth_province, 
                         ordination_date, 
                         education, 
                         contact_number,
@@ -147,6 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         :lay_name,
                         :pansa,
                         :birth_date,
+                        :birth_province, 
                         :ordination_date,
                         :education,
                         :contact_number,
@@ -166,6 +170,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':lay_name' => $form_data['lay_name'],
                     ':pansa' => $form_data['pansa'],
                     ':birth_date' => !empty($form_data['birth_date']) ? $form_data['birth_date'] : null,
+                    ':birth_province' => !empty($form_data['birth_province']) ? $form_data['birth_province'] : null,
                     ':ordination_date' => !empty($form_data['ordination_date']) ? $form_data['ordination_date'] : null,
                     ':education' => $form_data['education'],
                     ':contact_number' => $form_data['contact_number'],
@@ -296,7 +301,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="ordination_date" class="block text-sm font-medium text-gray-700 mb-2">ວັນບວດ</label>
                         <input type="date" name="ordination_date" id="ordination_date" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['ordination_date']) ?>">
                     </div>
-                    
+                     
+                    <div class="mb-4">
+                        <label for="birth_province" class="block text-sm font-medium text-gray-700 mb-2">ແຂວງເກີດ</label>
+                        <select name="birth_province" id="birth_province" class="form-select rounded-md w-full">
+                            <option value="">-- ເລືອກແຂວງ --</option>
+                            <option value="ນະຄອນຫຼວງວຽງຈັນ" <?= $form_data['birth_province'] === 'ນະຄອນຫຼວງວຽງຈັນ' ? 'selected' : '' ?>>ນະຄອນຫຼວງວຽງຈັນ</option>
+                            <option value="ຜົ້ງສາລີ" <?= $form_data['birth_province'] === 'ຜົ້ງສາລີ' ? 'selected' : '' ?>>ຜົ້ງສາລີ</option>
+                            <option value="ຫຼວງນໍ້າທາ" <?= $form_data['birth_province'] === 'ຫຼວງນໍ້າທາ' ? 'selected' : '' ?>>ຫຼວງນໍ້າທາ</option>
+                            <option value="ອຸດົມໄຊ" <?= $form_data['birth_province'] === 'ອຸດົມໄຊ' ? 'selected' : '' ?>>ອຸດົມໄຊ</option>
+                            <option value="ບໍ່ແກ້ວ" <?= $form_data['birth_province'] === 'ບໍ່ແກ້ວ' ? 'selected' : '' ?>>ບໍ່ແກ້ວ</option>
+                            <option value="ຫຼວງພະບາງ" <?= $form_data['birth_province'] === 'ຫຼວງພະບາງ' ? 'selected' : '' ?>>ຫຼວງພະບາງ</option>
+                            <option value="ຫົວພັນ" <?= $form_data['birth_province'] === 'ຫົວພັນ' ? 'selected' : '' ?>>ຫົວພັນ</option>
+                            <option value="ໄຊຍະບູລີ" <?= $form_data['birth_province'] === 'ໄຊຍະບູລີ' ? 'selected' : '' ?>>ໄຊຍະບູລີ</option>
+                            <option value="ຊຽງຂວາງ" <?= $form_data['birth_province'] === 'ຊຽງຂວາງ' ? 'selected' : '' ?>>ຊຽງຂວາງ</option>
+                            <option value="ວຽງຈັນ" <?= $form_data['birth_province'] === 'ວຽງຈັນ' ? 'selected' : '' ?>>ວຽງຈັນ</option>
+                            <option value="ບໍລິຄໍາໄຊ" <?= $form_data['birth_province'] === 'ບໍລິຄໍາໄຊ' ? 'selected' : '' ?>>ບໍລິຄໍາໄຊ</option>
+                            <option value="ຄໍາມ່ວນ" <?= $form_data['birth_province'] === 'ຄໍາມ່ວນ' ? 'selected' : '' ?>>ຄໍາມ່ວນ</option>
+                            <option value="ສະຫວັນນະເຂດ" <?= $form_data['birth_province'] === 'ສະຫວັນນະເຂດ' ? 'selected' : '' ?>>ສະຫວັນນະເຂດ</option>
+                            <option value="ສາລະວັນ" <?= $form_data['birth_province'] === 'ສາລະວັນ' ? 'selected' : '' ?>>ສາລະວັນ</option>
+                            <option value="ເຊກອງ" <?= $form_data['birth_province'] === 'ເຊກອງ' ? 'selected' : '' ?>>ເຊກອງ</option>
+                            <option value="ຈໍາປາສັກ" <?= $form_data['birth_province'] === 'ຈໍາປາສັກ' ? 'selected' : '' ?>>ຈໍາປາສັກ</option>
+                            <option value="ອັດຕະປື" <?= $form_data['birth_province'] === 'ອັດຕະປື' ? 'selected' : '' ?>>ອັດຕະປື</option>
+                            <option value="ໄຊສົມບູນ" <?= $form_data['birth_province'] === 'ໄຊສົມບູນ' ? 'selected' : '' ?>>ໄຊສົມບູນ</option>
+                        </select>
+                    </div>
+
                     <div class="mb-4">
                         <label for="education" class="block text-sm font-medium text-gray-700 mb-2">ການສຶກສາສາມັນ</label>
                         <input type="text" name="education" id="education" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['education']) ?>">

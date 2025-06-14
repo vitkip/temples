@@ -56,7 +56,11 @@ if ($_SESSION['user']['role'] === 'superadmin') {
     $temple_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active' ORDER BY name");
     $temples = $temple_stmt->fetchAll();
 }
-
+// ກວດສອບຕົວກອງເກີດ ແລະ ຕັ້ງໃນ WHERE
+if (!empty($_GET['birth_province'])) {
+    $where_conditions[] = "birth_province LIKE ?";
+    $params[] = "%" . $_GET['birth_province'] . "%";
+}
 // ກວດສອບສິດໃນການເພີ່ມ/ແກ້ໄຂພະສົງ
 $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['role'] === 'admin');
 ?>
@@ -441,7 +445,29 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
             <option value="inactive" <?= isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'selected' : '' ?>>ສິກແລ້ວ</option>
           </select>
         </div>
-        
+        <div class="mb-4">
+            <label for="birth_province" class="info-label">ແຂວງເກີດ</label>
+            <select name="birth_province" id="birth_province" class="form-select">
+              <option value="">-- ທັງໝົດ --</option>
+              <option value="ນະຄອນຫຼວງວຽງຈັນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ນະຄອນຫຼວງວຽງຈັນ' ? 'selected' : '' ?>>ນະຄອນຫຼວງວຽງຈັນ</option>
+              <option value="ຫຼວງພະບາງ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຫຼວງພະບາງ' ? 'selected' : '' ?>>ຫຼວງພະບາງ</option>
+              <option value="ຈຳປາສັກ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຈຳປາສັກ' ? 'selected' : '' ?>>ຈຳປາສັກ</option>
+              <option value="ສະຫວັນນະເຂດ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ສະຫວັນນະເຂດ' ? 'selected' : '' ?>>ສະຫວັນນະເຂດ</option>
+              <option value="ຊຽງຂວາງ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຊຽງຂວາງ' ? 'selected' : '' ?>>ຊຽງຂວາງ</option>
+              <option value="ຫົວພັນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຫົວພັນ' ? 'selected' : '' ?>>ຫົວພັນ</option>
+              <option value="ອຸດົມໄຊ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ອຸດົມໄຊ' ? 'selected' : '' ?>>ອຸດົມໄຊ</option>
+              <option value="ບໍ່ແກ້ວ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ບໍ່ແກ້ວ' ? 'selected' : '' ?>>ບໍ່ແກ້ວ</option>
+              <option value="ຫຼວງນ້ຳທາ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຫຼວງນ້ຳທາ' ? 'selected' : '' ?>>ຫຼວງນ້ຳທາ</option>
+              <option value="ຜົ້ງສາລີ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຜົ້ງສາລີ' ? 'selected' : '' ?>>ຜົ້ງສາລີ</option>
+              <option value="ໄຊຍະບູລີ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ໄຊຍະບູລີ' ? 'selected' : '' ?>>ໄຊຍະບູລີ</option>
+              <option value="ບໍລິຄຳໄຊ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ບໍລິຄຳໄຊ' ? 'selected' : '' ?>>ບໍລິຄຳໄຊ</option>
+              <option value="ຄຳມ່ວນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຄຳມ່ວນ' ? 'selected' : '' ?>>ຄຳມ່ວນ</option>
+              <option value="ສາລະວັນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ສາລະວັນ' ? 'selected' : '' ?>>ສາລະວັນ</option>
+              <option value="ເຊກອງ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ເຊກອງ' ? 'selected' : '' ?>>ເຊກອງ</option>
+              <option value="ອັດຕະປື" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ອັດຕະປື' ? 'selected' : '' ?>>ອັດຕະປື</option>
+              <option value="ໄຊສົມບູນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ໄຊສົມບູນ' ? 'selected' : '' ?>>ໄຊສົມບູນ</option>
+            </select>
+        </div>
         <!-- ตัวกรองวัด (เฉพาะ superadmin) -->
         <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
         <div>

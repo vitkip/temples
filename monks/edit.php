@@ -77,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $lay_name = trim($_POST['lay_name'] ?? '');
     $pansa = trim($_POST['pansa'] ?? '');
     $birth_date = trim($_POST['birth_date'] ?? '');
+    $birth_province = trim($_POST['birth_province'] ?? '');
     $ordination_date = trim($_POST['ordination_date'] ?? '');
     $education = trim($_POST['education'] ?? '');
     $contact_number = trim($_POST['contact_number'] ?? '');
@@ -143,6 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     lay_name = ?, 
                     pansa = ?, 
                     birth_date = ?, 
+                    birth_province = ?,
                     ordination_date = ?, 
                     education = ?, 
                     contact_number = ?,
@@ -161,6 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $lay_name,
                     $pansa,
                     $birth_date ? $birth_date : null,
+                    $birth_province ? $birth_province : null,
                     $ordination_date ? $ordination_date : null,
                     $education,
                     $contact_number,
@@ -294,7 +297,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label for="ordination_date" class="block text-sm font-medium text-gray-700 mb-2">ວັນບວດ</label>
                         <input type="date" name="ordination_date" id="ordination_date" class="form-input rounded-md w-full" value="<?= $monk['ordination_date'] ? date('Y-m-d', strtotime($monk['ordination_date'])) : '' ?>">
                     </div>
-                    
+                                        <!-- เพิ่มหลังจากฟิลด์ birth_date -->
+                    <div class="mb-4">
+                        <label for="birth_province" class="block text-sm font-medium text-gray-700 mb-2">ແຂວງເກີດ</label>
+                        <select name="birth_province" id="birth_province" class="form-select rounded-md w-full">
+                            <option value="">-- ເລືອກແຂວງ --</option>
+                            <option value="ນະຄອນຫຼວງວຽງຈັນ" <?= $monk['birth_province'] === 'ນະຄອນຫຼວງວຽງຈັນ' ? 'selected' : '' ?>>ນະຄອນຫຼວງວຽງຈັນ</option>
+                            <option value="ຜົ້ງສາລີ" <?= $monk['birth_province'] === 'ຜົ້ງສາລີ' ? 'selected' : '' ?>>ຜົ້ງສາລີ</option>
+                            <option value="ຫຼວງນ້ຳທາ" <?= $monk['birth_province'] === 'ຫຼວງນ້ຳທາ' ? 'selected' : '' ?>>ຫຼວງນ້ຳທາ</option>
+                            <option value="ບໍ່ແກ້ວ" <?= $monk['birth_province'] === 'ບໍ່ແກ້ວ' ? 'selected' : '' ?>>ບໍ່ແກ້ວ</option>
+                            <option value="ອຸດົມໄຊ" <?= $monk['birth_province'] === 'ອຸດົມໄຊ' ? 'selected' : '' ?>>ອຸດົມໄຊ</option>
+                            <option value="ຫຼວງພະບາງ" <?= $monk['birth_province'] === 'ຫຼວງພະບາງ' ? 'selected' : '' ?>>ຫຼວງພະບາງ</option>
+                            <option value="ຫົວພັນ" <?= $monk['birth_province'] === 'ຫົວພັນ' ? 'selected' : '' ?>>ຫົວພັນ</option>
+                            <option value="ໄຊຍະບູລີ" <?= $monk['birth_province'] === 'ໄຊຍະບູລີ' ? 'selected' : '' ?>>ໄຊຍະບູລີ</option>
+                            <option value="ຊຽງຂວາງ" <?= $monk['birth_province'] === 'ຊຽງຂວາງ' ? 'selected' : '' ?>>ຊຽງຂວາງ</option>
+                            <option value="ວຽງຈັນ" <?= $monk['birth_province'] === 'ວຽງຈັນ' ? 'selected' : '' ?>>ວຽງຈັນ</option>
+                            <option value="ບໍລິຄໍາໄຊ" <?= $monk['birth_province'] === 'ບໍລິຄໍາໄຊ' ? 'selected' : '' ?>>ບໍລິຄໍາໄຊ</option>
+                            <option value="ຄໍາມ່ວນ" <?= $monk['birth_province'] === 'ຄໍາມ່ວນ' ? 'selected' : '' ?>>ຄໍາມ່ວນ</option>
+                            <option value="ສະຫວັນນະເຂດ" <?= $monk['birth_province'] === 'ສະຫວັນນະເຂດ' ? 'selected' : '' ?>>ສະຫວັນນະເຂດ</option>
+                            <option value="ສາລະວັນ" <?= $monk['birth_province'] === 'ສາລະວັນ' ? 'selected' : '' ?>>ສາລະວັນ</option>
+                            <option value="ເຊກອງ" <?= $monk['birth_province'] === 'ເຊກອງ' ? 'selected' : '' ?>>ເຊກອງ</option>
+                            <option value="ຈໍາປາສັກ" <?= $monk['birth_province'] === 'ຈໍາປາສັກ' ? 'selected' : '' ?>>ຈໍາປາສັກ</option>
+                            <option value="ອັດຕະປື" <?= $monk['birth_province'] === 'ອັດຕະປື' ? 'selected' : '' ?>>ອັດຕະປື</option>
+                            <option value="ໄຊສົມບູນ" <?= $monk['birth_province'] === 'ໄຊສົມບູນ' ? 'selected' : '' ?>>ໄຊສົມບູນ</option>
+                        </select>
+                    </div>
                     <div class="mb-4">
                         <label for="education" class="block text-sm font-medium text-gray-700 mb-2">ການສຶກສາສາມັນ</label>
                         <input type="text" name="education" id="education" class="form-input rounded-md w-full" value="<?= htmlspecialchars($monk['education'] ?? '') ?>">

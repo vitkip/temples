@@ -157,7 +157,7 @@ $pdf->Cell(0, 6, 'ວັນທີ່ພິມ: ' . date('d/m/Y H:i'), 0, 1, 'L')
 $pdf->Ln(5);
 
 // Table header
-$pdf->SetFont('dejavusans', 'B', 12);
+$pdf->SetFont('dejavusans', 'B', 10);
 $pdf->SetFillColor(200, 220, 255);
 $pdf->Cell(10, 10, 'ລຳດັບ', 1, 0, 'C', true);
 $pdf->Cell(20, 10, 'ຄຳນຳໜ້າ', 1, 0, 'C', true); // เพิ่มคอลัมน์ prefix
@@ -170,7 +170,7 @@ $pdf->Cell(50, 10, 'ວັດ', 1, 0, 'C', true); // ปรับความก
 $pdf->Cell(20, 10, 'ສະຖານະ', 1, 1, 'C', true);
 
 // Table content
-$pdf->SetFont('dejavusans', '', 10);
+$pdf->SetFont('dejavusans', '', 8);
 
 if (count($monks) > 0) {
     foreach($monks as $i => $monk) {

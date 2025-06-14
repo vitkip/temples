@@ -106,12 +106,13 @@ try {
     $sheet->setCellValue('E1', 'ຈໍານວນພັນສາ');
     $sheet->setCellValue('F1', 'ວັນບວດ');
     $sheet->setCellValue('G1', 'ວັນເກີດ');
-    $sheet->setCellValue('H1', 'ການສຶກສາ');
-    $sheet->setCellValue('I1', 'ການສຶກສາທາງທຳມະ');
-    $sheet->setCellValue('J1', 'ເບີໂທຕິດຕໍ່');
-    $sheet->setCellValue('K1', 'ຕໍາແໜ່ງ');
-    $sheet->setCellValue('L1', 'ວັດ');
-    $sheet->setCellValue('M1', 'ສະຖານະ');
+    $sheet->setCellValue('H1', 'ແຂວງເກີດ'); // เปลี่ยนชื่อคอลัมน์เป็น "ແຂວງເກີດ"
+    $sheet->setCellValue('I1', 'ການສຶກສາ');
+    $sheet->setCellValue('J1', 'ການສຶກສາທາງທຳມະ');
+    $sheet->setCellValue('K1', 'ເບີໂທຕິດຕໍ່');
+    $sheet->setCellValue('L1', 'ຕໍາແໜ່ງ');
+    $sheet->setCellValue('M1', 'ວັດ');
+    $sheet->setCellValue('N1', 'ສະຖານະ');
 
     // จัดรูปแบบแถวส่วนหัว
     $headerStyle = [
@@ -145,12 +146,13 @@ try {
     $sheet->getColumnDimension('E')->setWidth(15); // จำนวนพรรษา
     $sheet->getColumnDimension('F')->setWidth(15); // วันบวช
     $sheet->getColumnDimension('G')->setWidth(15); // วันเกิด
-    $sheet->getColumnDimension('H')->setWidth(20); // การศึกษา
-    $sheet->getColumnDimension('I')->setWidth(20); // การศึกษาทางธรรม
-    $sheet->getColumnDimension('J')->setWidth(15); // เบอร์โทรติดต่อ
-    $sheet->getColumnDimension('K')->setWidth(20); // ตำแหน่ง
-    $sheet->getColumnDimension('L')->setWidth(30); // วัด
-    $sheet->getColumnDimension('M')->setWidth(15); // สถานะ
+    $sheet->getColumnDimension('H')->setWidth(20); // แก้วเกิด (เปลี่ยนชื่อคอลัมน์เป็น "ແຂວງເກີດ")
+    $sheet->getColumnDimension('I')->setWidth(20); // การศึกษา
+    $sheet->getColumnDimension('J')->setWidth(20); // การศึกษาทางธรรม
+    $sheet->getColumnDimension('K')->setWidth(15); // เบอร์โทรติดต่อ
+    $sheet->getColumnDimension('L')->setWidth(20); // ตำแหน่ง
+    $sheet->getColumnDimension('M')->setWidth(30); // วัด
+    $sheet->getColumnDimension('N')->setWidth(15); // สถานะ
     
     // เพิ่มข้อมูลในแต่ละแถว
     $row = 2;
@@ -162,12 +164,13 @@ try {
         $sheet->setCellValue('E' . $row, ($monk['pansa'] ?? '0') . ' ພັນສາ');
         $sheet->setCellValue('F' . $row, !empty($monk['ordination_date']) ? date('d/m/Y', strtotime($monk['ordination_date'])) : '-');
         $sheet->setCellValue('G' . $row, !empty($monk['birth_date']) ? date('d/m/Y', strtotime($monk['birth_date'])) : '-');
-        $sheet->setCellValue('H' . $row, $monk['education'] ?? '-');
-        $sheet->setCellValue('I' . $row, $monk['dharma_education'] ?? '-');
-        $sheet->setCellValue('J' . $row, $monk['contact_number'] ?? '-');
-        $sheet->setCellValue('K' . $row, $monk['position'] ?? '-');
-        $sheet->setCellValue('L' . $row, $monk['temple_name'] ?? '-');
-        $sheet->setCellValue('M' . $row, ($monk['status'] ?? '') == 'active' ? 'ບວດຢູ່' : 'ສຶກແລ້ວ');
+        $sheet->setCellValue('H' . $row, $monk['birth_province'] ?? '-'); // เปลี่ยนชื่อคอลัมน์เป็น "ແຂວງເກີດ"
+        $sheet->setCellValue('I' . $row, $monk['education'] ?? '-');
+        $sheet->setCellValue('J' . $row, $monk['dharma_education'] ?? '-');
+        $sheet->setCellValue('K' . $row, $monk['contact_number'] ?? '-');
+        $sheet->setCellValue('L' . $row, $monk['position'] ?? '-');
+        $sheet->setCellValue('M' . $row, $monk['temple_name'] ?? '-');
+        $sheet->setCellValue('N' . $row, ($monk['status'] ?? '') == 'active' ? 'ບວດຢູ່' : 'ສຶກແລ້ວ');
         $row++;
     }
     
