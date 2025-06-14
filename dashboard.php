@@ -35,136 +35,187 @@ if ($userTempleId) {
 }
 ?>
 
-<!-- Welcome Panel -->
-<div class="bg-white rounded-lg shadow-sm p-6 mb-6">
-    <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-800">
-                ສະບາຍດີ, <?= $_SESSION['user']['name'] ?>!
-            </h2>
-            <p class="text-gray-600 mt-1">
-                <?= date('l, j F Y') ?> | ຜູ້ໃຊ້: <?= ucfirst($_SESSION['user']['role']) ?>
-            </p>
-        </div>
-        
-        <?php if ($userTemple): ?>
-        <div class="mt-4 md:mt-0">
-            <span class="bg-indigo-100 text-indigo-800 text-sm font-medium px-3 py-1 rounded-full">
-                <?= $userTemple['name'] ?>
-            </span>
-        </div>
-        <?php endif; ?>
-    </div>
-</div>
+<!-- เพิ่ม link เพื่อนำเข้า monk-style.css -->
+<link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
 
-<!-- Stats Cards -->
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-    <!-- Temple Stats -->
-    <div class="bg-white rounded-lg shadow-sm p-6 card">
-        <div class="flex items-center">
-            <div class="p-3 rounded-full bg-indigo-100 text-indigo-600">
-                <i class="fas fa-landmark text-xl"></i>
-            </div>
-            <div class="ml-4">
-                <h3 class="text-lg font-semibold text-gray-700">ວັດທັງໝົດ</h3>
-                <p class="text-3xl font-bold text-gray-900"><?= $templeCount ?></p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Monk Stats -->
-    <div class="bg-white rounded-lg shadow-sm p-6 card">
-        <div class="flex items-center">
-            <div class="p-3 rounded-full bg-orange-100 text-orange-600">
-                <i class="fas fa-pray text-xl"></i>
-            </div>
-            <div class="ml-4">
-                <h3 class="text-lg font-semibold text-gray-700">ພະສົງທັງໝົດ</h3>
-                <p class="text-3xl font-bold text-gray-900"><?= $monkCount ?></p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Event Stats -->
-    <div class="bg-white rounded-lg shadow-sm p-6 card">
-        <div class="flex items-center">
-            <div class="p-3 rounded-full bg-green-100 text-green-600">
-                <i class="fas fa-calendar-alt text-xl"></i>
-            </div>
-            <div class="ml-4">
-                <h3 class="text-lg font-semibold text-gray-700">ກິດຈະກໍາທີ່ຈະມາເຖິງ</h3>
-                <p class="text-3xl font-bold text-gray-900"><?= $eventCount ?></p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Events & Chart Section -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-    <!-- Recent Events -->
-    <div class="bg-white rounded-lg shadow-sm p-6">
-        <h3 class="text-xl font-semibold text-gray-800 mb-4">ກິດຈະກໍາທີ່ຈະມາເຖິງ</h3>
-        
-        <?php if (count($recentEvents) > 0): ?>
-            <div class="divide-y divide-gray-200">
-                <?php foreach ($recentEvents as $event): ?>
-                    <div class="py-4">
-                        <div class="flex justify-between">
-                            <h4 class="font-medium text-gray-900"><?= $event['title'] ?></h4>
-                            <span class="text-sm text-indigo-600">
-                                <?= date('d/m/Y', strtotime($event['event_date'])) ?>
-                            </span>
+<div class="page-container min-h-screen py-6">
+    <!-- Welcome Panel -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="header-section p-6 mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                        <div class="category-icon">
+                            <i class="fas fa-home"></i>
                         </div>
-                        <p class="text-sm text-gray-500 mt-1"><?= $event['temple_name'] ?></p>
-                        <p class="text-sm text-gray-700 mt-1 truncate">
-                            <?= substr($event['description'], 0, 100) . (strlen($event['description']) > 100 ? '...' : '') ?>
-                        </p>
-                    </div>
-                <?php endforeach; ?>
+                        ສະບາຍດີ, <?= $_SESSION['user']['name'] ?>!
+                    </h2>
+                    <p class="text-amber-700 mt-1">
+                        <?= date('l, j F Y') ?> | ຜູ້ໃຊ້: <?= ucfirst($_SESSION['user']['role']) ?>
+                    </p>
+                </div>
+                
+                <?php if ($userTemple): ?>
+                <div class="mt-4 md:mt-0">
+                    <span class="status-badge status-active">
+                        <i class="fas fa-place-of-worship"></i>
+                        <?= $userTemple['name'] ?>
+                    </span>
+                </div>
+                <?php endif; ?>
             </div>
-            <a href="<?= $base_url ?>events/" class="mt-4 inline-block text-indigo-600 hover:text-indigo-800">
-                ເບິ່ງກິດຈະກໍາທັງໝົດ <i class="fas fa-arrow-right ml-1"></i>
-            </a>
-        <?php else: ?>
-            <div class="py-4 text-center text-gray-500">
-                ບໍ່ມີກິດຈະກໍາທີ່ຈະມາເຖິງ
-            </div>
-        <?php endif; ?>
-    </div>
-    
-    <!-- Chart -->
-    <div class="bg-white rounded-lg shadow-sm p-6">
-        <h3 class="text-xl font-semibold text-gray-800 mb-4">ສະຖິຕິວັດແຍກຕາມແຂວງ</h3>
-        <div class="h-64">
-            <canvas id="templeChart"></canvas>
         </div>
-    </div>
-</div>
 
-<!-- Quick Access -->
-<div class="mt-6">
-    <h3 class="text-xl font-semibold text-gray-800 mb-4">ເຂົ້າເຖິງດ່ວນ</h3>
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-         <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
-        <a href="<?= $base_url ?>temples/add.php" class="bg-white rounded-lg shadow-sm p-6 text-center hover:bg-indigo-50 transition card">
-            <i class="fas fa-plus-circle text-3xl text-indigo-600 mb-3"></i>
-            <h4 class="font-medium">ເພີ່ມວັດໃໝ່</h4>
-        </a>
-         <?php endif; ?>
-        <a href="<?= $base_url ?>monks/add.php" class="bg-white rounded-lg shadow-sm p-6 text-center hover:bg-indigo-50 transition card">
-            <i class="fas fa-user-plus text-3xl text-indigo-600 mb-3"></i>
-            <h4 class="font-medium">ເພີ່ມພະສົງໃໝ່</h4>
-        </a>
-        
-        <a href="<?= $base_url ?>events/add.php" class="bg-white rounded-lg shadow-sm p-6 text-center hover:bg-indigo-50 transition card">
-            <i class="fas fa-calendar-plus text-3xl text-indigo-600 mb-3"></i>
-            <h4 class="font-medium">ສ້າງກິດຈະກໍາໃໝ່</h4>
-        </a>
-        
-        <a href="<?= $base_url ?>reports/" class="bg-white rounded-lg shadow-sm p-6 text-center hover:bg-indigo-50 transition card">
-            <i class="fas fa-chart-bar text-3xl text-indigo-600 mb-3"></i>
-            <h4 class="font-medium">ລາຍງານ</h4>
-        </a>
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <!-- Temple Stats -->
+            <div class="card p-6">
+                <div class="flex items-center">
+                    <div class="icon-circle">
+                        <i class="fas fa-landmark text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-700">ວັດທັງໝົດ</h3>
+                        <p class="text-3xl font-bold text-amber-800"><?= $templeCount ?></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Monk Stats -->
+            <div class="card p-6">
+                <div class="flex items-center">
+                    <div class="icon-circle">
+                        <i class="fas fa-pray text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-700">ພະສົງທັງໝົດ</h3>
+                        <p class="text-3xl font-bold text-amber-800"><?= $monkCount ?></p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Event Stats -->
+            <div class="card p-6">
+                <div class="flex items-center">
+                    <div class="icon-circle">
+                        <i class="fas fa-calendar-alt text-xl"></i>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-semibold text-gray-700">ກິດຈະກໍາທີ່ຈະມາເຖິງ</h3>
+                        <p class="text-3xl font-bold text-amber-800"><?= $eventCount ?></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Events & Chart Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Recent Events -->
+            <div class="card">
+                <div class="p-6 border-b border-amber-100">
+                    <h3 class="text-xl font-semibold text-gray-800 flex items-center">
+                        <div class="category-icon">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        ກິດຈະກໍາທີ່ຈະມາເຖິງ
+                    </h3>
+                </div>
+                
+                <div class="p-6">
+                    <?php if (count($recentEvents) > 0): ?>
+                        <div class="divide-y divide-amber-100">
+                            <?php foreach ($recentEvents as $event): ?>
+                                <div class="py-4">
+                                    <div class="flex justify-between">
+                                        <h4 class="font-medium text-gray-900"><?= $event['title'] ?></h4>
+                                        <span class="text-sm text-amber-700">
+                                            <?= date('d/m/Y', strtotime($event['event_date'])) ?>
+                                        </span>
+                                    </div>
+                                    <p class="text-sm text-gray-500 mt-1"><?= $event['temple_name'] ?></p>
+                                    <p class="text-sm text-gray-700 mt-2 truncate">
+                                        <?= substr($event['description'], 0, 100) . (strlen($event['description']) > 100 ? '...' : '') ?>
+                                    </p>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <a href="<?= $base_url ?>events/" class="mt-4 inline-block text-amber-700 hover:text-amber-800 font-medium">
+                            ເບິ່ງກິດຈະກໍາທັງໝົດ <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
+                    <?php else: ?>
+                        <div class="py-4 text-center text-gray-500">
+                            ບໍ່ມີກິດຈະກໍາທີ່ຈະມາເຖິງ
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+            
+            <!-- Chart -->
+            <div class="card">
+                <div class="p-6 border-b border-amber-100">
+                    <h3 class="text-xl font-semibold text-gray-800 flex items-center">
+                        <div class="category-icon">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        ສະຖິຕິວັດແຍກຕາມແຂວງ
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="h-64">
+                        <canvas id="templeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Access -->
+        <div class="card p-6">
+            <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <div class="category-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                ເຂົ້າເຖິງດ່ວນ
+            </h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
+                <a href="<?= $base_url ?>temples/add.php" class="card p-6 text-center hover:bg-amber-50 transition">
+                    <div class="flex justify-center mb-3">
+                        <div class="icon-circle">
+                            <i class="fas fa-plus-circle text-xl"></i>
+                        </div>
+                    </div>
+                    <h4 class="font-medium text-gray-900">ເພີ່ມວັດໃໝ່</h4>
+                </a>
+                <?php endif; ?>
+                
+                <a href="<?= $base_url ?>monks/add.php" class="card p-6 text-center hover:bg-amber-50 transition">
+                    <div class="flex justify-center mb-3">
+                        <div class="icon-circle">
+                            <i class="fas fa-user-plus text-xl"></i>
+                        </div>
+                    </div>
+                    <h4 class="font-medium text-gray-900">ເພີ່ມພະສົງໃໝ່</h4>
+                </a>
+                
+                <a href="<?= $base_url ?>events/add.php" class="card p-6 text-center hover:bg-amber-50 transition">
+                    <div class="flex justify-center mb-3">
+                        <div class="icon-circle">
+                            <i class="fas fa-calendar-plus text-xl"></i>
+                        </div>
+                    </div>
+                    <h4 class="font-medium text-gray-900">ສ້າງກິດຈະກໍາໃໝ່</h4>
+                </a>
+                
+                <a href="<?= $base_url ?>reports/" class="card p-6 text-center hover:bg-amber-50 transition">
+                    <div class="flex justify-center mb-3">
+                        <div class="icon-circle">
+                            <i class="fas fa-chart-bar text-xl"></i>
+                        </div>
+                    </div>
+                    <h4 class="font-medium text-gray-900">ລາຍງານ</h4>
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -183,8 +234,8 @@ window.initCharts = function() {
                     datasets: [{
                         label: 'ຈໍານວນວັດ',
                         data: data.map(item => item.count),
-                        backgroundColor: 'rgba(79, 70, 229, 0.7)',
-                        borderColor: 'rgba(79, 70, 229, 1)',
+                        backgroundColor: 'rgba(212, 167, 98, 0.7)',
+                        borderColor: 'rgba(176, 133, 66, 1)',
                         borderWidth: 1
                     }]
                 },

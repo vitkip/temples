@@ -318,7 +318,7 @@ body {
         <!-- Sidebar -->
         <aside class="hidden md:flex md:flex-col w-64 sidebar text-white">
             <div class="flex items-center justify-center h-20 border-b border-indigo-800">
-                <i class="fas fa-landmark text-3xl temple-icon mr-2"></i>
+                <img class="h-8 w-auto" src="<?= $base_url ?>assets/images/logo.png" alt="<?= htmlspecialchars($site_name) ?>">
                 <h1 class="text-xl font-semibold">ລະບົບຈັດການຂໍ້ມູນວັດ</h1>
             </div>
             
@@ -338,54 +338,54 @@ body {
                 
                 <!-- Main Navigation -->
                 <div class="space-y-1">
-                    <a href="<?= $base_url ?>dashboard.php" class="sidebar-link <?= isActiveNav($current_path, '/dashboard.php') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                        <i class="fas fa-home mr-3 w-5 text-center"></i>
-                        <span>ໜ້າຫຼັກ</span>
-                    </a>
-                    
-                    <a href="<?= $base_url ?>monks/" class="sidebar-link <?= isActiveNav($current_path, '/monks/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                        <i class="fas fa-pray mr-3 w-5 text-center"></i>
-                        <span>ຈັດການພະສົງ</span>
-                    </a>
-                    
-                    <a href="<?= $base_url ?>events/" class="sidebar-link <?= isActiveNav($current_path, '/events/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                        <i class="fas fa-calendar-alt mr-3 w-5 text-center"></i>
-                        <span>ກິດຈະກໍາ</span>
-                    </a>
-                    <a href="<?= $base_url ?>reports/" class="sidebar-link <?= isActiveNav($current_path, '/events/') ? 'reports' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                        <i class="fas fa-chart-bar mr-3 w-5 text-center"></i>
-                        <span>ລາຍງານ</span>
-                    </a>
+                  <a href="<?= $base_url ?>dashboard.php" class="sidebar-link <?= isActiveNav($current_path, '/dashboard.php') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                    <i class="fas fa-home mr-3 w-5 text-center"></i>
+                    <span>ໜ້າຫຼັກ</span>
+                  </a>
+                  
+                  <a href="<?= $base_url ?>monks/" class="sidebar-link <?= isActiveNav($current_path, '/monks/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                    <i class="fas fa-pray mr-3 w-5 text-center"></i>
+                    <span>ຈັດການພະສົງ</span>
+                  </a>
+                  
+                  <a href="<?= $base_url ?>events/" class="sidebar-link <?= isActiveNav($current_path, '/events/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                    <i class="fas fa-calendar-alt mr-3 w-5 text-center"></i>
+                    <span>ກິດຈະກໍາ</span>
+                  </a>
+                  <a href="<?= $base_url ?>reports/" class="sidebar-link <?= isActiveNav($current_path, '/reports/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                    <i class="fas fa-chart-bar mr-3 w-5 text-center"></i>
+                    <span>ລາຍງານ</span>
+                  </a>
                 </div>
                 
                 <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
                 <!-- Admin Section -->
                 <div class="mt-8">
-                    <div class="px-4 mb-3">
-                        <h3 class="text-xs font-semibold text-indigo-200 uppercase tracking-wider">ການຈັດການລະບົບ</h3>
-                    </div>
-                    <div class="space-y-1">
-                        <a href="<?= $base_url ?>subscriptions/" class="sidebar-link <?= isActiveNav($current_path, '/subscriptions/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                            <i class="fas fa-credit-card mr-3 w-5 text-center"></i>
-                            <span>ການສະໝັກໃຊ້</span>
-                        </a>
-                        <a href="<?= $base_url ?>subscription_plans/" class="sidebar-link <?= isActiveNav($current_path, '/subscription_plans/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                            <i class="fas fa-list mr-3 w-5 text-center"></i>
-                            <span>ຈັດແພກເກດ</span>
-                        </a>
-                        <a href="<?= $base_url ?>subscription_payments/" class="sidebar-link <?= isActiveNav($current_path, '/subscription_payments/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                            <i class="fas fa-money-bill-wave mr-3 w-5 text-center"></i>
-                            <span>ຈັດການການຊຳລະເງິນ</span>
-                        </a>
-                        <a href="<?= $base_url ?>temples/" class="sidebar-link flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                            <i class="fas fa-gopuram mr-3 w-5 text-center"></i>
-                            <span>ຈັດການວັດ</span>
-                        </a>
-                        <a href="<?= $base_url ?>users/" class="sidebar-link <?= isActiveNav($current_path, '/users/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                            <i class="fas fa-users mr-3 w-5 text-center"></i>
-                            <span>ຜູ້ໃຊ້ງານລະບົບ</span>
-                        </a>
-                    </div>
+                  <div class="px-4 mb-3">
+                    <h3 class="text-xs font-semibold text-indigo-200 uppercase tracking-wider">ການຈັດການລະບົບ</h3>
+                  </div>
+                  <div class="space-y-1">
+                    <a href="<?= $base_url ?>subscriptions/" class="sidebar-link <?= isActiveNav($current_path, '/subscriptions/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                      <i class="fas fa-credit-card mr-3 w-5 text-center"></i>
+                      <span>ການສະໝັກໃຊ້</span>
+                    </a>
+                    <a href="<?= $base_url ?>subscription_plans/" class="sidebar-link <?= isActiveNav($current_path, '/subscription_plans/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                      <i class="fas fa-list mr-3 w-5 text-center"></i>
+                      <span>ຈັດແພກເກດ</span>
+                    </a>
+                    <a href="<?= $base_url ?>subscription_payments/" class="sidebar-link <?= isActiveNav($current_path, '/subscription_payments/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                      <i class="fas fa-money-bill-wave mr-3 w-5 text-center"></i>
+                      <span>ຈັດການການຊຳລະເງິນ</span>
+                    </a>
+                    <a href="<?= $base_url ?>temples/" class="sidebar-link <?= isActiveNav($current_path, '/temples/') ? 'temples' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                      <i class="fas fa-gopuram mr-3 w-5 text-center"></i>
+                      <span>ຈັດການວັດ</span>
+                    </a>
+                    <a href="<?= $base_url ?>users/" class="sidebar-link <?= isActiveNav($current_path, '/users/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                      <i class="fas fa-users mr-3 w-5 text-center"></i>
+                      <span>ຜູ້ໃຊ້ງານລະບົບ</span>
+                    </a>
+                  </div>
                 </div>
                
                 
@@ -452,7 +452,54 @@ body {
                     </div>
                 </div>
             </header>
-            
+                        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const toggleSidebarBtn = document.getElementById('toggleSidebar');
+                const sidebar = document.querySelector('aside');
+                
+                if (toggleSidebarBtn && sidebar) {
+                    // เพิ่มคลาสเริ่มต้นให้ sidebar เพื่อให้สามารถแสดง/ซ่อนได้บนมือถือ
+                    sidebar.classList.add('transition-all', 'duration-300', 'ease-in-out');
+                    
+                    // สร้างฟังก์ชันสำหรับสลับการแสดง sidebar
+                    toggleSidebarBtn.addEventListener('click', function() {
+                        if (sidebar.classList.contains('hidden')) {
+                            // ถ้าซ่อนอยู่ ให้แสดง
+                            sidebar.classList.remove('hidden');
+                            sidebar.classList.add('fixed', 'z-40', 'inset-0', 'w-64');
+                        } else {
+                            // ถ้าแสดงอยู่ ให้ซ่อน
+                            sidebar.classList.add('hidden');
+                            sidebar.classList.remove('fixed', 'z-40', 'inset-0');
+                        }
+                    });
+                    
+                    // ถ้าคลิกนอก sidebar ให้ซ่อน (เฉพาะเมื่อแสดงแบบ mobile)
+                    document.addEventListener('click', function(event) {
+                        const isMobileView = window.innerWidth < 768;
+                        const clickedOutsideSidebar = !sidebar.contains(event.target);
+                        const clickedNotToggleBtn = !toggleSidebarBtn.contains(event.target);
+                        
+                        if (isMobileView && clickedOutsideSidebar && clickedNotToggleBtn && !sidebar.classList.contains('hidden')) {
+                            sidebar.classList.add('hidden');
+                        }
+                    });
+                    
+                    // สำหรับการเปลี่ยนขนาดหน้าจอ
+                    window.addEventListener('resize', function() {
+                        if (window.innerWidth >= 768) {
+                            // ถ้าเป็น desktop ให้แสดง sidebar ตามปกติ
+                            sidebar.classList.remove('fixed', 'z-40', 'inset-0', 'hidden');
+                        } else {
+                            // ถ้าเป็น mobile และ sidebar กำลังแสดงอยู่ ให้ซ่อน
+                            if (!sidebar.classList.contains('hidden')) {
+                                sidebar.classList.add('hidden');
+                            }
+                        }
+                    });
+                }
+            });
+            </script>
             <!-- Content -->
             <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
                 <div class="max-w-7xl mx-auto"></div>

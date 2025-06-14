@@ -121,7 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())";
             $params = [
                 $form_data['username'],
-                hash('sha256', $form_data['password']), // เปลี่ยนเป็น sha256 ให้ตรงกับ login
+                password_hash($form_data['password'], PASSWORD_DEFAULT),
                 $form_data['name'],
                 $form_data['email'],
                 $form_data['phone'],
@@ -156,22 +156,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Font - Noto Sans Lao -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- นำเข้า monk-style.css -->
+    <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700&display=swap');
-    body {
-      font-family: 'Noto Sans Lao', sans-serif;
-    }
-        :root {
-            --primary-color: #4f46e5;
-            --primary-hover: #4338ca;
-            --secondary-color: #f9fafb;
-            --accent-color: #8b5cf6;
-        }
-        
         body {
             font-family: 'Noto Sans Lao', sans-serif;
-            background-image: linear-gradient(135deg, #f5f7fa 0%, #e4efe9 100%);
-            background-attachment: fixed;
+            background-color: #F9F5F0;
+        }
+        
+        .register-container {
+            background-image: url('../assets/images/thai-pattern.svg');
+            background-repeat: repeat;
+            background-size: 200px;
+            background-opacity: 0.05;
         }
         
         .input-group {
@@ -183,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             left: 1rem;
             top: 50%;
             transform: translateY(-50%);
-            color: #6b7280;
+            color: #B08542;
             pointer-events: none;
         }
         
@@ -192,28 +190,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         
         .form-input:focus {
-            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
-            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(212, 167, 98, 0.2);
+            border-color: #D4A762;
         }
         
         .form-card {
             backdrop-filter: blur(10px);
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(200, 169, 126, 0.15);
         }
         
-        .btn-primary {
+        .btn-register {
+            background: linear-gradient(135deg, #D4A762, #B08542);
+            box-shadow: 0 4px 12px rgba(212, 167, 98, 0.3);
             transition: all 0.3s ease;
-            background-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         }
         
-        .btn-primary:hover {
+        .btn-register:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 6px 15px rgba(212, 167, 98, 0.35);
         }
         
-        /* ประเภทของเอนิเมชัน */
         @keyframes fadeIn {
             0% { opacity: 0; transform: translateY(10px); }
             100% { opacity: 1; transform: translateY(0); }
@@ -226,7 +223,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .divider {
             position: relative;
             height: 1px;
-            background-color: #e5e7eb;
+            background-color: rgba(212, 167, 98, 0.2);
         }
         
         .divider-text {
@@ -236,21 +233,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transform: translate(-50%, -50%);
             background-color: white;
             padding: 0 1rem;
-            color: #6b7280;
+            color: #8E7D6A;
         }
         
-        /* สไตล์สำหรับปรับแต่งการเลือก */
         .form-checkbox {
             border-radius: 0.25rem;
-            border-color: #d1d5db;
+            border-color: rgba(212, 167, 98, 0.4);
         }
         
         .form-checkbox:checked {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
+            background-color: #D4A762;
+            border-color: #B08542;
         }
         
-        /* การปรับแต่ง tooltip */
         .tooltip {
             position: relative;
         }
@@ -276,38 +271,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             transform: translateX(-50%);
             transition: opacity 0.3s;
         }
-    </style>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#4f46e5',
-                        secondary: '#f3f4f6',
-                    },
-                    fontFamily: {
-                        sans: ['Saysettha OT', 'Noto Sans Lao', 'sans-serif'],
-                    }
-                }
-            }
+
+        .register-header {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #F0E5D3, #FFFBF5);
+            border-bottom: 1px solid rgba(212, 167, 98, 0.2);
         }
-    </script>
+        
+        .register-header::before {
+            content: "";
+            position: absolute;
+            top: -50px;
+            left: -50px;
+            width: 300px;
+            height: 300px;
+            background-image: url('../assets/images/temple-pattern-light.svg');
+            background-size: cover;
+            background-position: center;
+            opacity: 0.1;
+            z-index: 0;
+        }
+    </style>
 </head>
-<body class="min-h-screen flex flex-col justify-center py-12 bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md mb-8 animated">
+<body class="min-h-screen flex flex-col justify-center py-6 register-container">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md mb-6 animated">
         <div class="text-center">
-            <img class="mx-auto h-24 w-auto p-2 bg-white rounded-full shadow-lg" src="<?= $base_url ?>assets/images/logo.png" alt="ໂລໂກ້">
-            <h2 class="mt-6 text-center text-3xl font-bold text-gray-900 drop-shadow-sm">ລົງທະບຽນຜູ້ໃຊ້ໃໝ່</h2>
-            <p class="mt-2 text-center text-sm text-gray-600">
+            <div class="icon-circle mx-auto w-20 h-20 mb-2">
+                <img class="h-8 w-auto" src="<?= $base_url ?>assets/images/logo.png" alt="<?= htmlspecialchars($site_name) ?>">
+            </div>
+            <h2 class="text-center text-3xl font-bold text-gray-900 drop-shadow-sm">ລົງທະບຽນຜູ້ໃຊ້ໃໝ່</h2>
+            <p class="mt-2 text-center text-amber-700">
                 ສ້າງບັນຊີໃໝ່ເພື່ອເຂົ້າໃຊ້ລະບົບຈັດການຂໍ້ມູນວັດວາອາຣາມ
             </p>
         </div>
     </div>
 
-    <div class="sm:mx-auto sm:w-full sm:max-w-md mb-12">
+    <div class="sm:mx-auto sm:w-full sm:max-w-xl mb-6">
         <?php if (!empty($errors)): ?>
         <!-- ສະແດງຂໍ້ຜິດພາດ -->
-        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-md shadow-sm animated">
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-lg shadow-sm animated">
             <div class="flex">
                 <div class="flex-shrink-0">
                     <i class="fas fa-exclamation-circle text-red-500 text-lg"></i>
@@ -327,8 +330,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
         
         <!-- ຟອມລົງທະບຽນ -->
-        <div class="bg-white py-8 px-6 shadow-xl rounded-2xl form-card backdrop-blur-md bg-white/90 animated">
-            <form action="<?= $base_url ?>auth/register.php" method="POST" class="space-y-6" id="registerForm">
+        <div class="card animated">
+            <div class="register-header p-6 text-center">
+                <h3 class="text-xl font-semibold text-gray-800">ປ້ອນຂໍ້ມູນຜູ້ໃຊ້</h3>
+                <p class="text-sm text-amber-700 mt-1">ກະລຸນາປ້ອນຂໍ້ມູນທີ່ຈຳເປັນທັງໝົດໃຫ້ຄົບຖ້ວນ</p>
+            </div>
+            
+            <form action="<?= $base_url ?>auth/register.php" method="POST" class="p-6 space-y-6" id="registerForm">
                 <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -342,7 +350,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-user"></i>
                             </span>
                             <input type="text" name="username" id="username" 
-                                class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
+                                class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
                                 value="<?= htmlspecialchars($form_data['username']) ?>" required>
                         </div>
                         <p class="mt-1 text-xs text-gray-500">ຊື່ຜູໃຊ້ສໍາລັບເຂົ້າສູ່ລະບົບ</p>
@@ -358,7 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-id-card"></i>
                             </span>
                             <input type="text" name="name" id="name" 
-                                class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
+                                class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
                                 value="<?= htmlspecialchars($form_data['name']) ?>" required>
                         </div>
                     </div>
@@ -373,7 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-envelope"></i>
                             </span>
                             <input type="email" name="email" id="email" 
-                                class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
+                                class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
                                 value="<?= htmlspecialchars($form_data['email']) ?>" 
                                 placeholder="example@domain.com" required>
                         </div>
@@ -390,7 +398,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-phone"></i>
                             </span>
                             <input type="tel" name="phone" id="phone" 
-                                class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
+                                class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
                                 value="<?= htmlspecialchars($form_data['phone']) ?>" 
                                 placeholder="02012345678">
                         </div>
@@ -408,7 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="fas fa-place-of-worship"></i>
                         </span>
                         <select name="temple_id" id="temple_id" 
-                            class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
+                            class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
                             required>
                             <option value="">-- ເລືອກວັດ --</option>
                             <?php foreach ($temples as $temple): ?>
@@ -420,7 +428,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
                 
-                <div class="divider relative my-8">
+                <div class="divider relative my-6">
                     <span class="divider-text text-xs font-medium">ຂໍ້ມູນການເຂົ້າສູ່ລະບົບ</span>
                 </div>
                 
@@ -435,16 +443,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-lock"></i>
                             </span>
                             <input type="password" name="password" id="password" 
-                                class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
+                                class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
                                 minlength="6" required>
                             <span id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer">
-                                <i class="fas fa-eye text-gray-400 hover:text-gray-600"></i>
+                                <i class="fas fa-eye text-amber-600 hover:text-amber-800"></i>
                             </span>
                         </div>
                         <div class="mt-1">
                             <div class="text-xs text-gray-500">ຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ</div>
                             <div id="passwordStrength" class="mt-1 h-1 w-full bg-gray-200 rounded-full overflow-hidden">
-                                <div class="h-full bg-red-500 transition-all duration-300" style="width: 0%"></div>
+                                <div class="h-full bg-amber-500 transition-all duration-300" style="width: 0%"></div>
                             </div>
                         </div>
                     </div>
@@ -459,10 +467,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <i class="fas fa-shield-alt"></i>
                             </span>
                             <input type="password" name="confirm_password" id="confirm_password" 
-                                class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
+                                class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
                                 minlength="6" required>
                             <span id="toggleConfirmPassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer">
-                                <i class="fas fa-eye text-gray-400 hover:text-gray-600"></i>
+                                <i class="fas fa-eye text-amber-600 hover:text-amber-800"></i>
                             </span>
                         </div>
                         <div id="passwordMatch" class="mt-1 text-xs invisible">
@@ -472,39 +480,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
                 
-                <div class="flex items-center p-4 bg-gray-50 rounded-lg">
+                <div class="flex items-center p-4 bg-amber-50 rounded-lg">
                     <input id="accept_terms" name="accept_terms" type="checkbox" 
-                        class="h-5 w-5 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded-md transition-all cursor-pointer" 
+                        class="h-5 w-5 text-amber-600 focus:ring-amber-500 border-gray-300 rounded-md transition-all cursor-pointer" 
                         <?= $form_data['accept_terms'] ? 'checked' : '' ?> required>
                     <label for="accept_terms" class="ml-3 block text-sm text-gray-700">
-                        ຂ້າພະເຈົ້າຍອມຮັບ <a href="#" class="font-medium text-indigo-600 hover:text-indigo-800 border-b border-indigo-600">ເງື່ອນໄຂການໃຊ້ງານ</a> ແລະ <a href="#" class="font-medium text-indigo-600 hover:text-indigo-800 border-b border-indigo-600">ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</a>
+                        ຂ້າພະເຈົ້າຍອມຮັບ <a href="#" class="font-medium text-amber-600 hover:text-amber-800 border-b border-amber-600">ເງື່ອນໄຂການໃຊ້ງານ</a> ແລະ <a href="#" class="font-medium text-amber-600 hover:text-amber-800 border-b border-amber-600">ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</a>
                     </label>
                 </div>
                 
                 <div>
-                    <button type="submit" class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-xl shadow-sm text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 btn-primary">
+                    <button type="submit" class="w-full btn-register py-3 px-4 border border-transparent rounded-lg shadow-sm text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-all duration-300">
                         <i class="fas fa-user-plus mr-2"></i> ລົງທະບຽນ
                     </button>
                 </div>
             </form>
             
-            <div class="divider relative my-6">
-                <span class="divider-text text-xs font-medium">ຫຼື</span>
-            </div>
-            
-            <div class="text-sm text-center">
-                <p class="text-gray-600">
-                    ມີບັນຊີແລ້ວບໍ?
-                    <a href="<?= $base_url ?>auth/login.php" class="font-medium text-indigo-600 hover:text-indigo-800 transition-colors duration-300 ml-1">
-                        <i class="fas fa-sign-in-alt mr-1"></i> ເຂົ້າສູ່ລະບົບ
+            <div class="border-t border-amber-100 p-6">
+                <div class="text-sm text-center">
+                    <p class="text-gray-600">
+                        ມີບັນຊີແລ້ວບໍ?
+                        <a href="<?= $base_url ?>auth/login.php" class="font-medium text-amber-600 hover:text-amber-800 transition-colors duration-300 ml-1">
+                            <i class="fas fa-sign-in-alt mr-1"></i> ເຂົ້າສູ່ລະບົບ
+                        </a>
+                    </p>
+                </div>
+                <div class="mt-4 text-center">
+                    <a href="<?= $base_url ?>" class="text-amber-600 hover:text-amber-800 flex items-center justify-center">
+                        <i class="fas fa-home mr-2"></i> ກັບໄປໜ້າຫຼັກ
                     </a>
-                </p>
+                </div>
             </div>
         </div>
     </div>
     
-    <div class="mt-4 text-center text-sm text-gray-500 animated">
-        <p>&copy; <?= date('Y') ?> Temple Management System. ສະຫງວນລິຂະສິດ.</p>
+    <div class="mt-4 text-center text-sm text-amber-800/70 animated">
+        <p>&copy; <?= date('Y') ?> ລະບົບຈັດການຂໍ້ມູນວັດ. ສະຫງວນລິຂະສິດ.</p>
     </div>
 
     <!-- JavaScript for enhanced form validation -->
@@ -538,7 +549,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             password.addEventListener('input', function() {
                 const val = this.value;
                 let strength = 0;
-                let color = 'red';
+                let color = '#C57B70'; // Use amber color scheme
                 let width = '0%';
                 
                 if (val.length >= 6) {
@@ -563,28 +574,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 switch (strength) {
                     case 0:
                         width = '0%';
-                        color = 'red';
+                        color = '#C57B70';
                         break;
                     case 1:
                     case 2:
                         width = '20%';
-                        color = 'red';
+                        color = '#C57B70';
                         break;
                     case 3:
                         width = '40%';
-                        color = 'orange';
+                        color = '#E9B949';
                         break;
                     case 4:
                         width = '60%';
-                        color = 'yellow';
+                        color = '#D4A762';
                         break;
                     case 5:
                         width = '80%';
-                        color = 'lime';
+                        color = '#B08542';
                         break;
                     case 6:
                         width = '100%';
-                        color = 'green';
+                        color = '#7A9B78';
                         break;
                 }
                 
@@ -640,15 +651,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             });
             
-            // Add focus effects for all inputs
+            // Add focus effects for all inputs with icon highlighting
             const inputs = document.querySelectorAll('.form-input');
             inputs.forEach(input => {
                 input.addEventListener('focus', function() {
-                    this.parentElement.classList.add('ring-2', 'ring-indigo-200', 'ring-opacity-50', 'rounded-lg');
+                    const icon = this.parentElement.querySelector('.input-icon i');
+                    if (icon) {
+                        icon.style.color = '#B08542';
+                    }
+                    this.parentElement.classList.add('ring-2', 'ring-amber-200', 'ring-opacity-50', 'rounded-lg');
                 });
                 
                 input.addEventListener('blur', function() {
-                    this.parentElement.classList.remove('ring-2', 'ring-indigo-200', 'ring-opacity-50', 'rounded-lg');
+                    const icon = this.parentElement.querySelector('.input-icon i');
+                    if (icon) {
+                        icon.style.color = '#B08542';
+                    }
+                    this.parentElement.classList.remove('ring-2', 'ring-amber-200', 'ring-opacity-50', 'rounded-lg');
                 });
             });
         });

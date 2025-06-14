@@ -66,65 +66,92 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <title>ເຂົ້າລະບົບ</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@400;500;600;700&display=swap');
     body {
       font-family: 'Noto Sans Lao', sans-serif;
     }
     .login-container {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background-image: url('../assets/images/thai-pattern.svg');
+      background-color: #F9F5F0;
+      background-repeat: repeat;
+      background-size: 200px;
+      background-opacity: 0.05;
     }
     .input-group {
       position: relative;
     }
-    .input-icon {
+    .input-icon-wrapper {
       position: absolute;
       left: 2px;
       top: 50%;
       transform: translateY(-50%);
-      color: #4B5563;
+      margin-left: 10px;
     }
     .input-field {
       padding-left: 60px;
+      border: 2px solid rgba(212, 167, 98, 0.2);
+      border-radius: 0.75rem;
       transition: all 0.3s ease;
     }
     .input-field:focus {
-      border-color: #4F46E5;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      border-color: #D4A762;
+      box-shadow: 0 0 0 3px rgba(212, 167, 98, 0.15);
     }
     .btn-login {
-      transition: transform 0.2s ease;
+      background: linear-gradient(135deg, #D4A762, #B08542);
+      box-shadow: 0 4px 12px rgba(212, 167, 98, 0.3);
+      transition: all 0.3s ease;
     }
     .btn-login:hover {
       transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(212, 167, 98, 0.35);
     }
-    .animated {
-      animation: fadeIn 0.5s ease-in-out;
+    .login-card {
+      animation: fadeInUp 0.5s ease-out forwards;
+      overflow: hidden;
     }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
+    .login-header {
+      position: relative;
+      overflow: hidden;
+    }
+    .login-header::before {
+      content: "";
+      position: absolute;
+      top: -50px;
+      left: -50px;
+      width: 200px;
+      height: 200px;
+      background-image: url('../assets/images/temple-pattern-light.svg');
+      background-size: cover;
+      background-position: center;
+      opacity: 0.1;
+      z-index: 0;
     }
     .temple-icon {
-      font-size: 3rem;
+      position: relative;
+      z-index: 1;
+      font-size: 2.5rem;
       margin-bottom: 1rem;
-      background: linear-gradient(45deg, #FFD700, #FFA500);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #B08542;
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center py-6 login-container">
+<body class="min-h-screen flex items-center justify-center py-6 login-container">
   <div class="w-full max-w-md px-6">
-    <div class="bg-white rounded-lg shadow-xl overflow-hidden animated">
-      <div class="p-8 sm:p-10">
-        <div class="text-center mb-8">
-          <i class="fas fa-landmark temple-icon"></i>
-          <h2 class="text-3xl font-bold text-gray-800">ເຂົ້າລະບົບ</h2>
-          <p class="text-gray-500 mt-2">ລະບົບຈັດການຂໍ້ມູນວັດ</p>
+    <div class="card login-card bg-white rounded-lg shadow-xl overflow-hidden">
+      <div class="login-header p-8 sm:p-10 bg-gradient-to-br from-amber-50 to-amber-100 text-center">
+        <div class="temple-icon">
+          <div class="icon-circle mx-auto w-16 h-16">
+            <img class="h-8 w-auto" src="<?= $base_url ?>assets/images/logo.png" alt="<?= htmlspecialchars($site_name) ?>">
+          </div>
         </div>
+        <h2 class="text-3xl font-bold text-gray-800">ເຂົ້າລະບົບ</h2>
+        <p class="text-amber-700 mt-2">ລະບົບຈັດການຂໍ້ມູນວັດ</p>
+      </div>
 
+      <div class="p-8 sm:p-10">
         <?php if (isset($error)) : ?>
           <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
             <div class="flex items-center">
@@ -138,54 +165,76 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
           
           <div class="input-group">
-            <i class="fas fa-user input-icon"></i>
+            <div class="input-icon-wrapper">
+              <div class="icon-circle w-8 h-8">
+                <i class="fas fa-user text-sm"></i>
+              </div>
+            </div>
             <input 
               type="text" 
               name="username" 
               placeholder="ຊື່ຜູ້ໃຊ້" 
               required 
-              class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none"
+              class="input-field w-full px-4 py-3 focus:outline-none"
               value="<?= isset($_POST['username']) ? htmlspecialchars($_POST['username']) : '' ?>"
             >
           </div>
           
           <div class="input-group">
-            <i class="fas fa-lock input-icon"></i>
+            <div class="input-icon-wrapper">
+              <div class="icon-circle w-8 h-8">
+                <i class="fas fa-lock text-sm"></i>
+              </div>
+            </div>
             <input 
               type="password" 
               name="password" 
               id="password" 
               placeholder="ລະຫັດຜ່ານ" 
               required 
-              class="input-field w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none"
+              class="input-field w-full px-4 py-3 focus:outline-none"
             >
-            <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+            <button type="button" id="togglePassword" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-amber-700">
               <i class="fas fa-eye"></i>
             </button>
           </div>
           
           <div class="flex items-center justify-between">
             <label class="flex items-center">
-              <input type="checkbox" name="remember_me" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 rounded">
+              <input type="checkbox" name="remember_me" class="h-4 w-4 text-amber-600 focus:ring-amber-500 rounded">
               <span class="ml-2 text-sm text-gray-600">ຈົດຈໍາການເຂົ້າລະບົບ</span>
             </label>
-            <a href="#" class="text-sm text-indigo-600 hover:text-indigo-800">ລືມລະຫັດຜ່ານ?</a>
+            <a href="#" class="text-sm text-amber-600 hover:text-amber-800">ລືມລະຫັດຜ່ານ?</a>
           </div>
           
           <button 
             type="submit" 
-            class="btn-login w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+            class="btn-login w-full text-white py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
           >
-            ເຂົ້າລະບົບ
+            <i class="fas fa-sign-in-alt mr-2"></i> ເຂົ້າລະບົບ
           </button>
         </form>
+
+        <div class="mt-8 text-center">
+          <p class="text-gray-600">
+            ຍັງບໍ່ມີບັນຊີບໍ?
+            <a href="<?= $base_url ?>auth/register.php" class="text-amber-600 hover:text-amber-800 font-medium">
+              ລົງທະບຽນ
+            </a>
+          </p>
+        </div>
       </div>
       
-      <div class="bg-gray-50 py-4 px-8 border-t border-gray-100 text-center">
-        <p class="text-sm text-gray-500">
-          © <?= date('Y') ?> ລະບົບຈັດການຂໍ້ມູນວັດ. ສະຫງວນລິຂະສິດທັງໝົດ.
-        </p>
+      <div class="bg-gray-50 py-4 px-8 border-t border-amber-100 text-center">
+        <a href="<?= $base_url ?>" class="text-amber-600 hover:text-amber-800 flex items-center justify-center">
+          <i class="fas fa-home mr-2"></i> ກັບໄປໜ້າຫຼັກ
+        </a>
       </div>
+    </div>
+    <div class="text-center mt-6">
+      <p class="text-sm text-amber-800/70">
+        © <?= date('Y') ?> ລະບົບຈັດການຂໍ້ມູນວັດ. ສະຫງວນລິຂະສິດທັງໝົດ.
+      </p>
     </div>
   </div>
 
@@ -209,11 +258,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       const inputs = document.querySelectorAll('.input-field');
       inputs.forEach(input => {
         input.addEventListener('focus', function() {
-          this.parentNode.querySelector('.input-icon').style.color = '#4F46E5';
+          this.parentNode.querySelector('.icon-circle').style.background = 'linear-gradient(135deg, #D4A762, #B08542)';
+          this.parentNode.querySelector('.icon-circle').style.color = 'white';
         });
         
         input.addEventListener('blur', function() {
-          this.parentNode.querySelector('.input-icon').style.color = '#4B5563';
+          this.parentNode.querySelector('.icon-circle').style.background = 'linear-gradient(135deg, #F5EFE6, #E9DFC7)';
+          this.parentNode.querySelector('.icon-circle').style.color = '#B08542';
         });
       });
     });
