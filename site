@@ -1,27 +1,133 @@
 tp-system/
 │
 ├── config/
-│   └── db.php                  # PDO connection
+│   ├── db.php                  # การเชื่อมต่อฐานข้อมูล PDO
+│   ├── base_url.php            # ตั้งค่า URL พื้นฐานของเว็บไซต์
+│   ├── constants.php           # กำหนดค่าคงที่ต่างๆ ในระบบ
+│   └── functions.php           # ฟังก์ชันทั่วไปที่ใช้ทั้งระบบ
+│
+├── includes/
+│   ├── header.php              # ส่วนหัวของทุกหน้า (รวม navbar)
+│   ├── footer.php              # ส่วนท้ายของทุกหน้า
+│   ├── sidebar.php             # เมนูด้านข้างสำหรับผู้ใช้ที่ล็อกอิน
+│   └── alerts.php              # แสดงข้อความแจ้งเตือน/ข้อผิดพลาด
 │
 ├── auth/
-│   ├── login.php
-│   ├── logout.php
-│   └── check_login.php
+│   ├── login.php               # หน้าเข้าสู่ระบบ
+│   ├── logout.php              # ออกจากระบบ
+│   ├── register.php            # ลงทะเบียนผู้ใช้ใหม่
+│   ├── reset_password.php      # รีเซ็ตรหัสผ่าน
+│   ├── check_login.php         # ตรวจสอบสถานะการล็อกอิน
+│   └── verify_email.php        # ยืนยันอีเมลหลังลงทะเบียน
 │
-├── dashboard.php              # ແຜ່ນຄວບຄຸມ (ແຍກຕາມ role)
+├── index.php                   # หน้าแรกของเว็บไซต์
 │
-├── temples/                   # ຈັດການວັດ (SuperAdmin)
-├── monks/                     # ພະ
-├── events/                    # ກິດຈະກຳ
-├── subscriptions/             # ຄ່າສະໝັກ
-├── users/                     # ຜູ້ໃຊ້ລະບົບ
+├── dashboard.php               # แผงควบคุมหลักแยกตามบทบาท (role)
 │
-├── reports/
-│   └── subscription_pdf.php   # PDF ລາຍງານ
+├── templates/
+│   ├── admin/                  # เทมเพลตสำหรับผู้ดูแลระบบ
+│   ├── temple/                 # เทมเพลตสำหรับวัด
+│   └── user/                   # เทมเพลตสำหรับผู้ใช้ทั่วไป
+│
+├── temples/                    # การจัดการวัด (สำหรับ SuperAdmin)
+│   ├── index.php               # แสดงรายการวัดทั้งหมด
+│   ├── add.php                 # เพิ่มวัดใหม่
+│   ├── edit.php                # แก้ไขข้อมูลวัด
+│   ├── view.php                # ดูรายละเอียดวัด
+│   ├── delete.php              # ลบวัด
+│   └── search.php              # ค้นหาวัด
+│
+├── monks/                      # การจัดการพระสงฆ์
+│   ├── index.php               # แสดงรายชื่อพระสงฆ์
+│   ├── add.php                 # เพิ่มพระสงฆ์ใหม่
+│   ├── edit.php                # แก้ไขข้อมูลพระสงฆ์
+│   ├── view.php                # ดูรายละเอียดพระสงฆ์
+│   ├── delete.php              # ลบข้อมูลพระสงฆ์
+│   ├── transfer.php            # ย้ายวัด
+│   └── search.php              # ค้นหาพระสงฆ์
+│
+├── events/                     # การจัดการกิจกรรม
+│   ├── index.php               # แสดงรายการกิจกรรม
+│   ├── add.php                 # เพิ่มกิจกรรมใหม่
+│   ├── edit.php                # แก้ไขกิจกรรม
+│   ├── view.php                # ดูรายละเอียดกิจกรรม
+│   ├── delete.php              # ลบกิจกรรม
+│   ├── calendar.php            # ปฏิทินกิจกรรม
+│   └── search.php              # ค้นหากิจกรรม
+│
+├── subscriptions/              # การจัดการการสมัครสมาชิก
+│   ├── index.php               # แสดงรายการสมาชิก
+│   ├── add.php                 # เพิ่มสมาชิกใหม่
+│   ├── edit.php                # แก้ไขข้อมูลสมาชิก
+│   ├── view.php                # ดูรายละเอียดสมาชิก
+│   ├── delete.php              # ลบสมาชิก
+│   ├── payment.php             # บันทึกการชำระเงิน
+│   ├── history.php             # ประวัติการชำระเงิน
+│   └── search.php              # ค้นหาสมาชิก
+│
+├── users/                      # การจัดการผู้ใช้ระบบ
+│   ├── index.php               # แสดงรายชื่อผู้ใช้
+│   ├── add.php                 # เพิ่มผู้ใช้ใหม่
+│   ├── edit.php                # แก้ไขข้อมูลผู้ใช้
+│   ├── view.php                # ดูรายละเอียดผู้ใช้
+│   ├── delete.php              # ลบผู้ใช้
+│   ├── change_password.php     # เปลี่ยนรหัสผ่าน
+│   └── permissions.php         # กำหนดสิทธิ์การใช้งาน
+│
+├── reports/                    # ระบบรายงาน
+│   ├── index.php               # หน้าหลักของรายงาน
+│   ├── temples.php             # รายงานวัด
+│   ├── monks.php               # รายงานพระสงฆ์
+│   ├── events.php              # รายงานกิจกรรม
+│   ├── subscriptions.php       # รายงานการสมัครสมาชิก
+│   ├── subscription_pdf.php    # PDF รายงานการสมัครสมาชิก
+│   ├── financial.php           # รายงานการเงิน
+│   └── export/                 # ส่งออกข้อมูลในรูปแบบต่างๆ
+│       ├── excel.php           # ส่งออกเป็น Excel
+│       ├── pdf.php             # ส่งออกเป็น PDF
+│       └── csv.php             # ส่งออกเป็น CSV
+│
+├── settings/                   # การตั้งค่าระบบ
+│   ├── index.php               # หน้าหลักการตั้งค่า
+│   ├── general.php             # ตั้งค่าทั่วไป
+│   ├── email.php               # ตั้งค่าอีเมล
+│   ├── security.php            # ตั้งค่าความปลอดภัย
+│   └── backup.php              # สำรองและคืนค่าข้อมูล
+│
+├── api/                        # API สำหรับเรียกข้อมูล
+│   ├── temples.php             # API ข้อมูลวัด
+│   ├── monks.php               # API ข้อมูลพระสงฆ์
+│   ├── events.php              # API ข้อมูลกิจกรรม
+│   └── stats.php               # API ข้อมูลสถิติ
 │
 ├── assets/
 │   ├── css/
+│   │   ├── main.css            # ไฟล์ CSS หลัก
+│   │   ├── monk-style.css      # ไฟล์ธีมสำหรับพระสงฆ์
+│   │   └── responsive.css      # สไตล์สำหรับหน้าจอขนาดต่างๆ
+│   │
 │   ├── js/
-│   └── images/
+│   │   ├── main.js             # JavaScript หลัก
+│   │   ├── charts.js           # สคริปต์สำหรับกราฟ
+│   │   ├── calendar.js         # สคริปต์สำหรับปฏิทิน
+│   │   └── validations.js      # ตรวจสอบข้อมูลฟอร์ม
+│   │
+│   ├── images/
+│   │   ├── logo.png            # โลโก้เว็บไซต์
+│   │   ├── favicon.ico         # ไอคอนเว็บไซต์
+│   │   ├── temples/            # รูปภาพของวัด
+│   │   ├── monks/              # รูปภาพของพระสงฆ์
+│   │   └── events/             # รูปภาพกิจกรรม
+│   │
+│   └── fonts/                  # แบบอักษรที่ใช้ในเว็บไซต์
 │
-└── index.php                  # ໜ້າ login
+├── uploads/                    # โฟลเดอร์สำหรับอัปโหลดไฟล์
+│   ├── temples/                # รูปภาพวัด
+│   ├── monks/                  # รูปภาพพระสงฆ์
+│   ├── events/                 # รูปภาพกิจกรรม
+│   └── documents/              # เอกสารอื่นๆ
+│
+└── vendor/                     # ไลบรารีภายนอก (เช่น Composer)
+    ├── phpmailer/              # ส่งอีเมล
+    ├── fpdf/                   # สร้าง PDF
+    └── phpexcel/               # สร้างไฟล์ Excel
