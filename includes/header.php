@@ -14,6 +14,14 @@ if (!isset($_SESSION['user'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
+    <meta name="keywords" content="ວັດ, ລະບົບຈັດການວັດ, ພຣະສົງ, ພຣະສົງລາວ ກິດຈະກໍາທາງສາສນາ">
+    <meta name="robots" content="index, follow">
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="laotemples - ລະບົບຈັດການຂໍ້ມູນວັດ">
+    <meta property="og:description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
+    <meta property="og:image" content="https://laotemples.com/assets/images/og-image.jpg">
+    <meta property="og:url" content="https://laotemples.com">
     <title>ລະບົບຈັດການຂໍ້ມູນວັດ - <?= $page_title ?? 'ໜ້າຫຼັກ' ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -317,7 +325,7 @@ body {
 <body>
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
-        <aside class="hidden md:flex md:flex-col w-64 sidebar text-white">
+        <aside class="sidebar-element hidden md:flex md:flex-col w-64 sidebar text-white">
             <div class="flex items-center justify-center h-20 border-b border-indigo-800">
                 <img class="h-8 w-auto" src="<?= $base_url ?>assets/images/logo.png" alt="<?= htmlspecialchars($site_name) ?>">
                 <h1 class="text-xl font-semibold">ລະບົບຈັດການຂໍ້ມູນວັດ</h1>
@@ -413,10 +421,10 @@ body {
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Top Navigation -->
-            <header class="bg-white shadow-sm flex items-center justify-between h-16 px-6">
+            <header class="bg-white shadow-sm flex items-center justify-between h-16 px-6 relative z-30">
                 <div class="flex items-center">
-                    <button id="toggleSidebar" class="text-gray-500 focus:outline-none md:hidden">
-                        <i class="fas fa-bars"></i>
+                    <button id="toggleSidebar" class="text-gray-500 focus:outline-none md:hidden p-2 z-50">
+                        <i class="fas fa-bars text-xl"></i>
                     </button>
                     <h2 class="text-xl font-semibold text-gray-800 ml-4"><?= $page_title ?? 'ໜ້າຫຼັກ' ?></h2>
                 </div>
@@ -455,51 +463,123 @@ body {
             </header>
                         <script>
             document.addEventListener('DOMContentLoaded', function() {
-                const toggleSidebarBtn = document.getElementById('toggleSidebar');
-                const sidebar = document.querySelector('aside');
+    const toggleSidebarBtn = document.getElementById('toggleSidebar');
+    const sidebar = document.querySelector('.sidebar-element');
+    let sidebarVisible = false;
+    
+    if (toggleSidebarBtn && sidebar) {
+        // สร้าง overlay element
+        const overlay = document.createElement('div');
+        overlay.id = 'sidebarOverlay';
+        overlay.classList.add('fixed', 'inset-0', 'bg-black', 'bg-opacity-50', 'z-20', 'hidden');
+        overlay.style.transition = 'opacity 0.2s ease-in-out';
+        overlay.style.opacity = '0';
+        document.body.appendChild(overlay);
+        
+        // แก้ไขฟังก์ชัน toggleSidebar
+        function toggleSidebar() {
+            // สลับสถานะ
+            sidebarVisible = !sidebarVisible;
+            
+            if (sidebarVisible) {
+                // 1. แสดง overlay ก่อนแต่ยังไม่มี opacity
+                overlay.classList.remove('hidden');
                 
-                if (toggleSidebarBtn && sidebar) {
-                    // เพิ่มคลาสเริ่มต้นให้ sidebar เพื่อให้สามารถแสดง/ซ่อนได้บนมือถือ
-                    sidebar.classList.add('transition-all', 'duration-300', 'ease-in-out');
+                // 2. Force browser reflow (การ render ใหม่)
+                void overlay.offsetWidth;
+                
+                // 3. ค่อยให้ opacity เพิ่มขึ้น
+                overlay.style.opacity = '1';
+                
+                // 4. แสดง sidebar พร้อมกับกำหนด classes
+                sidebar.classList.remove('hidden');
+                sidebar.classList.add('fixed', 'z-40', 'inset-y-0', 'left-0', 'w-64');
+                
+                // 5. ป้องกันการเลื่อนหน้าจอ
+                document.body.classList.add('overflow-hidden');
+                
+                // 6. เพิ่ม animation เล็กน้อย
+                sidebar.style.transform = 'translateX(-100%)';
+                setTimeout(() => {
+                    sidebar.style.transition = 'transform 0.3s ease-out';
+                    sidebar.style.transform = 'translateX(0)';
+                }, 10);
+            } else {
+                // 1. ซ่อน sidebar ก่อนด้วย animation
+                sidebar.style.transform = 'translateX(-100%)';
+                
+                // 2. ลด opacity ของ overlay
+                overlay.style.opacity = '0';
+                
+                // 3. รอให้ animation เสร็จก่อนซ่อนองค์ประกอบ
+                setTimeout(() => {
+                    sidebar.classList.add('hidden');
+                    sidebar.classList.remove('fixed', 'z-40', 'inset-y-0', 'left-0');
+                    overlay.classList.add('hidden');
+                    document.body.classList.remove('overflow-hidden');
                     
-                    // สร้างฟังก์ชันสำหรับสลับการแสดง sidebar
-                    toggleSidebarBtn.addEventListener('click', function() {
-                        if (sidebar.classList.contains('hidden')) {
-                            // ถ้าซ่อนอยู่ ให้แสดง
-                            sidebar.classList.remove('hidden');
-                            sidebar.classList.add('fixed', 'z-40', 'inset-0', 'w-64');
-                        } else {
-                            // ถ้าแสดงอยู่ ให้ซ่อน
-                            sidebar.classList.add('hidden');
-                            sidebar.classList.remove('fixed', 'z-40', 'inset-0');
-                        }
-                    });
+                    // Reset transition และ transform
+                    sidebar.style.transition = '';
+                    sidebar.style.transform = '';
+                }, 300);
+            }
+        }
+        
+        // ลงทะเบียนการคลิกที่ปุ่ม toggle ด้วย active state แทน
+        toggleSidebarBtn.addEventListener('mousedown', function(e) {
+            e.preventDefault(); // สำคัญ: ป้องกันการ focus หลังจาก click
+            e.stopPropagation();
+            
+            // เพิ่ม active state
+            this.classList.add('bg-gray-100');
+            
+            // ทำ toggleSidebar ทันที
+            toggleSidebar();
+            
+            // ลบ active state หลังจากนั้น
+            setTimeout(() => {
+                this.classList.remove('bg-gray-100');
+            }, 200);
+        });
+        
+        // คลิกที่ overlay เพื่อซ่อน sidebar
+        overlay.addEventListener('click', function() {
+            if (sidebarVisible) {
+                toggleSidebar();
+            }
+        });
+        
+        // ตรวจสอบการเปลี่ยนขนาดหน้าจอ
+        window.addEventListener('resize', function() {
+            if (window.innerWidth >= 768) { // desktop view
+                if (sidebarVisible) {
+                    // ซ่อน overlay
+                    overlay.classList.add('hidden');
+                    overlay.style.opacity = '0';
                     
-                    // ถ้าคลิกนอก sidebar ให้ซ่อน (เฉพาะเมื่อแสดงแบบ mobile)
-                    document.addEventListener('click', function(event) {
-                        const isMobileView = window.innerWidth < 768;
-                        const clickedOutsideSidebar = !sidebar.contains(event.target);
-                        const clickedNotToggleBtn = !toggleSidebarBtn.contains(event.target);
-                        
-                        if (isMobileView && clickedOutsideSidebar && clickedNotToggleBtn && !sidebar.classList.contains('hidden')) {
-                            sidebar.classList.add('hidden');
-                        }
-                    });
+                    // รีเซ็ต sidebar
+                    sidebar.classList.remove('fixed', 'z-40', 'inset-y-0', 'left-0', 'hidden');
+                    sidebar.style.transform = '';
+                    sidebar.style.transition = '';
+                    sidebar.classList.add('md:flex');
                     
-                    // สำหรับการเปลี่ยนขนาดหน้าจอ
-                    window.addEventListener('resize', function() {
-                        if (window.innerWidth >= 768) {
-                            // ถ้าเป็น desktop ให้แสดง sidebar ตามปกติ
-                            sidebar.classList.remove('fixed', 'z-40', 'inset-0', 'hidden');
-                        } else {
-                            // ถ้าเป็น mobile และ sidebar กำลังแสดงอยู่ ให้ซ่อน
-                            if (!sidebar.classList.contains('hidden')) {
-                                sidebar.classList.add('hidden');
-                            }
-                        }
-                    });
+                    // รีเซ็ตสถานะ
+                    sidebarVisible = false;
+                    document.body.classList.remove('overflow-hidden');
                 }
-            });
+            } else if (!sidebarVisible) { // mobile view และ sidebar ปิดอยู่
+                sidebar.classList.add('hidden');
+            }
+        });
+        
+        // เพิ่ม event listener สำหรับปุ่ม ESC เพื่อปิด sidebar
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && sidebarVisible) {
+                toggleSidebar();
+            }
+        });
+    }
+});
             </script>
             <!-- Content -->
             <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
