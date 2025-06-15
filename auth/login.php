@@ -31,21 +31,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password'])) {
-                // Set remember me cookie if requested
+                // ตรวจสอบสถานะผู้ใช้
                 if ($user['status'] !== 'active') {
-                    $error = "ບັນຊີຂອງທ່ານຍັງບໍ່ໄດ້ຮັບການອະນຸມັດ ຈາກຜູ້ດູແລລະບົບ ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບ";                   
+                    $error = "ບັນຊີຂອງທ່ານຍັງບໍ່ໄດ້ຮັບການອະນຸມັດ ຈາກຜູ້ດູແລລະບົບ ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບ";
+                    // หยุดการทำงาน ไม่สร้าง session และไม่ redirect ไปหน้า dashboard
+                } else {
+                    // เฉพาะผู้ใช้ที่มีสถานะ active เท่านั้นที่จะถูกสร้าง session
+                    $_SESSION['user'] = [
+                        'id' => $user['id'],
+                        'username' => $user['username'],
+                        'role' => $user['role'],
+                        'temple_id' => $user['temple_id'],
+                        'name' => $user['name']
+                    ];
+
+                    header("Location: {$base_url}dashboard.php");
+                    exit;
                 }
-
-                $_SESSION['user'] = [
-                    'id' => $user['id'],
-                    'username' => $user['username'],
-                    'role' => $user['role'],
-                    'temple_id' => $user['temple_id'],
-                    'name' => $user['name']
-                ];
-
-                header("Location: {$base_url}dashboard.php");
-                exit;
             } else {
                 $_SESSION['login_attempts'] = isset($_SESSION['login_attempts']) ? 
                                             $_SESSION['login_attempts'] + 1 : 1;

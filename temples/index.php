@@ -67,6 +67,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
 
 <!-- เพิ่ม link เพื่อนำเข้า monk-style.css -->
 <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
+<link rel="stylesheet" href="<?= $base_url ?>assets/css/temples-style.css">
 
 <div class="page-container">
     <div class="max-w-7xl mx-auto p-4">
@@ -159,16 +160,36 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                             <div class="text-gray-500"><?= htmlspecialchars($temple['abbot_name'] ?? '-') ?></div>
                         </td>
                         <td class="px-6 py-4">
-                            <?php if($temple['status'] === 'active'): ?>
-                                <span class="status-badge status-active">
-                                    <i class="fas fa-circle text-xs mr-1"></i>
-                                    ເປີດໃຊ້ງານ
-                                </span>
+                            <?php if($can_edit): ?>
+                                <!-- ปุ่มสลับสถานะแบบ toggle switch -->
+                                <label class="status-toggle relative inline-block">
+                                    <input type="checkbox" 
+                                        class="temple-status-toggle hidden" 
+                                        data-id="<?= $temple['id'] ?>" 
+                                        data-name="<?= htmlspecialchars($temple['name']) ?>"
+                                        <?= $temple['status'] === 'active' ? 'checked' : '' ?>>
+                                    <span class="toggle-slider <?= $temple['status'] === 'active' ? 'bg-amber-500' : 'bg-gray-300' ?>">
+                                        <span class="status-text">
+                                            <?php if($temple['status'] === 'active'): ?>
+                                                <i class="fas fa-circle text-xs mr-1"></i> ເປີດໃຊ້ງານ
+                                            <?php else: ?>
+                                                <i class="fas fa-circle-notch text-xs mr-1"></i> ປິດໃຊ້ງານ
+                                            <?php endif; ?>
+                                        </span>
+                                    </span>
+                                </label>
                             <?php else: ?>
-                                <span class="status-badge bg-gray-100 text-gray-600 border border-gray-200">
-                                    <i class="fas fa-circle-notch text-xs mr-1"></i>
-                                    ປິດໃຊ້ງານ
-                                </span>
+                                <?php if($temple['status'] === 'active'): ?>
+                                    <span class="status-badge status-active">
+                                        <i class="fas fa-circle text-xs mr-1"></i>
+                                        ເປີດໃຊ້ງານ
+                                    </span>
+                                <?php else: ?>
+                                    <span class="status-badge bg-gray-100 text-gray-600 border border-gray-200">
+                                        <i class="fas fa-circle-notch text-xs mr-1"></i>
+                                        ປິດໃຊ້ງານ
+                                    </span>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -283,6 +304,169 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+document.addEventListener('DOMContentLoaded', function() {
+    // เพิ่ม JavaScript สำหรับการทำงานของ toggle status
+    const toggles = document.querySelectorAll('.temple-status-toggle');
+    
+    toggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const templeId = this.getAttribute('data-id');
+            const templeName = this.getAttribute('data-name');
+            const newStatus = this.checked ? 'active' : 'inactive';
+            const toggleLabel = this.closest('.status-toggle');
+            const slider = toggleLabel.querySelector('.toggle-slider');
+            const statusText = toggleLabel.querySelector('.status-text');
+            
+            // แสดงสถานะกำลังโหลด
+            toggleLabel.classList.add('loading');
+            
+            // ส่งคำขอ Ajax เพื่อเปลี่ยนสถานะ
+            fetch('<?= $base_url ?>temples/toggle-status.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    temple_id: templeId,
+                    status: newStatus
+                }),
+                credentials: 'include' // สำคัญสำหรับการส่ง session cookies
+            })
+            .then(response => {
+                // จับ response ทั้ง success และ error
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.indexOf('application/json') !== -1) {
+                    return response.json().then(data => {
+                        // ถ้าเป็น JSON ให้เพิ่ม status เพื่อใช้ต่อไป
+                        return { ...data, status: response.status };
+                    });
+                } else {
+                    // ถ้าไม่ใช่ JSON ให้อ่านเป็นข้อความ
+                    return response.text().then(text => {
+                        return { 
+                            success: false, 
+                            message: text || 'ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່ກັບເຊີບເວີ', 
+                            status: response.status 
+                        };
+                    });
+                }
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                toggleLabel.classList.remove('loading');
+                
+                if (data.success) {
+                    // อัปเดต UI
+                    if (newStatus === 'active') {
+                        slider.classList.remove('bg-gray-300');
+                        slider.classList.add('bg-amber-500');
+                        statusText.innerHTML = '<i class="fas fa-circle text-xs mr-1"></i> ເປີດໃຊ້ງານ';
+                    } else {
+                        slider.classList.remove('bg-amber-500');
+                        slider.classList.add('bg-gray-300');
+                        statusText.innerHTML = '<i class="fas fa-circle-notch text-xs mr-1"></i> ປິດໃຊ້ງານ';
+                    }
+                    
+                    showNotification('ອັບເດດສະຖານະວັດ ' + templeName + ' ສຳເລັດແລ້ວ', 'success');
+                } else {
+                    // กลับไปสถานะเดิมเฉพาะเมื่อเกิดข้อผิดพลาดจริงๆ (HTTP error codes)
+                    if (data.status >= 400) {
+                        this.checked = !this.checked;
+                        showNotification('ເກີດຂໍ້ຜິດພາດ: ' + (data.message || 'ບໍ່ສາມາດອັບເດດສະຖານະໄດ້'), 'error');
+                    } else {
+                        // ถ้า status code เป็น 2xx แต่ success เป็น false
+                        // แสดงว่าอัปเดตสำเร็จแล้ว แต่มีการรายงานผลผิดพลาด
+                        showNotification('ອັບເດດສະຖານະສຳເລັດແລ້ວ ແຕ່ມີຂໍໜິດພາດບາງຢ່າງ', 'warning');
+                    }
+                }
+            })
+            .catch(error => {
+                // จัดการกับข้อผิดพลาดในการเชื่อมต่อ
+                console.error('Fetch error:', error);
+                toggleLabel.classList.remove('loading');
+                
+                // เก็บสถานะปัจจุบันไว้
+                const currentStatus = this.checked;
+                
+                // ทำการอัปเดตด้วย form ปกติเพื่อความมั่นใจ
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '<?= $base_url ?>temples/direct-update-status.php';
+                form.style.display = 'none';
+                
+                const templeIdInput = document.createElement('input');
+                templeIdInput.name = 'temple_id';
+                templeIdInput.value = templeId;
+                
+                const statusInput = document.createElement('input');
+                statusInput.name = 'status';
+                statusInput.value = newStatus;
+                
+                const redirectInput = document.createElement('input');
+                redirectInput.name = 'redirect';
+                redirectInput.value = window.location.href;
+                
+                form.appendChild(templeIdInput);
+                form.appendChild(statusInput);
+                form.appendChild(redirectInput);
+                document.body.appendChild(form);
+                
+                showNotification('ກຳລັງໃຊ້ການອັບເດດສຳຮອງ...', 'info');
+                setTimeout(() => form.submit(), 500);
+            });
+        });
+    });
+    
+    // ฟังก์ชันแสดงข้อความแจ้งเตือน
+    function showNotification(message, type = 'info') {
+        // ตรวจสอบว่ามี notification container หรือไม่
+        let container = document.getElementById('notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            container.className = 'fixed top-4 right-4 z-50 flex flex-col space-y-2';
+            document.body.appendChild(container);
+        }
+        
+        // สร้าง notification
+        const notification = document.createElement('div');
+        notification.className = `notification ${type} px-4 py-2 rounded shadow-lg flex items-center transition-all transform translate-x-full`;
+        
+        // กำหนดสีตาม type
+        if (type === 'success') {
+            notification.classList.add('bg-green-100', 'border-l-4', 'border-green-500', 'text-green-700');
+            notification.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + message;
+        } else if (type === 'error') {
+            notification.classList.add('bg-red-100', 'border-l-4', 'border-red-500', 'text-red-700');
+            notification.innerHTML = '<i class="fas fa-exclamation-circle mr-2"></i>' + message;
+        } else {
+            notification.classList.add('bg-blue-100', 'border-l-4', 'border-blue-500', 'text-blue-700');
+            notification.innerHTML = '<i class="fas fa-info-circle mr-2"></i>' + message;
+        }
+        
+        // เพิ่ม notification ไปยัง container
+        container.appendChild(notification);
+        
+        // แสดง notification ด้วยการเลื่อนเข้ามา
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+            notification.classList.add('translate-x-0');
+        }, 10);
+        
+        // ซ่อน notification หลังจาก 3 วินาที
+        setTimeout(() => {
+            notification.classList.remove('translate-x-0');
+            notification.classList.add('translate-x-full');
+            
+            // ลบ notification หลังจากการเคลื่อนไหวเสร็จสิ้น
+            setTimeout(() => {
+                container.removeChild(notification);
+            }, 300);
+        }, 3000);
+    }
+});
+
 </script>
 
 <?php require_once '../includes/footer.php'; ?>
