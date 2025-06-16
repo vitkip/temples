@@ -187,84 +187,177 @@ $can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['rol
 <!-- ຕາຕະລາງຜູ່ໃຊ້ -->
 <div class="bg-white rounded-lg shadow-sm overflow-hidden">
     <?php if (count($users) > 0): ?>
-    <table class="w-full">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ຜູ່ໃຊ້</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່-ນາມສະກຸນ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັດ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານະ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານະຜູ່ໃຊ້</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັນທີສ້າງ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຈັດການ</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
-            <?php foreach($users as $user): ?>
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900"><?= htmlspecialchars($user['username']) ?></div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-gray-900"><?= htmlspecialchars($user['name']) ?></div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-gray-500">
-                        <?php if (!empty($user['temple_name'])): ?>
-                            <?= htmlspecialchars($user['temple_name']) ?>
+    <!-- เด้สก์ทอป - แสดงเป็นตาราง (ซ่อนบนมือถือ) -->
+    <div class="hidden md:block overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ຜູ່ໃຊ້</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່-ນາມສະກຸນ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັດ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານະ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານະຜູ່ໃຊ້</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັນທີສ້າງ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຈັດການ</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                <?php foreach($users as $user): ?>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-900"><?= htmlspecialchars($user['username']) ?></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-gray-900"><?= htmlspecialchars($user['name']) ?></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-gray-500">
+                            <?php if (!empty($user['temple_name'])): ?>
+                                <?= htmlspecialchars($user['temple_name']) ?>
+                            <?php else: ?>
+                                <span class="text-gray-400">-</span>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <?php if($user['role'] === 'superadmin'): ?>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded">Super Admin</span>
+                        <?php elseif($user['role'] === 'admin'): ?>
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">ຜູ້ດູແລວັດ</span>
                         <?php else: ?>
-                            <span class="text-gray-400">-</span>
+                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">ຜູ້ໃຊ້ທົ່ວໄປ</span>
                         <?php endif; ?>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <?php
+                        $status_labels = [
+                            'active' => ['ໃຊ້ງານໄດ້', 'bg-green-100 text-green-800'],
+                            'pending' => ['ລໍຖ້າອະນຸມັດ', 'bg-yellow-100 text-yellow-800'],
+                            'inactive' => ['ປິດໃຊ້ງານ', 'bg-red-100 text-red-800']
+                        ];
+                        $user_status = $user['status'] ?? 'active'; // กำหนดค่าเริ่มต้นถ้าไม่มีข้อมูล
+                        $status_data = $status_labels[$user_status] ?? ['ບໍ່ກໍານົດ', 'bg-gray-100 text-gray-800'];
+                        ?>
+                        <span id="status-badge-<?= $user['id'] ?>" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status_data[1] ?>">
+                            <?= $status_data[0] ?>
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-gray-500">
+                            <?= date('d/m/Y', strtotime($user['created_at'])) ?>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div class="flex space-x-2">
+                            <a href="<?= $base_url ?>users/view.php?id=<?= $user['id'] ?>" class="text-indigo-600 hover:text-indigo-900" title="ເບິ່ງລາຍລະອຽດ">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            
+                            <?php if (
+                                // สิทธิ์ในการจัดการสถานะผู้ใช้
+                                (($_SESSION['user']['role'] === 'superadmin') || 
+                                ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $user['temple_id'] && $user['role'] !== 'superadmin')) &&
+                                $_SESSION['user']['id'] != $user['id']
+                            ): ?>
+                                
+                                <!-- ปุ่มจัดการสถานะแบบ dropdown -->
+                                <div class="relative inline-block text-left">
+                                    <button type="button" class="status-action text-gray-600 hover:text-gray-900" data-userid="<?= $user['id'] ?>">
+                                        <i class="fas fa-user-cog"></i>
+                                    </button>
+                                    
+                                    <div id="status-dropdown-<?= $user['id'] ?>" class="status-dropdown hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                                        <div class="py-1" role="menu">
+                                            <?php if (isset($user['status']) && $user['status'] !== 'active'): ?>
+                                            <button class="change-status block w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-100" 
+                                                    data-userid="<?= $user['id'] ?>" 
+                                                    data-username="<?= htmlspecialchars($user['username']) ?>"
+                                                    data-status="active" 
+                                                    title="ອະນຸມັດຜູ່ໃຊ້">
+                                                <i class="fas fa-check-circle mr-2"></i> ອະນຸມັດຜູ່ໃຊ້
+                                            </button>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (isset($user['status']) && $user['status'] !== 'pending'): ?>
+                                            <button class="change-status block w-full text-left px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-100" 
+                                                    data-userid="<?= $user['id'] ?>" 
+                                                    data-username="<?= htmlspecialchars($user['username']) ?>"
+                                                    data-status="pending" 
+                                                    title="ຕັ້ງເປັນລໍຖ້າອະນຸມັດ">
+                                                <i class="fas fa-clock mr-2"></i> ຕັ້ງເປັນລໍຖ້າອະນຸມັດ
+                                            </button>
+                                            <?php endif; ?>
+                                            
+                                            <?php if (isset($user['status']) && $user['status'] !== 'inactive'): ?>
+                                            <button class="change-status block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-100" 
+                                                    data-userid="<?= $user['id'] ?>" 
+                                                    data-username="<?= htmlspecialchars($user['username']) ?>"
+                                                    data-status="inactive" 
+                                                    title="ປິດໃຊ້ງານ">
+                                                <i class="fas fa-ban mr-2"></i> ປິດໃຊ້ງານ
+                                            </button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            
+                            <!-- ปุ่มแก้ไขและลบตามเดิม -->
+                            <?php if (
+                                ($_SESSION['user']['role'] === 'superadmin') || 
+                                ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $user['temple_id'] && $user['role'] !== 'superadmin')
+                            ): ?>
+                            <a href="<?= $base_url ?>users/edit.php?id=<?= $user['id'] ?>" class="text-blue-600 hover:text-blue-900">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <?php endif; ?>
+                            
+                            <?php if (
+                                (($_SESSION['user']['role'] === 'superadmin') || 
+                                ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $user['temple_id'] && $user['role'] !== 'superadmin')) &&
+                                $_SESSION['user']['id'] != $user['id']
+                            ): ?>
+                            <a href="javascript:void(0)" class="text-red-600 hover:text-red-900 delete-user" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['username']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- มือถือ - แสดงเป็นการ์ด -->
+    <div class="md:hidden">
+        <div class="divide-y divide-gray-200">
+            <?php foreach($users as $user): ?>
+            <div class="p-4 hover:bg-gray-50 <?= ($user['status'] == 'pending') ? 'bg-yellow-50' : '' ?>">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <div class="font-medium text-gray-900"><?= htmlspecialchars($user['username']) ?></div>
+                        <div class="text-sm text-gray-600"><?= htmlspecialchars($user['name']) ?></div>
                     </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <?php if($user['role'] === 'superadmin'): ?>
-                        <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded">Super Admin</span>
-                    <?php elseif($user['role'] === 'admin'): ?>
-                        <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">ຜູ້ດູແລວັດ</span>
-                    <?php else: ?>
-                        <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded">ຜູ້ໃຊ້ທົ່ວໄປ</span>
-                    <?php endif; ?>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <?php
-                    $status_labels = [
-                        'active' => ['ໃຊ້ງານໄດ້', 'bg-green-100 text-green-800'],
-                        'pending' => ['ລໍຖ້າອະນຸມັດ', 'bg-yellow-100 text-yellow-800'],
-                        'inactive' => ['ປິດໃຊ້ງານ', 'bg-red-100 text-red-800']
-                    ];
-                    $user_status = $user['status'] ?? 'active'; // กำหนดค่าเริ่มต้นถ้าไม่มีข้อมูล
-                    $status_data = $status_labels[$user_status] ?? ['ບໍ່ກໍານົດ', 'bg-gray-100 text-gray-800'];
-                    ?>
-                    <span id="status-badge-<?= $user['id'] ?>" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $status_data[1] ?>">
-                        <?= $status_data[0] ?>
-                    </span>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-gray-500">
-                        <?= date('d/m/Y', strtotime($user['created_at'])) ?>
-                    </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div class="flex space-x-2">
-                        <a href="<?= $base_url ?>users/view.php?id=<?= $user['id'] ?>" class="text-indigo-600 hover:text-indigo-900" title="ເບິ່ງລາຍລະອຽດ">
+                        <a href="<?= $base_url ?>users/view.php?id=<?= $user['id'] ?>" class="text-indigo-600 hover:text-indigo-900 p-1" title="ເບິ່ງລາຍລະອຽດ">
                             <i class="fas fa-eye"></i>
                         </a>
                         
                         <?php if (
-                            // สิทธิ์ในการจัดการสถานะผู้ใช้
                             (($_SESSION['user']['role'] === 'superadmin') || 
                             ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $user['temple_id'] && $user['role'] !== 'superadmin')) &&
                             $_SESSION['user']['id'] != $user['id']
                         ): ?>
                             
-                            <!-- ปุ่มจัดการสถานะแบบ dropdown -->
+                            <!-- ปุ่มจัดการสถานะแบบ dropdown สำหรับมือถือ -->
                             <div class="relative inline-block text-left">
-                                <button type="button" class="status-action text-gray-600 hover:text-gray-900" data-userid="<?= $user['id'] ?>">
+                                <button type="button" class="status-action text-gray-600 hover:text-gray-900 p-1" data-userid="<?= $user['id'] ?>">
                                     <i class="fas fa-user-cog"></i>
                                 </button>
                                 
                                 <div id="status-dropdown-<?= $user['id'] ?>" class="status-dropdown hidden absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                                    <!-- สถานะดรอปดาวน์เหมือนบนเดสก์ทอป -->
                                     <div class="py-1" role="menu">
                                         <?php if (isset($user['status']) && $user['status'] !== 'active'): ?>
                                         <button class="change-status block w-full text-left px-4 py-2 text-sm text-green-700 hover:bg-green-100" 
@@ -300,12 +393,12 @@ $can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['rol
                             </div>
                         <?php endif; ?>
                         
-                        <!-- ปุ่มแก้ไขและลบตามเดิม -->
+                        <!-- ปุ่มแก้ไขและลบสำหรับมือถือ -->
                         <?php if (
                             ($_SESSION['user']['role'] === 'superadmin') || 
                             ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $user['temple_id'] && $user['role'] !== 'superadmin')
                         ): ?>
-                        <a href="<?= $base_url ?>users/edit.php?id=<?= $user['id'] ?>" class="text-blue-600 hover:text-blue-900">
+                        <a href="<?= $base_url ?>users/edit.php?id=<?= $user['id'] ?>" class="text-blue-600 hover:text-blue-900 p-1">
                             <i class="fas fa-edit"></i>
                         </a>
                         <?php endif; ?>
@@ -315,16 +408,57 @@ $can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['rol
                             ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $user['temple_id'] && $user['role'] !== 'superadmin')) &&
                             $_SESSION['user']['id'] != $user['id']
                         ): ?>
-                        <a href="javascript:void(0)" class="text-red-600 hover:text-red-900 delete-user" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['username']) ?>">
+                        <a href="javascript:void(0)" class="text-red-600 hover:text-red-900 delete-user p-1" data-id="<?= $user['id'] ?>" data-name="<?= htmlspecialchars($user['username']) ?>">
                             <i class="fas fa-trash"></i>
                         </a>
                         <?php endif; ?>
                     </div>
-                </td>
-            </tr>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 text-sm">
+                    <?php if (!empty($user['temple_name'])): ?>
+                    <div>
+                        <span class="text-gray-500">ວັດ:</span> 
+                        <span class="text-gray-900"><?= htmlspecialchars($user['temple_name']) ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div>
+                        <span class="text-gray-500">ສະຖານະ:</span>
+                        <?php if($user['role'] === 'superadmin'): ?>
+                            <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded">Super Admin</span>
+                        <?php elseif($user['role'] === 'admin'): ?>
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded">ຜູ້ດູແລວັດ</span>
+                        <?php else: ?>
+                            <span class="bg-gray-100 text-gray-800 text-xs font-medium px-2 py-0.5 rounded">ຜູ້ໃຊ້ທົ່ວໄປ</span>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <div>
+                        <span class="text-gray-500">ສະຖານະຜູ່ໃຊ້:</span>
+                        <?php
+                        $status_labels = [
+                            'active' => ['ໃຊ້ງານໄດ້', 'bg-green-100 text-green-800'],
+                            'pending' => ['ລໍຖ້າອະນຸມັດ', 'bg-yellow-100 text-yellow-800'],
+                            'inactive' => ['ປິດໃຊ້ງານ', 'bg-red-100 text-red-800']
+                        ];
+                        $user_status = $user['status'] ?? 'active';
+                        $status_data = $status_labels[$user_status] ?? ['ບໍ່ກໍານົດ', 'bg-gray-100 text-gray-800'];
+                        ?>
+                        <span id="status-badge-mobile-<?= $user['id'] ?>" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium <?= $status_data[1] ?>">
+                            <?= $status_data[0] ?>
+                        </span>
+                    </div>
+                    
+                    <div>
+                        <span class="text-gray-500">ວັນທີສ້າງ:</span>
+                        <span class="text-gray-900"><?= date('d/m/Y', strtotime($user['created_at'])) ?></span>
+                    </div>
+                </div>
+            </div>
             <?php endforeach; ?>
-        </tbody>
-    </table>
+        </div>
+    </div>
     <?php else: ?>
     <div class="p-6 text-center text-gray-500">
         <i class="fas fa-users fa-3x mb-4"></i>

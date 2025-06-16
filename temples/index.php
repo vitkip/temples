@@ -137,7 +137,73 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
         <!-- Temples List -->
         <div class="card overflow-hidden">
             <?php if (count($temples) > 0): ?>
-            <table class="data-table w-full">
+            <!-- Mobile view (card layout) -->
+            <div class="block md:hidden">
+                <?php foreach($temples as $temple): ?>
+                    <div class="border-b p-4">
+                        <div class="font-medium text-gray-900 mb-2"><?= htmlspecialchars($temple['name']) ?></div>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="text-gray-600">ສະຖານທີ່:</div>
+                            <div><?= htmlspecialchars($temple['district']) ?>, <?= htmlspecialchars($temple['province']) ?></div>
+                            
+                            <div class="text-gray-600">ເຈົ້າອະທິການ:</div>
+                            <div><?= htmlspecialchars($temple['abbot_name'] ?? '-') ?></div>
+                            
+                            <div class="text-gray-600">ສະຖານະ:</div>
+                            <div>
+                                <?php if($can_edit): ?>
+                                    <label class="status-toggle relative inline-block">
+                                        <input type="checkbox" 
+                                            class="temple-status-toggle hidden" 
+                                            data-id="<?= $temple['id'] ?>" 
+                                            data-name="<?= htmlspecialchars($temple['name']) ?>"
+                                            <?= $temple['status'] === 'active' ? 'checked' : '' ?>>
+                                        <span class="toggle-slider <?= $temple['status'] === 'active' ? 'bg-amber-500' : 'bg-gray-300' ?>">
+                                            <span class="status-text">
+                                                <?php if($temple['status'] === 'active'): ?>
+                                                    <i class="fas fa-circle text-xs mr-1"></i> ເປີດໃຊ້ງານ
+                                                <?php else: ?>
+                                                    <i class="fas fa-circle-notch text-xs mr-1"></i> ປິດໃຊ້ງານ
+                                                <?php endif; ?>
+                                            </span>
+                                        </span>
+                                    </label>
+                                <?php else: ?>
+                                    <?php if($temple['status'] === 'active'): ?>
+                                        <span class="status-badge status-active">
+                                            <i class="fas fa-circle text-xs mr-1"></i>
+                                            ເປີດໃຊ້ງານ
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="status-badge bg-gray-100 text-gray-600 border border-gray-200">
+                                            <i class="fas fa-circle-notch text-xs mr-1"></i>
+                                            ປິດໃຊ້ງານ
+                                        </span>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex space-x-4 border-t pt-3">
+                            <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" class="text-amber-600 hover:text-amber-800">
+                                <i class="fas fa-eye mr-1"></i> ເບິ່ງ
+                            </a>
+                            
+                            <?php if ($can_edit): ?>
+                            <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" class="text-blue-600 hover:text-blue-800">
+                                <i class="fas fa-edit mr-1"></i> ແກ້ໄຂ
+                            </a>
+                            
+                            <a href="javascript:void(0)" class="text-red-500 hover:text-red-700 delete-temple" data-id="<?= $temple['id'] ?>" data-name="<?= htmlspecialchars($temple['name']) ?>">
+                                <i class="fas fa-trash mr-1"></i> ລຶບ
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Desktop view (table layout) -->
+            <table class="data-table w-full hidden md:table">
                 <thead class="table-header">
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ວັດ</th>
@@ -161,7 +227,6 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                         </td>
                         <td class="px-6 py-4">
                             <?php if($can_edit): ?>
-                                <!-- ปุ่มสลับสถานะแบบ toggle switch -->
                                 <label class="status-toggle relative inline-block">
                                     <input type="checkbox" 
                                         class="temple-status-toggle hidden" 
@@ -216,12 +281,12 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
             
             <!-- Pagination -->
             <?php if($total_pages > 1): ?>
-            <div class="px-6 py-4 bg-white border-t border-gray-200">
-                <div class="flex justify-between items-center">
-                    <div class="text-sm text-gray-500">
+            <div class="px-4 md:px-6 py-4 bg-white border-t border-gray-200">
+                <div class="flex flex-col md:flex-row justify-between items-center">
+                    <div class="text-sm text-gray-500 mb-2 md:mb-0">
                         ສະແດງ <?= count($temples) ?> ຈາກທັງໝົດ <?= $total_temples ?> ວັດ
                     </div>
-                    <div class="flex space-x-1">
+                    <div class="flex flex-wrap justify-center gap-1">
                         <?php for($i = 1; $i <= $total_pages; $i++): ?>
                             <?php 
                             $query_params = $_GET;

@@ -532,8 +532,8 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
 
     <!-- สรุปจำนวนรายการ -->
     <div class="px-6 py-4 bg-amber-50 border-b border-amber-200">
-      <div class="flex justify-between items-center">
-        <div class="text-amber-900">
+      <div class="flex flex-wrap justify-between items-center">
+        <div class="text-amber-900 mb-2 sm:mb-0">
           <i class="fas fa-users-class mr-2"></i> ພົບຂໍ້ມູນ <span class="font-semibold text-amber-700"><?= count($monks) ?></span> ລາຍການ
         </div>
         <!-- เพิ่มปุ่มส่งออก Excel -->
@@ -545,7 +545,8 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
     </div>
 
     <?php if (count($monks) > 0): ?>
-    <div class="overflow-x-auto">
+    <!-- Table for medium and large screens -->
+    <div class="hidden md:block overflow-x-auto">
       <table class="w-full">
         <thead class="table-header">
           <tr>
@@ -645,6 +646,97 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
           <?php endforeach; ?>
         </tbody>
       </table>
+    </div>
+    
+    <!-- Card layout for mobile -->
+    <div class="md:hidden">
+      <?php foreach($monks as $monk): ?>
+      <div class="bg-white border border-amber-100 rounded-lg mb-4 overflow-hidden shadow-sm">
+        <div class="p-4 flex items-center border-b border-amber-50">
+          <div class="mr-3">
+            <?php if (!empty($monk['photo']) && $monk['photo'] !== 'uploads/monks/default.png'): ?>
+              <img src="<?= $base_url . $monk['photo'] ?>" alt="<?= htmlspecialchars($monk['name']) ?>" 
+                   class="w-16 h-16 rounded-full object-cover border-2 border-amber-200">
+            <?php else: ?>
+              <div class="w-16 h-16 rounded-full bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center">
+                <i class="fas fa-user text-amber-300 text-2xl"></i>
+              </div>
+            <?php endif; ?>
+          </div>
+          <div class="flex-grow">
+            <div class="font-medium text-sm text-amber-700"><?= htmlspecialchars($monk['prefix'] ?? '-') ?></div>
+            <div class="font-semibold text-lg text-amber-900">
+              <?= htmlspecialchars($monk['name']) ?>
+            </div>
+            <?php if (!empty($monk['lay_name'])): ?>
+            <div class="text-sm text-gray-500"><?= htmlspecialchars($monk['lay_name']) ?></div>
+            <?php endif; ?>
+          </div>
+          
+          <?php if ($can_edit && ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['temple_id'] == $monk['temple_id'])): ?>
+            <button type="button" class="toggle-status-btn" data-monk-id="<?= $monk['id'] ?>" data-current-status="<?= $monk['status'] ?>">
+              <?php if($monk['status'] === 'active'): ?>
+                <span class="status-active whitespace-nowrap">
+                  <i class="fas fa-circle text-xs mr-1"></i> ບວດຢູ່
+                  <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>
+                </span>
+              <?php else: ?>
+                <span class="status-inactive whitespace-nowrap">
+                  <i class="fas fa-circle text-xs mr-1"></i> ສິກແລ້ວ
+                  <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>
+                </span>
+              <?php endif; ?>
+            </button>
+          <?php else: ?>
+            <div>
+              <?php if($monk['status'] === 'active'): ?>
+                <span class="status-active whitespace-nowrap">
+                  <i class="fas fa-circle text-xs mr-1"></i> ບວດຢູ່
+                </span>
+              <?php else: ?>
+                <span class="status-inactive whitespace-nowrap">
+                  <i class="fas fa-circle text-xs mr-1"></i> ສິກແລ້ວ
+                </span>
+              <?php endif; ?>
+            </div>
+          <?php endif; ?>
+        </div>
+        
+        <div class="p-4 bg-amber-50 bg-opacity-40">
+          <div class="flex justify-between items-center mb-2">
+            <div class="text-sm">
+              <span class="font-medium text-amber-800">ພັນສາ:</span> 
+              <span class="text-gray-700"><?= htmlspecialchars($monk['pansa'] ?? '-') ?></span>
+            </div>
+            
+            <div class="text-sm">
+              <span class="font-medium text-amber-800">ວັດ:</span> 
+              <span class="text-gray-700"><?= htmlspecialchars($monk['temple_name'] ?? '-') ?></span>
+            </div>
+          </div>
+          
+          <div class="flex justify-end space-x-2 pt-2">
+            <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>" 
+               class="inline-flex items-center justify-center px-3 py-1.5 bg-amber-100 text-amber-800 rounded-md text-sm">
+              <i class="fas fa-eye mr-1.5"></i> ເບິ່ງ
+            </a>
+            
+            <?php if ($can_edit && ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['temple_id'] == $monk['temple_id'])): ?>
+            <a href="<?= $base_url ?>monks/edit.php?id=<?= $monk['id'] ?>" 
+               class="inline-flex items-center justify-center px-3 py-1.5 bg-amber-500 text-white rounded-md text-sm">
+              <i class="fas fa-edit mr-1.5"></i> ແກ້ໄຂ
+            </a>
+            
+            <a href="javascript:void(0)" 
+               class="inline-flex items-center justify-center px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-sm delete-monk" 
+               data-id="<?= $monk['id'] ?>" data-name="<?= htmlspecialchars($monk['name']) ?>">
+              <i class="fas fa-trash mr-1.5"></i> ລຶບ
+            </a>
+            <?php endif; ?>
+          </div>
+        </div>
+      </div>
+      <?php endforeach; ?>
     </div>
     <?php else: ?>
     <!-- แสดงข้อความเมื่อไม่พบข้อมูล -->

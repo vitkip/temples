@@ -409,22 +409,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <!-- ວັດ -->
                 <div>
                     <label for="temple_id" class="block text-sm font-medium text-gray-700">
-                        ວັດ <span class="text-red-600">*</span>
+                        ເລືອກວັດ ທີ່ສັງກັດຢູ່|ຖ້າບໍ່ມີຊື່ວັດໃຫ້ຕິດຕໍ່ admin: ເພື່ອເປີດຊື່ວັດໃຫ້<span class="text-red-600">*</span>
                     </label>
                     <div class="mt-1 input-group">
                         <span class="input-icon">
                             <i class="fas fa-place-of-worship"></i>
                         </span>
-                        <select name="temple_id" id="temple_id" 
-                            class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
-                            required>
-                            <option value="">-- ເລືອກວັດ --</option>
-                            <?php foreach ($temples as $temple): ?>
-                            <option value="<?= $temple['id'] ?>" <?= $form_data['temple_id'] == $temple['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($temple['name']) ?>
-                            </option>
-                            <?php endforeach; ?>
-                        </select>
+                      
+                        <!-- Alpine.js -->
+                        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+                        <div x-data="templeSelect()" class="relative">
+                        <!-- Search Input -->
+                        <input type="text"
+                                x-model="search"
+                                x-on:focus="open = true"
+                                x-on:keydown.arrow-down.prevent="highlight++"
+                                x-on:keydown.arrow-up.prevent="highlight--"
+                                x-on:keydown.enter.prevent="select(filtered[highlight])"
+                                placeholder="ຄົ້ນຫາວັດ..."
+                                class="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-amber-400 outline-none sm:text-sm"
+                                autocomplete="off" />
+
+                        <!-- Search Icon -->
+                        <span class="absolute left-0 top-1/2 transform -translate-y-1/2 pl-3 text-gray-400 pointer-events-none">
+                            <i class="fas fa-search"></i>
+                        </span>
+
+                        <!-- Dropdown -->
+                        <ul x-show="open" x-transition
+                            class="absolute z-10 mt-2 w-full bg-white shadow-lg rounded-md max-h-60 overflow-auto ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                            <template x-for="(temple, index) in filtered" :key="temple.id">
+                            <li :class="highlight === index ? 'bg-amber-100 text-black' : 'text-gray-900'"
+                                class="cursor-pointer select-none relative py-2 pl-10 pr-4"
+                                x-on:click="select(temple)"
+                                x-text="temple.name">
+                            </li>
+                            </template>
+                            <li x-show="filtered.length === 0" class="px-4 py-2 text-gray-400">ບໍ່ພົບວັດທີ່ຄົ້ນຫາ</li>
+                        </ul>
+
+                        <!-- Hidden input -->
+                        <input type="hidden" name="temple_id" :value="selected?.id">
+                        </div>
+
+                        <script>
+                        function templeSelect() {
+                            return {
+                            search: '',
+                            open: false,
+                            highlight: 0,
+                            selected: null,
+                            temples: <?= json_encode($temples) ?>, // หรือใช้ @json($temples) หากเป็น Blade
+                            get filtered() {
+                                if (!this.search) return this.temples
+                                return this.temples.filter(t =>
+                                t.name.toLowerCase().includes(this.search.toLowerCase())
+                                )
+                            },
+                            select(temple) {
+                                this.search = temple.name
+                                this.selected = temple
+                                this.open = false
+                                this.highlight = 0
+                            }
+                            }
+                        }
+                        </script>
                     </div>
                 </div>
                 
