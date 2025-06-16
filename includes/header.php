@@ -356,15 +356,15 @@ body {
                     <i class="fas fa-pray mr-3 w-5 text-center"></i>
                     <span>ຈັດການພະສົງ</span>
                   </a>
-                  
+                   <a href="<?= $base_url ?>temples/" class="sidebar-link <?= isActiveNav($current_path, '/temples/') ? 'temples' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                      <i class="fas fa-gopuram mr-3 w-5 text-center"></i>
+                      <span>ຈັດການວັດ</span>
+                    </a>
                   <a href="<?= $base_url ?>events/" class="sidebar-link <?= isActiveNav($current_path, '/events/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                     <i class="fas fa-calendar-alt mr-3 w-5 text-center"></i>
                     <span>ກິດຈະກໍາ</span>
                   </a>
-                  <a href="<?= $base_url ?>reports/" class="sidebar-link <?= isActiveNav($current_path, '/reports/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                    <i class="fas fa-chart-bar mr-3 w-5 text-center"></i>
-                    <span>ລາຍງານ</span>
-                  </a>
+                
                 </div>
                 
                 <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
@@ -386,19 +386,17 @@ body {
                       <i class="fas fa-money-bill-wave mr-3 w-5 text-center"></i>
                       <span>ຈັດການການຊຳລະເງິນ</span>
                     </a>
-                    <a href="<?= $base_url ?>temples/" class="sidebar-link <?= isActiveNav($current_path, '/temples/') ? 'temples' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                      <i class="fas fa-gopuram mr-3 w-5 text-center"></i>
-                      <span>ຈັດການວັດ</span>
-                    </a>
+                     <a href="<?= $base_url ?>reports/" class="sidebar-link <?= isActiveNav($current_path, '/reports/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                        <i class="fas fa-chart-bar mr-3 w-5 text-center"></i>
+                        <span>ລາຍງານ</span>
+                      </a>
                     <a href="<?= $base_url ?>users/" class="sidebar-link <?= isActiveNav($current_path, '/users/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                       <i class="fas fa-users mr-3 w-5 text-center"></i>
                       <span>ຜູ້ໃຊ້ງານລະບົບ</span>
                     </a>
                   </div>
                 </div>
-               
-                
-                <!-- Settings Section -->
+                <!-- Admin Section End -->
                 <div class="mt-8">
                     <div class="space-y-1">
                         <a href="<?= $base_url ?>admin/settings.php" class="sidebar-link <?= isActiveNav($current_path, '/admin/settings.php') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">

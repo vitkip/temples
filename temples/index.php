@@ -2,14 +2,8 @@
 $page_title = 'ຈັດການວັດ';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
-require_once '../auth/check_superadmin.php';
 require_once '../includes/header.php';
 
-if ($_SESSION['user']['role'] !== 'superadmin') {
-    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃນການເຂົ້າເຖິງໜ້າຈັດການວັດ";
-    header('Location: ' . $base_url . 'dashboard.php');
-    exit;
-}
 // Filter parameters
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $province = isset($_GET['province']) ? trim($_GET['province']) : '';
@@ -23,6 +17,14 @@ $offset = ($page - 1) * $limit;
 // Build query
 $where_conditions = [];
 $params = [];
+
+// เพิ่มเงื่อนไขการกรองตามสิทธิ์ - เพิ่มโค้ดส่วนนี้
+if ($_SESSION['user']['role'] === 'admin') {
+    // ถ้าเป็น admin วัด ให้แสดงเฉพาะวัดของตัวเอง
+    $where_conditions[] = "id = ?";
+    $params[] = $_SESSION['user']['temple_id'];
+}
+// superadmin จะไม่มีเงื่อนไขเพิ่มเติม จึงเห็นทุกวัด
 
 if (!empty($search)) {
     $where_conditions[] = "(name LIKE ? OR address LIKE ? OR abbot_name LIKE ?)";
@@ -57,8 +59,13 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $temples = $stmt->fetchAll();
 
-// Get provinces for filter
-$province_stmt = $pdo->query("SELECT DISTINCT province FROM temples ORDER BY province");
+// Get provinces for filter - แก้ให้เห็นเฉพาะแขวงที่เกี่ยวข้อง
+if ($_SESSION['user']['role'] === 'admin') {
+    $province_stmt = $pdo->prepare("SELECT DISTINCT province FROM temples WHERE id = ? ORDER BY province");
+    $province_stmt->execute([$_SESSION['user']['temple_id']]);
+} else {
+    $province_stmt = $pdo->query("SELECT DISTINCT province FROM temples ORDER BY province");
+}
 $provinces = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
 
 // Check if user has edit permissions
@@ -72,22 +79,23 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
 <div class="page-container">
     <div class="max-w-7xl mx-auto p-4">
         <!-- Page Header -->
-        <div class="header-section flex justify-between items-center mb-6 p-6 rounded-lg">
-            <div>
-                <h1 class="text-2xl font-bold flex items-center">
-                    <div class="category-icon">
-                        <i class="fas fa-gopuram"></i>
-                    </div>
-                    ຈັດການວັດ
-                </h1>
-                <p class="text-sm text-amber-700 mt-1">ເບິ່ງແລະຈັດການຂໍ້ມູນວັດທັງໝົດ</p>
-            </div>
-            <?php if ($can_edit): ?>
-            <a href="<?= $base_url ?>temples/add.php" class="btn-primary flex items-center gap-2">
-                <i class="fas fa-plus"></i> ເພີ່ມວັດໃໝ່
-            </a>
-            <?php endif; ?>
+         
+    <div class="header-section flex justify-between items-center mb-6 p-6 rounded-lg">
+        <div>
+            <h1 class="text-2xl font-bold flex items-center">
+                <div class="category-icon">
+                    <i class="fas fa-gopuram"></i>
+                </div>
+                ຈັດການວັດ
+            </h1>
+            <p class="text-sm text-amber-700 mt-1">ເບິ່ງແລະຈັດການຂໍ້ມູນວັດທັງໝົດ</p>
         </div>
+        <?php if ($_SESSION['user']['role'] === 'superadmin'): /* แก้เงื่อนไขให้เฉพาะ superadmin เห็นปุ่มเพิ่มวัดใหม่ */ ?>
+        <a href="<?= $base_url ?>temples/add.php" class="btn-primary flex items-center gap-2">
+            <i class="fas fa-plus"></i> ເພີ່ມວັດໃໝ່
+        </a>
+        <?php endif; ?>
+    </div>
 
         <!-- Filters -->
         <div class="card filter-section p-6 mb-6">
@@ -137,177 +145,195 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
         <!-- Temples List -->
         <div class="card overflow-hidden">
             <?php if (count($temples) > 0): ?>
-            <!-- Mobile view (card layout) -->
-            <div class="block md:hidden">
+            <!-- Responsive Table: Desktop view -->
+            <table class="w-full data-table hidden md:table">
+            <thead class="table-header">
+                <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ວັດ</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານທີ່</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ເຈົ້າອະທິການ</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານະ</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຈັດການ</th>
+                </tr>
+            </thead>
+            <tbody>
                 <?php foreach($temples as $temple): ?>
-                    <div class="border-b p-4">
-                        <div class="font-medium text-gray-900 mb-2"><?= htmlspecialchars($temple['name']) ?></div>
-                        <div class="grid grid-cols-2 gap-2 text-sm">
-                            <div class="text-gray-600">ສະຖານທີ່:</div>
-                            <div><?= htmlspecialchars($temple['district']) ?>, <?= htmlspecialchars($temple['province']) ?></div>
-                            
-                            <div class="text-gray-600">ເຈົ້າອະທິການ:</div>
-                            <div><?= htmlspecialchars($temple['abbot_name'] ?? '-') ?></div>
-                            
-                            <div class="text-gray-600">ສະຖານະ:</div>
-                            <div>
-                                <?php if($can_edit): ?>
-                                    <label class="status-toggle relative inline-block">
-                                        <input type="checkbox" 
-                                            class="temple-status-toggle hidden" 
-                                            data-id="<?= $temple['id'] ?>" 
-                                            data-name="<?= htmlspecialchars($temple['name']) ?>"
-                                            <?= $temple['status'] === 'active' ? 'checked' : '' ?>>
-                                        <span class="toggle-slider <?= $temple['status'] === 'active' ? 'bg-amber-500' : 'bg-gray-300' ?>">
-                                            <span class="status-text">
-                                                <?php if($temple['status'] === 'active'): ?>
-                                                    <i class="fas fa-circle text-xs mr-1"></i> ເປີດໃຊ້ງານ
-                                                <?php else: ?>
-                                                    <i class="fas fa-circle-notch text-xs mr-1"></i> ປິດໃຊ້ງານ
-                                                <?php endif; ?>
-                                            </span>
-                                        </span>
-                                    </label>
-                                <?php else: ?>
-                                    <?php if($temple['status'] === 'active'): ?>
-                                        <span class="status-badge status-active">
-                                            <i class="fas fa-circle text-xs mr-1"></i>
-                                            ເປີດໃຊ້ງານ
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="status-badge bg-gray-100 text-gray-600 border border-gray-200">
-                                            <i class="fas fa-circle-notch text-xs mr-1"></i>
-                                            ປິດໃຊ້ງານ
-                                        </span>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                            </div>
-                        </div>
-                        <div class="mt-3 flex space-x-4 border-t pt-3">
-                            <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" class="text-amber-600 hover:text-amber-800">
-                                <i class="fas fa-eye mr-1"></i> ເບິ່ງ
-                            </a>
-                            
-                            <?php if ($can_edit): ?>
-                            <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" class="text-blue-600 hover:text-blue-800">
-                                <i class="fas fa-edit mr-1"></i> ແກ້ໄຂ
-                            </a>
-                            
-                            <a href="javascript:void(0)" class="text-red-500 hover:text-red-700 delete-temple" data-id="<?= $temple['id'] ?>" data-name="<?= htmlspecialchars($temple['name']) ?>">
-                                <i class="fas fa-trash mr-1"></i> ລຶບ
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-
-            <!-- Desktop view (table layout) -->
-            <table class="data-table w-full hidden md:table">
-                <thead class="table-header">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ວັດ</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານທີ່</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ເຈົ້າອະທິການ</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານະ</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຈັດການ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($temples as $temple): ?>
-                    <tr class="table-row hover:bg-gray-50">
-                        <td class="px-6 py-4">
-                            <div class="font-medium text-gray-900"><?= htmlspecialchars($temple['name']) ?></div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-gray-500"><?= htmlspecialchars($temple['district']) ?>, <?= htmlspecialchars($temple['province']) ?></div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-gray-500"><?= htmlspecialchars($temple['abbot_name'] ?? '-') ?></div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <?php if($can_edit): ?>
-                                <label class="status-toggle relative inline-block">
-                                    <input type="checkbox" 
-                                        class="temple-status-toggle hidden" 
-                                        data-id="<?= $temple['id'] ?>" 
-                                        data-name="<?= htmlspecialchars($temple['name']) ?>"
-                                        <?= $temple['status'] === 'active' ? 'checked' : '' ?>>
-                                    <span class="toggle-slider <?= $temple['status'] === 'active' ? 'bg-amber-500' : 'bg-gray-300' ?>">
-                                        <span class="status-text">
-                                            <?php if($temple['status'] === 'active'): ?>
-                                                <i class="fas fa-circle text-xs mr-1"></i> ເປີດໃຊ້ງານ
-                                            <?php else: ?>
-                                                <i class="fas fa-circle-notch text-xs mr-1"></i> ປິດໃຊ້ງານ
-                                            <?php endif; ?>
-                                        </span>
-                                    </span>
-                                </label>
+                <tr class="table-row hover:bg-gray-50">
+                <td class="px-6 py-4">
+                    <div class="font-medium text-gray-900"><?= htmlspecialchars($temple['name']) ?></div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-gray-500"><?= htmlspecialchars($temple['district']) ?>, <?= htmlspecialchars($temple['province']) ?></div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-gray-500"><?= htmlspecialchars($temple['abbot_name'] ?? '-') ?></div>
+                </td>
+                <td class="px-6 py-4">
+                    <?php if($can_edit): ?>
+                    <!-- ปุ่มสลับสถานะแบบ toggle switch -->
+                    <label class="status-toggle relative inline-block">
+                        <input type="checkbox" 
+                        class="temple-status-toggle hidden" 
+                        data-id="<?= $temple['id'] ?>" 
+                        data-name="<?= htmlspecialchars($temple['name']) ?>"
+                        <?= $temple['status'] === 'active' ? 'checked' : '' ?>>
+                        <span class="toggle-slider <?= $temple['status'] === 'active' ? 'bg-amber-500' : 'bg-gray-300' ?>">
+                        <span class="status-text">
+                            <?php if($temple['status'] === 'active'): ?>
+                            <i class="fas fa-circle text-xs mr-1"></i> ເປີດໃຊ້ງານ
                             <?php else: ?>
-                                <?php if($temple['status'] === 'active'): ?>
-                                    <span class="status-badge status-active">
-                                        <i class="fas fa-circle text-xs mr-1"></i>
-                                        ເປີດໃຊ້ງານ
-                                    </span>
-                                <?php else: ?>
-                                    <span class="status-badge bg-gray-100 text-gray-600 border border-gray-200">
-                                        <i class="fas fa-circle-notch text-xs mr-1"></i>
-                                        ປິດໃຊ້ງານ
-                                    </span>
-                                <?php endif; ?>
+                            <i class="fas fa-circle-notch text-xs mr-1"></i> ປິດໃຊ້ງານ
                             <?php endif; ?>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <div class="flex space-x-3">
-                                <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" class="text-amber-600 hover:text-amber-800">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                                
-                                <?php if ($can_edit): ?>
-                                <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" class="text-blue-600 hover:text-blue-800">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                
-                                <a href="javascript:void(0)" class="text-red-500 hover:text-red-700 delete-temple" data-id="<?= $temple['id'] ?>" data-name="<?= htmlspecialchars($temple['name']) ?>">
-                                    <i class="fas fa-trash"></i>
-                                </a>
-                                <?php endif; ?>
-                            </div>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
+                        </span>
+                        </span>
+                    </label>
+                    <?php else: ?>
+                    <?php if($temple['status'] === 'active'): ?>
+                        <span class="status-badge status-active">
+                        <i class="fas fa-circle text-xs mr-1"></i>
+                        ເປີດໃຊ້ງານ
+                        </span>
+                    <?php else: ?>
+                        <span class="status-badge bg-gray-100 text-gray-600 border border-gray-200">
+                        <i class="fas fa-circle-notch text-xs mr-1"></i>
+                        ປິດໃຊ້ງານ
+                        </span>
+                    <?php endif; ?>
+                    <?php endif; ?>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <div class="flex space-x-3">
+                    <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" class="text-amber-600 hover:text-amber-800">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    
+                    <?php if ($can_edit): ?>
+                    <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    
+                    <?php if ($_SESSION['user']['role'] === 'superadmin'): /* เพิ่มเงื่อนไขให้เฉพาะ superadmin สามารถลบวัด */ ?>
+                    <a href="javascript:void(0)" class="text-red-500 hover:text-red-700 delete-temple" data-id="<?= $temple['id'] ?>" data-name="<?= htmlspecialchars($temple['name']) ?>">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                    <?php endif; ?>
+                    <?php endif; ?>
+                    </div>
+                </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
             </table>
+            
+            <!-- Mobile view: Card-based layout -->
+            <div class="md:hidden">
+            <?php foreach($temples as $temple): ?>
+            <div class="border-b p-4">
+                <div class="flex justify-between items-start mb-2">
+                <h3 class="font-bold text-gray-900"><?= htmlspecialchars($temple['name']) ?></h3>
+                <div>
+                    <?php if($temple['status'] === 'active'): ?>
+                    <span class="inline-block px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                        <i class="fas fa-circle text-xs"></i> ເປີດໃຊ້ງານ
+                    </span>
+                    <?php else: ?>
+                    <span class="inline-block px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-600">
+                        <i class="fas fa-circle-notch text-xs"></i> ປິດໃຊ້ງານ
+                    </span>
+                    <?php endif; ?>
+                </div>
+                </div>
+                
+                <div class="text-sm text-gray-600 mb-1">
+                <i class="fas fa-map-marker-alt mr-1"></i> 
+                <?= htmlspecialchars($temple['district']) ?>, <?= htmlspecialchars($temple['province']) ?>
+                </div>
+                
+                <div class="text-sm text-gray-600 mb-3">
+                <i class="fas fa-user mr-1"></i> 
+                <?= htmlspecialchars($temple['abbot_name'] ?? '-') ?>
+                </div>
+                
+                <div class="flex justify-between items-center mt-2">
+                <!-- Status toggle for mobile -->
+                <?php if($can_edit): ?>
+                <div class="flex-grow">
+                    <label class="status-toggle relative inline-block">
+                    <input type="checkbox" 
+                        class="temple-status-toggle hidden" 
+                        data-id="<?= $temple['id'] ?>" 
+                        data-name="<?= htmlspecialchars($temple['name']) ?>"
+                        <?= $temple['status'] === 'active' ? 'checked' : '' ?>>
+                    <span class="toggle-slider <?= $temple['status'] === 'active' ? 'bg-amber-500' : 'bg-gray-300' ?>">
+                        <span class="status-text">
+                        <?php if($temple['status'] === 'active'): ?>
+                            <i class="fas fa-circle text-xs mr-1"></i> ເປີດໃຊ້ງານ
+                        <?php else: ?>
+                            <i class="fas fa-circle-notch text-xs mr-1"></i> ປິດໃຊ້ງານ
+                        <?php endif; ?>
+                        </span>
+                    </span>
+                    </label>
+                </div>
+                <?php endif; ?>
+                
+                <!-- Actions -->
+                <div class="flex space-x-4">
+                    <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" 
+                       class="flex items-center text-amber-600 hover:text-amber-800">
+                    <i class="fas fa-eye mr-1"></i> <span class="text-xs">ເບິ່ງ</span>
+                    </a>
+                    
+                    <?php if ($can_edit): ?>
+                    <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" 
+                       class="flex items-center text-blue-600 hover:text-blue-800">
+                    <i class="fas fa-edit mr-1"></i> <span class="text-xs">ແກ້ໄຂ</span>
+                    </a>
+                    
+                    <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
+                    <a href="javascript:void(0)" 
+                       class="flex items-center text-red-500 hover:text-red-700 delete-temple" 
+                       data-id="<?= $temple['id'] ?>" 
+                       data-name="<?= htmlspecialchars($temple['name']) ?>">
+                    <i class="fas fa-trash mr-1"></i> <span class="text-xs">ລຶບ</span>
+                    </a>
+                    <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+            </div>
             
             <!-- Pagination -->
             <?php if($total_pages > 1): ?>
             <div class="px-4 md:px-6 py-4 bg-white border-t border-gray-200">
-                <div class="flex flex-col md:flex-row justify-between items-center">
-                    <div class="text-sm text-gray-500 mb-2 md:mb-0">
-                        ສະແດງ <?= count($temples) ?> ຈາກທັງໝົດ <?= $total_temples ?> ວັດ
-                    </div>
-                    <div class="flex flex-wrap justify-center gap-1">
-                        <?php for($i = 1; $i <= $total_pages; $i++): ?>
-                            <?php 
-                            $query_params = $_GET;
-                            $query_params['page'] = $i;
-                            $query_string = http_build_query($query_params);
-                            ?>
-                            <a 
-                                href="?<?= $query_string ?>" 
-                                class="<?= $i === $page ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' ?> px-3 py-1 rounded"
-                            >
-                                <?= $i ?>
-                            </a>
-                        <?php endfor; ?>
-                    </div>
+            <div class="flex flex-col md:flex-row md:justify-between md:items-center">
+                <div class="text-sm text-gray-500 mb-2 md:mb-0">
+                ສະແດງ <?= count($temples) ?> ຈາກທັງໝົດ <?= $total_temples ?> ວັດ
                 </div>
+                <div class="flex flex-wrap gap-1 justify-center md:justify-end">
+                <?php for($i = 1; $i <= $total_pages; $i++): ?>
+                    <?php 
+                    $query_params = $_GET;
+                    $query_params['page'] = $i;
+                    $query_string = http_build_query($query_params);
+                    ?>
+                    <a 
+                    href="?<?= $query_string ?>" 
+                    class="<?= $i === $page ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' ?> px-3 py-1 rounded text-center min-w-[2rem]"
+                    >
+                    <?= $i ?>
+                    </a>
+                <?php endfor; ?>
+                </div>
+            </div>
             </div>
             <?php endif; ?>
             
             <?php else: ?>
             <div class="p-6 text-center">
-                <div class="text-gray-500">ບໍ່ພົບລາຍການວັດ</div>
+            <div class="text-gray-500">ບໍ່ພົບລາຍການວັດ</div>
             </div>
             <?php endif; ?>
         </div>

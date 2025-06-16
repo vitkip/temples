@@ -139,67 +139,130 @@ $can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['rol
     <?php endif; ?>
 
     <?php if (count($events) > 0): ?>
-    <table class="w-full">
-        <thead class="bg-gray-50">
-            <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ກິດຈະກຳ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັນທີ & ເວລາ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານທີ່</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັດ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ພະສົງ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຈັດການ</th>
-            </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-200">
+    <!-- Table for medium and larger screens -->
+    <div class="hidden md:block">
+        <table class="w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ກິດຈະກຳ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັນທີ & ເວລາ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານທີ່</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ວັດ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ພະສົງ</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຈັດການ</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                <?php foreach($events as $event): 
+                    // ຄົ້ນຫາຈຳນວນພະສົງທີ່ເຂົ້າຮ່ວມກິດຈະກຳ
+                    $monk_stmt = $pdo->prepare("SELECT COUNT(*) FROM event_monk WHERE event_id = ?");
+                    $monk_stmt->execute([$event['id']]);
+                    $monk_count = $monk_stmt->fetchColumn();
+                ?>
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-900"><?= htmlspecialchars($event['title']) ?></div>
+                        <div class="text-sm text-gray-500 line-clamp-1"><?= htmlspecialchars($event['description']) ?></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900"><?= date('d/m/Y', strtotime($event['event_date'])) ?></div>
+                        <div class="text-sm text-gray-500"><?= date('H:i', strtotime($event['event_time'])) ?> ໂມງ</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-500"><?= htmlspecialchars($event['location'] ?? '-') ?></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-500"><?= htmlspecialchars($event['temple_name'] ?? '-') ?></div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-500">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                <?= $monk_count ?> ອົງ
+                            </span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div class="flex space-x-2">
+                            <a href="<?= $base_url ?>events/view.php?id=<?= $event['id'] ?>" class="text-indigo-600 hover:text-indigo-900">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            
+                            <?php if ($_SESSION['user']['role'] === 'superadmin' || ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id'])): ?>
+                            <a href="<?= $base_url ?>events/edit.php?id=<?= $event['id'] ?>" class="text-blue-600 hover:text-blue-900">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            
+                            <a href="javascript:void(0)" class="text-red-600 hover:text-red-900 delete-event" data-id="<?= $event['id'] ?>" data-title="<?= htmlspecialchars($event['title']) ?>">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Card layout for small screens (mobile) -->
+    <div class="md:hidden">
+        <div class="grid grid-cols-1 gap-4">
             <?php foreach($events as $event): 
                 // ຄົ້ນຫາຈຳນວນພະສົງທີ່ເຂົ້າຮ່ວມກິດຈະກຳ
                 $monk_stmt = $pdo->prepare("SELECT COUNT(*) FROM event_monk WHERE event_id = ?");
                 $monk_stmt->execute([$event['id']]);
                 $monk_count = $monk_stmt->fetchColumn();
             ?>
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900"><?= htmlspecialchars($event['title']) ?></div>
-                    <div class="text-sm text-gray-500 line-clamp-1"><?= htmlspecialchars($event['description']) ?></div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-sm text-gray-900"><?= date('d/m/Y', strtotime($event['event_date'])) ?></div>
-                    <div class="text-sm text-gray-500"><?= date('H:i', strtotime($event['event_time'])) ?> ໂມງ</div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-sm text-gray-500"><?= htmlspecialchars($event['location'] ?? '-') ?></div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-sm text-gray-500"><?= htmlspecialchars($event['temple_name'] ?? '-') ?></div>
-                </td>
-                <td class="px-6 py-4">
-                    <div class="text-sm text-gray-500">
-                        <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                            <?= $monk_count ?> ອົງ
-                        </span>
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                <div class="font-medium text-lg mb-2"><?= htmlspecialchars($event['title']) ?></div>
+                
+                <div class="mb-3 text-sm text-gray-600"><?= htmlspecialchars($event['description']) ?></div>
+                
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div>
+                        <div class="text-xs text-gray-500">ວັນທີ & ເວລາ:</div>
+                        <div class="text-sm font-medium"><?= date('d/m/Y', strtotime($event['event_date'])) ?> - <?= date('H:i', strtotime($event['event_time'])) ?> ໂມງ</div>
                     </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div class="flex space-x-2">
-                        <a href="<?= $base_url ?>events/view.php?id=<?= $event['id'] ?>" class="text-indigo-600 hover:text-indigo-900">
-                            <i class="fas fa-eye"></i>
-                        </a>
-                        
-                        <?php if ($_SESSION['user']['role'] === 'superadmin' || ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id'])): ?>
-                        <a href="<?= $base_url ?>events/edit.php?id=<?= $event['id'] ?>" class="text-blue-600 hover:text-blue-900">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        
-                        <a href="javascript:void(0)" class="text-red-600 hover:text-red-900 delete-event" data-id="<?= $event['id'] ?>" data-title="<?= htmlspecialchars($event['title']) ?>">
-                            <i class="fas fa-trash"></i>
-                        </a>
-                        <?php endif; ?>
+                    <div>
+                        <div class="text-xs text-gray-500">ສະຖານທີ່:</div>
+                        <div class="text-sm font-medium"><?= htmlspecialchars($event['location'] ?? '-') ?></div>
                     </div>
-                </td>
-            </tr>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div>
+                        <div class="text-xs text-gray-500">ວັດ:</div>
+                        <div class="text-sm font-medium"><?= htmlspecialchars($event['temple_name'] ?? '-') ?></div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-gray-500">ພະສົງ:</div>
+                        <div>
+                            <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                                <?= $monk_count ?> ອົງ
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-3 border-t border-gray-100">
+                    <a href="<?= $base_url ?>events/view.php?id=<?= $event['id'] ?>" class="text-indigo-600 hover:text-indigo-900 px-2 py-1">
+                        <i class="fas fa-eye mr-1"></i> ເບິ່ງ
+                    </a>
+                    
+                    <?php if ($_SESSION['user']['role'] === 'superadmin' || ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id'])): ?>
+                    <a href="<?= $base_url ?>events/edit.php?id=<?= $event['id'] ?>" class="text-blue-600 hover:text-blue-900 px-2 py-1">
+                        <i class="fas fa-edit mr-1"></i> ແກ້ໄຂ
+                    </a>
+                    
+                    <a href="javascript:void(0)" class="text-red-600 hover:text-red-900 px-2 py-1 delete-event" data-id="<?= $event['id'] ?>" data-title="<?= htmlspecialchars($event['title']) ?>">
+                        <i class="fas fa-trash mr-1"></i> ລຶບ
+                    </a>
+                    <?php endif; ?>
+                </div>
+            </div>
             <?php endforeach; ?>
-        </tbody>
-    </table>
+        </div>
+    </div>
     <?php else: ?>
     <!-- ສະແດງຂໍ້ຄວາມເມື່ອບໍ່ພົບຂໍ້ມູນ -->
     <div class="p-8 text-center text-gray-500">

@@ -117,7 +117,7 @@ $pdf->setPrintFooter(false);
 $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
 // Set margins
-$pdf->SetMargins(5, 10, 5);
+$pdf->SetMargins(5, 5, 5);
 
 // Set auto page breaks
 $pdf->SetAutoPageBreak(TRUE, 10);
@@ -130,9 +130,15 @@ $pdf->SetFont('dejavusans', '', 12);
 
 // Add a page
 $pdf->AddPage();
+// Set document headers
+$pdf->SetFont('dejavusans', 'B', 14);
+$pdf->Cell(0, 10, 'ສາທາລະນະລັດ ປະຊາທິປະໄຕ ປະຊາຊົນລາວ', 0, 1, 'C');
+$pdf->Cell(0, 10, 'ສັນຕິພາບ ເອກະລາດ ປະຊາທິປະໄຕ ເອກະພາບ ວັດທະນະຖາວອນ', 0, 1, 'C');
 
-// Set title
+// Set report title
 $title = 'ລາຍງານຂໍ້ມູນພຣະສົງ';
+$pdf->SetFont('dejavusans', '', 10); // Reduced from 16 to 14
+         
 if ($temple_name) {
     $title .= ' - ວັດ' . $temple_name;
 }

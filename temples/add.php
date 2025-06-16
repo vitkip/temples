@@ -2,15 +2,10 @@
 $page_title = 'ເພີ່ມວັດໃໝ່';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
-require_once '../auth/check_superadmin.php';
+
 require_once '../includes/header.php';
 
-// Check if user has permission
-if ($_SESSION['user']['role'] !== 'superadmin') {
-    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃນການເພີ່ມຂໍ້ມູນວັດ";
-    header('Location: ' . $base_url . 'temples/');
-    exit;
-}
+
 
 $success = false;
 $error = false;
