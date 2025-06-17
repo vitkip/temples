@@ -1,19 +1,18 @@
 <?php
 session_start();
-
 require_once '../config/db.php';
 require_once '../config/base_url.php';
 
-require_once('../vendor/autoload.php');
+// เพิ่มการโหลดไลบรารี TCPDF
+require_once '../vendor/tecnickcom/tcpdf/tcpdf.php';
 
-// ตั้งค่าให้ TCPDF หาฟอนต์ในโฟลเดอร์เพิ่มเติม
-$tcpdf_fonts_path = dirname(__FILE__) . '/../vendor/tecnickcom/tcpdf/fonts/';
-TCPDF_FONTS::addTTFfont(
-    dirname(__FILE__) . '/../assets/fonts/saysettha_ot.ttf',
-    'TrueTypeUnicode',
-    '', 
-    96
-);
+// กำหนด path สำหรับฟอนต์
+$font_path = dirname(__FILE__) . '/../assets/fonts/Phetsarathot.ttf';
+
+// ตรวจสอบว่ามีไฟล์ฟอนต์อยู่จริง
+if (!file_exists($font_path)) {
+    die("ไม่พบไฟล์ฟอนต์ที่: $font_path");
+}
 
 // ກວດສອບວ່າຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບແລ້ວຫຼືບໍ່
 if (!isset($_SESSION['user'])) {
@@ -97,15 +96,25 @@ if ($temple_filter) {
     }
 }
 
-// Require TCPDF library (needs to be installed)
-require_once('../vendor/autoload.php');
+// สร้างอ็อบเจ็กต์ PDF
+$pdf = new TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
 
-// Create new PDF document
-$pdf = new TCPDF('L', 'mm', 'A4', true, 'UTF-8');
+// เพิ่มฟอนต์และเก็บชื่อฟอนต์ที่ได้
+$fontname = TCPDF_FONTS::addTTFfont(
+    $font_path,
+    'TrueTypeUnicode',
+    '',
+    96
+);
+
+if (!$fontname) {
+    // ถ้าไม่สามารถเพิ่มฟอนต์ได้ ให้ใช้ฟอนต์ default
+    $fontname = 'dejavusans';
+}
 
 // Set document information
-$pdf->SetCreator(PDF_CREATOR);
-$pdf->SetAuthor('Temple Management System');
+$pdf->SetCreator('Temple Management System');
+$pdf->SetAuthor('Temple Admin');
 $pdf->SetTitle('ລາຍງານຂໍ້ມູນພຣະສົງ');
 $pdf->SetSubject('ຂໍ້ມູນພຣະສົງ');
 
@@ -117,7 +126,7 @@ $pdf->setPrintFooter(false);
 $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
 // Set margins
-$pdf->SetMargins(5, 5, 5);
+$pdf->SetMargins(5, 10, 5);
 
 // Set auto page breaks
 $pdf->SetAutoPageBreak(TRUE, 10);
@@ -125,20 +134,14 @@ $pdf->SetAutoPageBreak(TRUE, 10);
 // Set image scale factor
 $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 
-// ใช้ฟอนต์ที่กำหนด
-$pdf->SetFont('dejavusans', '', 12);
-
 // Add a page
 $pdf->AddPage();
 // Set document headers
-$pdf->SetFont('dejavusans', 'B', 14);
+$pdf->SetFont($fontname, 'B', 12);
 $pdf->Cell(0, 10, 'ສາທາລະນະລັດ ປະຊາທິປະໄຕ ປະຊາຊົນລາວ', 0, 1, 'C');
 $pdf->Cell(0, 10, 'ສັນຕິພາບ ເອກະລາດ ປະຊາທິປະໄຕ ເອກະພາບ ວັດທະນະຖາວອນ', 0, 1, 'C');
-
-// Set report title
+// Set title
 $title = 'ລາຍງານຂໍ້ມູນພຣະສົງ';
-$pdf->SetFont('dejavusans', '', 10); // Reduced from 16 to 14
-         
 if ($temple_name) {
     $title .= ' - ວັດ' . $temple_name;
 }
@@ -146,12 +149,12 @@ if ($status_filter) {
     $title .= ' - ' . ($status_filter == 'active' ? 'ບວດຢູ່' : 'ສຶກແລ້ວ');
 }
 
-$pdf->SetFont('dejavusans', 'B', 16);
+$pdf->SetFont($fontname, 'B', 12);
 $pdf->Cell(0, 10, $title, 0, 1, 'C');
 $pdf->Ln(5);
 
 // Filter info
-$pdf->SetFont('dejavusans', '', 10);
+$pdf->SetFont($fontname, '', 10);
 $filter_text = 'ຕົວກອງ: ';
 if ($search_term) $filter_text .= 'ຄົ້ນຫາ "' . $search_term . '"';
 if ($position_filter) $filter_text .= ($search_term ? ', ' : '') . 'ຕໍາແໜ່ງ "' . $position_filter . '"';
@@ -163,34 +166,34 @@ $pdf->Cell(0, 6, 'ວັນທີ່ພິມ: ' . date('d/m/Y H:i'), 0, 1, 'L')
 $pdf->Ln(5);
 
 // Table header
-$pdf->SetFont('dejavusans', 'B', 10);
+$pdf->SetFont($fontname, 'B', 10);
 $pdf->SetFillColor(200, 220, 255);
 $pdf->Cell(10, 10, 'ລຳດັບ', 1, 0, 'C', true);
-$pdf->Cell(20, 10, 'ຄຳນຳໜ້າ', 1, 0, 'C', true); // เพิ่มคอลัมน์ prefix
-$pdf->Cell(45, 10, 'ຊື່', 1, 0, 'C', true); // ลดความกว้างลงเล็กน้อย
-$pdf->Cell(35, 10, 'ນາມສະກຸນ', 1, 0, 'C', true); // ปรับความกว้างลง
+$pdf->Cell(20, 10, 'ຄຳນຳໜ້າ', 1, 0, 'C', true);
+$pdf->Cell(45, 10, 'ຊື່', 1, 0, 'C', true);
+$pdf->Cell(35, 10, 'ນາມສະກຸນ', 1, 0, 'C', true);
 $pdf->Cell(20, 10, 'ພັນສາ', 1, 0, 'C', true);
 $pdf->Cell(30, 10, 'ວັນບວດ', 1, 0, 'C', true);
 $pdf->Cell(40, 10, 'ຕໍາແໜ່ງ', 1, 0, 'C', true);
-$pdf->Cell(50, 10, 'ວັດ', 1, 0, 'C', true); // ปรับความกว้างลง
+$pdf->Cell(50, 10, 'ວັດ', 1, 0, 'C', true);
 $pdf->Cell(20, 10, 'ສະຖານະ', 1, 1, 'C', true);
 
 // Table content
-$pdf->SetFont('dejavusans', '', 8);
+$pdf->SetFont($fontname, '', 8);
 
 if (count($monks) > 0) {
     foreach($monks as $i => $monk) {
         $pdf->Cell(10, 8, $i + 1, 1, 0, 'C');
-        $pdf->Cell(20, 8, $monk['prefix'] ?? '-', 1, 0, 'C'); // เพิ่มคอลัมน์ prefix
-        $pdf->Cell(45, 8, $monk['name'], 1, 0, 'L'); // ลดความกว้างลงเล็กน้อย
-        $pdf->Cell(35, 8, $monk['lay_name'] ?? '-', 1, 0, 'L'); // ปรับความกว้างลง
-        $pdf->Cell(20, 8, $monk['pansa'] . ' ພັນສາ', 1, 0, 'C');
+        $pdf->Cell(20, 8, $monk['prefix'] ?? '-', 1, 0, 'C');
+        $pdf->Cell(45, 8, $monk['name'], 1, 0, 'L');
+        $pdf->Cell(35, 8, $monk['lay_name'] ?? '-', 1, 0, 'L');
+        $pdf->Cell(20, 8, ($monk['pansa'] ?? '0') . ' ພັນສາ', 1, 0, 'C');
         
         $ordination_date = $monk['ordination_date'] ? date('d/m/Y', strtotime($monk['ordination_date'])) : '-';
         $pdf->Cell(30, 8, $ordination_date, 1, 0, 'C');
         
         $pdf->Cell(40, 8, $monk['position'] ?? '-', 1, 0, 'L');
-        $pdf->Cell(50, 8, $monk['temple_name'], 1, 0, 'L'); // ปรับความกว้างลง
+        $pdf->Cell(50, 8, $monk['temple_name'], 1, 0, 'L');
         
         $status_text = $monk['status'] == 'active' ? 'ບວດຢູ່' : 'ສຶກແລ້ວ';
         $pdf->Cell(20, 8, $status_text, 1, 1, 'C');
@@ -203,9 +206,9 @@ if (count($monks) > 0) {
 
 // Summary
 $pdf->Ln(5);
-$pdf->SetFont('saysettha_ot', 'B', 12);
+$pdf->SetFont($fontname, 'B', 12);
 $pdf->Cell(0, 8, 'ສະຫຼຸບ:', 0, 1);
-$pdf->SetFont('saysettha_ot', '', 10);
+$pdf->SetFont($fontname, '', 10);
 $pdf->Cell(0, 6, 'ຈໍານວນພຣະສົງທັງໝົດ: ' . count($monks) . ' ລາຍການ', 0, 1);
 
 // นับจำนวนแยกตาม prefix
@@ -220,11 +223,11 @@ foreach ($monks as $monk) {
 
 // เพิ่มตารางสรุปจำแนกตาม prefix
 $pdf->Ln(5);
-$pdf->SetFont('saysettha_ot', 'B', 12);
+$pdf->SetFont($fontname, 'B', 12);
 $pdf->Cell(0, 8, 'ສະຫຼຸບຕາມຄຳນຳໜ້າ:', 0, 1);
 
 // สร้างตารางสรุป
-$pdf->SetFont('dejavusans', 'B', 10);
+$pdf->SetFont($fontname, 'B', 10);
 $pdf->SetFillColor(200, 220, 255);
 
 // หัวตารางสรุป
@@ -233,7 +236,7 @@ $pdf->Cell(40, 8, 'ຄຳນຳໜ້າ', 1, 0, 'C', true);
 $pdf->Cell(30, 8, 'ຈຳນວນ', 1, 1, 'C', true);
 
 // เนื้อหาตารางสรุป
-$pdf->SetFont('dejavusans', '', 10);
+$pdf->SetFont($fontname, '', 10);
 $i = 1;
 $total = 0;
 foreach ($prefix_count as $prefix => $count) {
@@ -244,7 +247,7 @@ foreach ($prefix_count as $prefix => $count) {
 }
 
 // แสดงยอดรวม
-$pdf->SetFont('dejavusans', 'B', 10);
+$pdf->SetFont($fontname, 'B', 10);
 $pdf->Cell(60, 8, 'ລວມທັງໝົດ', 1, 0, 'C', true);
 $pdf->Cell(30, 8, $total . ' ລາຍການ', 1, 1, 'C', true);
 
