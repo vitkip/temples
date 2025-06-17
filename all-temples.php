@@ -665,7 +665,7 @@ try {
                                     <?php endif; ?>
                                     
                                     <div class="card-footer mt-2">
-                                        <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" 
+                                        <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" 
                                         class="btn-primary w-full flex items-center justify-center text-xs py-2">
                                             <i class="fas fa-info-circle mr-1"></i> ເບິ່ງລາຍລະອຽດ
                                         </a>
@@ -724,7 +724,7 @@ try {
                             <?php endif; ?>
                             
                             <div class="card-footer">
-                                <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" 
+                                <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" 
                                 class="btn-primary w-full flex items-center justify-center">
                                     <i class="fas fa-info-circle mr-2"></i> ເບິ່ງລາຍລະອຽດ
                                 </a>

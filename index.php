@@ -506,7 +506,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                                     <?= htmlspecialchars($temple['abbot_name'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?>
                                 </div>
                                 <div class="mt-2">
-                                    <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" class="btn-primary w-full flex items-center justify-center text-xs py-2">
+                                    <a href="<?= $base_url ?>temples/view-detaile.php?id=1<?= $temple['id'] ?>" class="btn-primary w-full flex items-center justify-center text-xs py-2">
                                         <i class="fas fa-info-circle mr-1"></i> ເບິ່ງລາຍລະອຽດ
                                     </a>
                                 </div>
@@ -556,7 +556,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                             <?= htmlspecialchars($temple['phone'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?>
                         </div>
                         
-                        <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" class="btn-primary w-full flex items-center justify-center">
+                        <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" class="btn-primary w-full flex items-center justify-center">
                             <i class="fas fa-info-circle mr-2"></i> ເບິ່ງລາຍລະອຽດ
                         </a>
                     </div>
@@ -770,7 +770,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                             </a>
                         </li>
                         <li>
-                            <a href="<?= $base_url ?>temples/" class="text-base text-gray-300 hover:text-amber-200">
+                            <a href="<?= $base_url ?>all-temples.php" class="text-base text-gray-300 hover:text-amber-200">
                                 ລາຍຊື່ວັດ
                             </a>
                         </li>
