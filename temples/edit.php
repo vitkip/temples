@@ -225,12 +225,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">ແຂວງ</label>
-                                <input 
-                                    type="text" 
+                                <select 
                                     name="province"
-                                    value="<?= htmlspecialchars($temple['province'] ?? '') ?>"
-                                    class="form-input w-full"
+                                    class="form-select w-full"
                                 >
+                                    <option value="">-- ເລືອກແຂວງ --</option>
+                                    <option value="ອັດຕະປື" <?= $temple['province'] === 'ອັດຕະປື' ? 'selected' : '' ?>>ອັດຕະປື</option>
+                                    <option value="ບໍ່ແກ້ວ" <?= $temple['province'] === 'ບໍ່ແກ້ວ' ? 'selected' : '' ?>>ບໍ່ແກ້ວ</option>
+                                    <option value="ບໍລິຄໍາໄຊ" <?= $temple['province'] === 'ບໍລິຄໍາໄຊ' ? 'selected' : '' ?>>ບໍລິຄໍາໄຊ</option>
+                                    <option value="ຈໍາປາສັກ" <?= $temple['province'] === 'ຈໍາປາສັກ' ? 'selected' : '' ?>>ຈໍາປາສັກ</option>
+                                    <option value="ຫົວພັນ" <?= $temple['province'] === 'ຫົວພັນ' ? 'selected' : '' ?>>ຫົວພັນ</option>
+                                    <option value="ຄໍາມ່ວນ" <?= $temple['province'] === 'ຄໍາມ່ວນ' ? 'selected' : '' ?>>ຄໍາມ່ວນ</option>
+                                    <option value="ຫລວງນໍ້າທາ" <?= $temple['province'] === 'ຫລວງນໍ້າທາ' ? 'selected' : '' ?>>ຫລວງນໍ້າທາ</option>
+                                    <option value="ຫລວງພະບາງ" <?= $temple['province'] === 'ຫລວງພະບາງ' ? 'selected' : '' ?>>ຫລວງພະບາງ</option>
+                                    <option value="ອຸດົມໄຊ" <?= $temple['province'] === 'ອຸດົມໄຊ' ? 'selected' : '' ?>>ອຸດົມໄຊ</option>
+                                    <option value="ຜົ້ງສາລີ" <?= $temple['province'] === 'ຜົ້ງສາລີ' ? 'selected' : '' ?>>ຜົ້ງສາລີ</option>
+                                    <option value="ໄຊຍະບູລີ" <?= $temple['province'] === 'ໄຊຍະບູລີ' ? 'selected' : '' ?>>ໄຊຍະບູລີ</option>
+                                    <option value="ສາລະວັນ" <?= $temple['province'] === 'ສາລະວັນ' ? 'selected' : '' ?>>ສາລະວັນ</option>
+                                    <option value="ສະຫວັນນະເຂດ" <?= $temple['province'] === 'ສະຫວັນນະເຂດ' ? 'selected' : '' ?>>ສະຫວັນນະເຂດ</option>
+                                    <option value="ເຊກອງ" <?= $temple['province'] === 'ເຊກອງ' ? 'selected' : '' ?>>ເຊກອງ</option>
+                                    <option value="ແຂວງວຽງຈັນ" <?= $temple['province'] === 'ແຂວງວຽງຈັນ' ? 'selected' : '' ?>>ແຂວງວຽງຈັນ</option>
+                                    <option value="ນະຄອນຫຼວງວຽງຈັນ" <?= $temple['province'] === 'ນະຄອນຫຼວງວຽງຈັນ' ? 'selected' : '' ?>>ນະຄອນຫຼວງວຽງຈັນ</option>
+                                    <option value="ໄຊສົມບູນ" <?= $temple['province'] === 'ໄຊສົມບູນ' ? 'selected' : '' ?>>ໄຊສົມບູນ</option>
+                                    <option value="ຊຽງຂວາງ" <?= $temple['province'] === 'ຊຽງຂວາງ' ? 'selected' : '' ?>>ຊຽງຂວາງ</option>
+                                </select>
                             </div>
                         </div>
                         

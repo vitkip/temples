@@ -175,11 +175,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">ແຂວງ</label>
-                                <input 
-                                    type="text" 
+                                <select 
                                     name="province"
-                                    class="form-input w-full"
+                                    class="form-select w-full"
                                 >
+                                    <option value="">ເລືອກແຂວງ</option>
+                                    <option value="ອັດຕະປື">ອັດຕະປື</option>
+                                    <option value="ບໍ່ແກ້ວ">ບໍ່ແກ້ວ</option>
+                                    <option value="ບໍລິຄໍາໄຊ">ບໍລິຄໍາໄຊ</option>
+                                    <option value="ຈໍາປາສັກ">ຈໍາປາສັກ</option>
+                                    <option value="ຫົວພັນ">ຫົວພັນ</option>
+                                    <option value="ຄໍາມ່ວນ">ຄໍາມ່ວນ</option>
+                                    <option value="ຫລວງນໍ້າທາ">ຫລວງນໍ້າທາ</option>
+                                    <option value="ຫລວງພະບາງ">ຫລວງພະບາງ</option>
+                                    <option value="ອຸດົມໄຊ">ອຸດົມໄຊ</option>
+                                    <option value="ຜົ້ງສາລີ">ຜົ້ງສາລີ</option>
+                                    <option value="ໄຊຍະບູລີ">ໄຊຍະບູລີ</option>
+                                    <option value="ສາລະວັນ">ສາລະວັນ</option>
+                                    <option value="ສະຫວັນນະເຂດ">ສະຫວັນນະເຂດ</option>
+                                    <option value="ເຊກອງ">ເຊກອງ</option>
+                                    <option value="ແຂວງວຽງຈັນ">ແຂວງວຽງຈັນ</option>
+                                    <option value="ນະຄອນຫຼວງວຽງຈັນ">ນະຄອນຫຼວງວຽງຈັນ</option>
+                                    <option value="ໄຊສົມບູນ">ໄຊສົມບູນ</option>
+                                    <option value="ຊຽງຂວາງ">ຊຽງຂວາງ</option>
+                                </select>
                             </div>
                         </div>
                         
