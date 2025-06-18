@@ -685,6 +685,38 @@ document.addEventListener('DOMContentLoaded', function() {
             row.classList.add('bg-yellow-50');
         }
     });
+    // ຈັດການປຸ່ມລຶບຜູ້ໃຊ້
+    document.querySelectorAll('.delete-user').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.getAttribute('data-id');
+            const userName = this.getAttribute('data-name');
+            
+            if (confirm(`ທ່ານຕ້ອງການລຶບຜູ້ໃຊ້ "${userName}" ແທ້ບໍ່? ການກະທຳນີ້ບໍ່ສາມາດຍົກເລີກໄດ້`)) {
+                // ສົ່ງ AJAX request ໄປລຶບຜູ້ໃຊ້
+                fetch('<?= $base_url ?>users/delete.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `id=${userId}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        // ລຶບແຖວຜູ້ໃຊ້ອອກຈາກຕາຕະລາງ ຫຼື refresh ໜ້າ
+                        location.reload();
+                    } else {
+                        alert('ເກີດຂໍ້ຜິດພາດ: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('ເກີດຂໍ້ຜິດພາດໃນການເຊື່ອມຕໍ່. ກະລຸນາລອງໃໝ່ອີກຄັ້ງ');
+                });
+            }
+        });
+    });
 });
 </script>
 <?php

@@ -399,7 +399,7 @@ body {
                 <!-- Admin Section End -->
                 <div class="mt-8">
                     <div class="space-y-1">
-                        <a href="<?= $base_url ?>admin/settings.php" class="sidebar-link <?= isActiveNav($current_path, '/admin/settings.php') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                        <a href="<?= $base_url ?>auth/profile.php" class="sidebar-link <?= isActiveNav($current_path, '/admin/settings.php') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                             <i class="fas fa-cog mr-3 w-5 text-center"></i>
                             <span>ຕັ້ງຄ່າ</span>
                         </a>
@@ -447,9 +447,9 @@ body {
                             <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
                                 <div class="font-medium"><?= $_SESSION['user']['name'] ?></div> 
                             </div>
-                            <a href="<?= $base_url ?>admin/settings.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <a href="<?= $base_url ?>auth/profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-cog mr-2"></i>
-                                ຕັ້ງຄ່າ
+                                ຂໍ້ມູນສ່ວນຕົວ
                             </a>
                             <a href="<?= $base_url ?>auth/logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <i class="fas fa-sign-out-alt mr-2"></i>

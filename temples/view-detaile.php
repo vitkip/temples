@@ -473,7 +473,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                             </a>
                         </li>
                         <li>
-                            <a href="all-temples.php" class="text-base text-gray-300 hover:text-amber-200">
+                            <a href="<?= $base_url ?>all-temples.php" class="text-base text-gray-300 hover:text-amber-200">
                                 ລາຍຊື່ວັດ
                             </a>
                         </li>

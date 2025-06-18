@@ -412,7 +412,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <input type="checkbox" name="remember_me">
                 <span class="text-sm text-gray-600">ຈົດຈໍາການເຂົ້າລະບົບ</span>
               </label>
-              <a href="#" class="text-sm text-amber-600 hover:text-amber-800">ລືມລະຫັດຜ່ານ?</a>
+              <a href="<?= $base_url ?>auth/reset_password.php" class="text-sm text-amber-600 hover:text-amber-800">ລືມລະຫັດຜ່ານ?</a>
             </div>
             
             <!-- Login Button -->
