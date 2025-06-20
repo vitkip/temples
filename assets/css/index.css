@@ -1,0 +1,256 @@
+ :root {
+            --primary-color: #B08542;
+            --primary-light: #D4A762;
+            --primary-dark: #8B6914;
+        }
+        
+        body {
+            font-family: 'Noto Sans Lao', sans-serif;
+            scroll-behavior: smooth;
+        }
+        
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 20"><path d="M0 10 Q25 0 50 10 T100 10 V20 H0 Z" fill="rgba(255,255,255,0.1)"/></svg>') repeat-x;
+            background-size: 200px 20px;
+            opacity: 0.3;
+        }
+        
+        /* Cards */
+        .temple-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .temple-card:hover {
+            transform: translateY(-12px) scale(1.02);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+        }
+        
+        .temple-card img {
+            transition: transform 0.6s ease;
+        }
+        
+        .temple-card:hover img {
+            transform: scale(1.1);
+        }
+        
+        /* Glass card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Gradient backgrounds */
+        .gradient-bg {
+            background: linear-gradient(135deg, #fef3e2 0%, #fde68a 50%, #f59e0b 100%);
+        }
+        
+        /* Button styles */
+        .btn-modern {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-modern:hover {
+            background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        /* Mobile Optimizations */
+        @media (max-width: 640px) {
+            .hero-section {
+                padding: 3rem 0;
+            }
+            
+            .hero-title {
+                font-size: 1.75rem !important;
+                line-height: 1.3;
+            }
+            
+            .hero-subtitle {
+                font-size: 0.95rem;
+                margin-top: 1rem;
+            }
+            
+            /* Mobile scroll containers */
+            .mobile-scroll {
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            
+            .mobile-scroll::-webkit-scrollbar {
+                display: none;
+            }
+            
+            .mobile-scroll-item {
+                scroll-snap-align: start;
+                flex-shrink: 0;
+            }
+            
+            /* Stats cards mobile layout */
+            .stats-mobile {
+                display: flex;
+                gap: 1rem;
+                padding: 0 1rem;
+                margin: 0 -1rem;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+            }
+            
+            .stat-card-mobile {
+                min-width: 140px;
+                scroll-snap-align: start;
+                flex-shrink: 0;
+            }
+            
+            /* Temple cards mobile */
+            .temples-mobile {
+                display: flex;
+                gap: 1rem;
+                padding: 0 1rem;
+                margin: 0 -1rem;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .temple-card-mobile {
+                min-width: 280px;
+                scroll-snap-align: start;
+                flex-shrink: 0;
+            }
+            
+            /* Charts mobile */
+            .chart-mobile {
+                height: 200px !important;
+            }
+            
+            /* Bottom padding for mobile nav */
+            .mobile-safe-area {
+                padding-bottom: 5rem;
+            }
+            
+            /* Mobile navigation */
+            .mobile-nav {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: white;
+                border-top: 1px solid #e5e7eb;
+                z-index: 1000;
+                height: 4rem;
+                display: flex;
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+            }
+            
+            .mobile-nav-item {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                color: #6b7280;
+                text-decoration: none;
+                font-size: 0.7rem;
+                transition: color 0.2s;
+            }
+            
+            .mobile-nav-item.active,
+            .mobile-nav-item:hover {
+                color: var(--primary-color);
+            }
+            
+            .mobile-nav-item i {
+                font-size: 1.1rem;
+                margin-bottom: 0.25rem;
+            }
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+        
+        /* Loading states */
+        .loading {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Custom scrollbar for desktop */
+        @media (min-width: 641px) {
+            ::-webkit-scrollbar {
+                width: 8px;
+            }
+            
+            ::-webkit-scrollbar-track {
+                background: #f1f5f9;
+            }
+            
+            ::-webkit-scrollbar-thumb {
+                background: var(--primary-color);
+                border-radius: 4px;
+            }
+        }
+        
+        /* Mobile scrollbar */
+        .temples-mobile::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        .temples-mobile::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+        
+        .temples-mobile::-webkit-scrollbar-thumb {
+            background: linear-gradient(90deg, #f59e0b, #d97706);
+            border-radius: 3px;
+        }

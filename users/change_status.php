@@ -20,8 +20,10 @@ if (!isset($_SESSION['user'])) {
 // ກວດສອບສິດການໃຊ້ງານ
 $is_superadmin = $_SESSION['user']['role'] === 'superadmin';
 $is_admin = $_SESSION['user']['role'] === 'admin';
+$is_province_admin = $_SESSION['user']['role'] === 'province_admin';
 
-if (!$is_superadmin && !$is_admin) {
+// ອະນຸຍາດໃຫ້ໃຊ້ງານສະເພາະ superadmin, admin, ແລະ province_admin
+if (!$is_superadmin && !$is_admin && !$is_province_admin) {
     echo json_encode(['success' => false, 'message' => 'ທ່ານບໍ່ມີສິດໃຊ້ງານສ່ວນນີ້']);
     exit;
 }
@@ -44,8 +46,13 @@ if (!in_array($new_status, $allowed_statuses)) {
     exit;
 }
 
-// ດຶງຂໍ້ມູນຜູ້ໃຊ້
-$stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+// ດຶງຂໍ້ມູນຜູ້ໃຊ້ພ້ອມຂໍ້ມູນວັດແລະແຂວງ
+$stmt = $pdo->prepare("
+    SELECT u.*, t.id as temple_id, t.name as temple_name, t.province_id 
+    FROM users u 
+    LEFT JOIN temples t ON u.temple_id = t.id 
+    WHERE u.id = ?
+");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
@@ -54,8 +61,30 @@ if (!$user) {
     exit;
 }
 
-// ກວດສອບສິດໃນການປ່ຽນສະຖານະ (admin ສາມາດປ່ຽນສະຖານະໄດ້ສະເພາະຜູ້ໃຊ້ໃນວັດຂອງຕົນເອງ)
-if ($is_admin && $user['temple_id'] != $_SESSION['user']['temple_id']) {
+// ກວດສອບສິດໃນການປ່ຽນສະຖານະ
+$has_permission = false;
+
+if ($is_superadmin) {
+    // superadmin ສາມາດປ່ຽນສະຖານະໄດ້ທຸກກໍລະນີ
+    $has_permission = true;
+} elseif ($is_admin && $user['temple_id'] == $_SESSION['user']['temple_id']) {
+    // admin ສາມາດປ່ຽນສະຖານະໄດ້ສະເພາະຜູ້ໃຊ້ໃນວັດຂອງຕົນເອງ
+    $has_permission = true;
+} elseif ($is_province_admin && !empty($user['province_id'])) {
+    // ຜູ້ດູແລລະດັບແຂວງສາມາດປ່ຽນສະຖານະຜູ້ໃຊ້ທີ່ຢູ່ໃນວັດຂອງແຂວງທີ່ຕົນເອງຮັບຜິດຊອບ
+    $province_stmt = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM user_province_access 
+        WHERE user_id = ? AND province_id = ?
+    ");
+    $province_stmt->execute([$_SESSION['user']['id'], $user['province_id']]);
+    
+    if ($province_stmt->fetchColumn() > 0) {
+        $has_permission = true;
+    }
+}
+
+if (!$has_permission) {
     echo json_encode(['success' => false, 'message' => 'ທ່ານບໍ່ມີສິດປ່ຽນສະຖານະຜູ້ໃຊ້ນີ້']);
     exit;
 }
@@ -67,9 +96,35 @@ if ($_SESSION['user']['id'] == $user_id) {
 }
 
 try {
-    // ດຳເນີນການອັບເດດສະຖານະຜູ້ໃຊ້ - ໃຊ້ແຕ່ຄອລັມ status ເທົ່ານັ້ນ
+    // ດຳເນີນການອັບເດດສະຖານະຜູ້ໃຊ້
     $update_stmt = $pdo->prepare("UPDATE users SET status = ? WHERE id = ?");
     $update_stmt->execute([$new_status, $user_id]);
+    
+    // ບັນທຶກປະຫວັດການປ່ຽນສະຖານະ
+    $log_stmt = $pdo->prepare("
+        INSERT INTO user_status_log (user_id, changed_by, old_status, new_status, province_id, changed_at)
+        VALUES (?, ?, ?, ?, ?, NOW())
+    ");
+    
+    // ເກັບຂໍ້ມູນແຂວງກໍລະນີປ່ຽນໂດຍ province_admin
+    $province_id = null;
+    if ($is_province_admin && !empty($user['province_id'])) {
+        $province_id = $user['province_id'];
+    }
+    
+    // ບັນທຶກລົງ log (ຖ້າມີຕາຕະລາງ)
+    try {
+        $log_stmt->execute([
+            $user_id,
+            $_SESSION['user']['id'],
+            $user['status'],
+            $new_status,
+            $province_id
+        ]);
+    } catch (PDOException $e) {
+        // ຖ້າບໍ່ມີຕາຕະລາງ log ຈະບໍ່ສົ່ງຄ່າຜິດພາດ ແຕ່ຍັງສາມາດປ່ຽນສະຖານະໄດ້
+        error_log('Could not log status change: ' . $e->getMessage());
+    }
     
     // ແປງສະຖານະເປັນພາສາລາວ
     $status_names = [

@@ -4,6 +4,25 @@ require_once '../config/db.php';
 require_once '../config/base_url.php';
 require_once '../includes/header.php';
 
+// ตรวจสอบสิทธิ์การเข้าถึง
+if (!isset($_SESSION['user'])) {
+    $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
+    header('Location: ' . $base_url . 'login.php');
+    exit;
+}
+
+// ตรวจสอบบทบาทผู้ใช้
+$user_role = $_SESSION['user']['role'];
+$user_id = $_SESSION['user']['id'];
+$user_temple_id = $_SESSION['user']['temple_id'] ?? null;
+
+// อนุญาตเฉพาะ superadmin, admin, และ province_admin
+if (!in_array($user_role, ['superadmin', 'admin', 'province_admin'])) {
+    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້";
+    header('Location: ' . $base_url . 'dashboard.php');
+    exit;
+}
+
 // Filter parameters
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $province = isset($_GET['province']) ? trim($_GET['province']) : '';
@@ -14,39 +33,65 @@ $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 10;
 $offset = ($page - 1) * $limit;
 
-// Build query
+// Build query based on user role
 $where_conditions = [];
 $params = [];
 
-// เพิ่มเงื่อนไขการกรองตามสิทธิ์ - เพิ่มโค้ดส่วนนี้
-if ($_SESSION['user']['role'] === 'admin') {
-    // ถ้าเป็น admin วัด ให้แสดงเฉพาะวัดของตัวเอง
-    $where_conditions[] = "id = ?";
-    $params[] = $_SESSION['user']['temple_id'];
+// กำหนดเงื่อนไขตามสิทธิ์ผู้ใช้
+if ($user_role === 'admin') {
+    // admin วัด: เห็นเฉพาะวัดของตัวเอง
+    $where_conditions[] = "t.id = ?";
+    $params[] = $user_temple_id;
+} elseif ($user_role === 'province_admin') {
+    // province_admin: เห็นเฉพาะวัดในแขวงที่ตัวเองดูแล
+    $where_conditions[] = "t.province_id IN (SELECT province_id FROM user_province_access WHERE user_id = ?)";
+    $params[] = $user_id;
 }
-// superadmin จะไม่มีเงื่อนไขเพิ่มเติม จึงเห็นทุกวัด
+// superadmin: เห็นทุกวัด (ไม่มีเงื่อนไขเพิ่มเติม)
 
+// เพิ่มเงื่อนไขการค้นหา
 if (!empty($search)) {
-    $where_conditions[] = "(name LIKE ? OR address LIKE ? OR abbot_name LIKE ?)";
+    $where_conditions[] = "(t.name LIKE ? OR t.address LIKE ? OR t.abbot_name LIKE ?)";
     $params[] = "%{$search}%";
     $params[] = "%{$search}%";
     $params[] = "%{$search}%";
 }
 
 if (!empty($province)) {
-    $where_conditions[] = "province = ?";
-    $params[] = $province;
+    if ($user_role === 'province_admin') {
+        // ตรวจสอบว่า province_admin มีสิทธิ์ดูแลแขวงนี้หรือไม่
+        $check_province = $pdo->prepare("
+            SELECT COUNT(*) FROM user_province_access upa 
+            JOIN provinces p ON upa.province_id = p.province_id 
+            WHERE upa.user_id = ? AND p.province_name = ?
+        ");
+        $check_province->execute([$user_id, $province]);
+        if ($check_province->fetchColumn() > 0) {
+            $where_conditions[] = "p.province_name = ?";
+            $params[] = $province;
+        }
+    } else {
+        $where_conditions[] = "p.province_name = ?";
+        $params[] = $province;
+    }
 }
 
 if (!empty($status)) {
-    $where_conditions[] = "status = ?";
+    $where_conditions[] = "t.status = ?";
     $params[] = $status;
 }
 
 $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
 
+// Query หลักสำหรับดึงข้อมูลวัด
+$base_query = "
+    FROM temples t 
+    LEFT JOIN provinces p ON t.province_id = p.province_id 
+    $where_clause
+";
+
 // Count total for pagination
-$count_query = "SELECT COUNT(*) FROM temples $where_clause";
+$count_query = "SELECT COUNT(*) " . $base_query;
 $count_stmt = $pdo->prepare($count_query);
 $count_stmt->execute($params);
 $total_temples = $count_stmt->fetchColumn();
@@ -54,22 +99,52 @@ $total_temples = $count_stmt->fetchColumn();
 $total_pages = ceil($total_temples / $limit);
 
 // Get temples with pagination
-$query = "SELECT * FROM temples $where_clause ORDER BY name ASC LIMIT $limit OFFSET $offset";
+$query = "
+    SELECT 
+        t.*,
+        p.province_name,
+        p.province_code
+    " . $base_query . "
+    ORDER BY t.name ASC 
+    LIMIT $limit OFFSET $offset
+";
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $temples = $stmt->fetchAll();
 
-// Get provinces for filter - แก้ให้เห็นเฉพาะแขวงที่เกี่ยวข้อง
-if ($_SESSION['user']['role'] === 'admin') {
-    $province_stmt = $pdo->prepare("SELECT DISTINCT province FROM temples WHERE id = ? ORDER BY province");
-    $province_stmt->execute([$_SESSION['user']['temple_id']]);
-} else {
-    $province_stmt = $pdo->query("SELECT DISTINCT province FROM temples ORDER BY province");
+// Get provinces for filter dropdown
+$provinces = [];
+if ($user_role === 'superadmin') {
+    // superadmin เห็นทุกแขวง
+    $province_stmt = $pdo->query("SELECT DISTINCT province_name FROM provinces ORDER BY province_name");
+    $provinces = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
+} elseif ($user_role === 'province_admin') {
+    // province_admin เห็นเฉพาะแขวงที่ตัวเองดูแล
+    $province_stmt = $pdo->prepare("
+        SELECT DISTINCT p.province_name 
+        FROM provinces p 
+        JOIN user_province_access upa ON p.province_id = upa.province_id 
+        WHERE upa.user_id = ? 
+        ORDER BY p.province_name
+    ");
+    $province_stmt->execute([$user_id]);
+    $provinces = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
+} elseif ($user_role === 'admin') {
+    // admin วัด เห็นเฉพาะแขวงของวัดตัวเอง
+    $province_stmt = $pdo->prepare("
+        SELECT DISTINCT p.province_name 
+        FROM temples t 
+        JOIN provinces p ON t.province_id = p.province_id 
+        WHERE t.id = ?
+    ");
+    $province_stmt->execute([$user_temple_id]);
+    $provinces = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
 }
-$provinces = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
 
-// Check if user has edit permissions
-$can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['role'] === 'admin');
+// Check edit permissions - เพิ่ม province_admin
+$can_edit = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
+$can_add_temple = in_array($user_role, ['superadmin', 'province_admin']); // ให้ province_admin เพิ่มวัดได้
+$can_delete_temple = ($user_role === 'superadmin');
 ?>
 
 <!-- เพิ่ม link เพื่อนำเข้า monk-style.css -->
@@ -79,23 +154,107 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
 <div class="page-container">
     <div class="max-w-7xl mx-auto p-4">
         <!-- Page Header -->
-         
-    <div class="header-section flex justify-between items-center mb-6 p-6 rounded-lg">
-        <div>
-            <h1 class="text-2xl font-bold flex items-center">
-                <div class="category-icon">
-                    <i class="fas fa-gopuram"></i>
-                </div>
-                ຈັດການວັດ
-            </h1>
-            <p class="text-sm text-amber-700 mt-1">ເບິ່ງແລະຈັດການຂໍ້ມູນວັດທັງໝົດ</p>
+        <div class="header-section flex justify-between items-center mb-6 p-6 rounded-lg">
+            <div>
+                <h1 class="text-2xl font-bold flex items-center">
+                    <div class="category-icon">
+                        <i class="fas fa-gopuram"></i>
+                    </div>
+                    ຈັດການວັດ
+                    <?php if ($user_role === 'province_admin'): ?>
+                        <span class="text-sm font-normal text-amber-700 ml-2">(ແຂວງທີ່ຮັບຜິດຊອບ)</span>
+                    <?php elseif ($user_role === 'admin'): ?>
+                        <span class="text-sm font-normal text-amber-700 ml-2">(ວັດຂອງທ່ານ)</span>
+                    <?php endif; ?>
+                </h1>
+                <p class="text-sm text-amber-700 mt-1">
+                    <?php if ($user_role === 'superadmin'): ?>
+                        ເບິ່ງແລະຈັດການຂໍ້ມູນວັດທັງໝົດ
+                    <?php elseif ($user_role === 'province_admin'): ?>
+                        ເບິ່ງແລະຈັດການວັດໃນແຂວງທີ່ທ່ານຮັບຜິດຊອບ
+                    <?php elseif ($user_role === 'admin'): ?>
+                        ເບິ່ງແລະຈັດການຂໍ້ມູນວັດຂອງທ່ານ
+                    <?php endif; ?>
+                </p>
+            </div>
+            <?php if ($can_add_temple): ?>
+            <a href="<?= $base_url ?>temples/add.php" class="btn-primary flex items-center gap-2">
+                <i class="fas fa-plus"></i> ເພີ່ມວັດໃໝ່
+            </a>
+            <?php endif; ?>
         </div>
-        <?php if ($_SESSION['user']['role'] === 'superadmin'): /* แก้เงื่อนไขให้เฉพาะ superadmin เห็นปุ่มเพิ่มวัดใหม่ */ ?>
-        <a href="<?= $base_url ?>temples/add.php" class="btn-primary flex items-center gap-2">
-            <i class="fas fa-plus"></i> ເພີ່ມວັດໃໝ່
-        </a>
+
+        <!-- แสดงข้อมูลสถิติ -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="card p-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-blue-100">ວັດທັງໝົດ</p>
+                        <p class="text-2xl font-bold"><?= $total_temples ?></p>
+                    </div>
+                    <i class="fas fa-gopuram text-3xl text-blue-200"></i>
+                </div>
+            </div>
+            
+            <?php if (count($provinces) > 0): ?>
+            <div class="card p-4 bg-gradient-to-r from-green-500 to-green-600 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-green-100">ແຂວງທີ່ດູແລ</p>
+                        <p class="text-2xl font-bold"><?= count($provinces) ?></p>
+                    </div>
+                    <i class="fas fa-map-marker-alt text-3xl text-green-200"></i>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <?php
+            // นับจำนวนวัดที่ active
+            $active_temples = 0;
+            foreach ($temples as $temple) {
+                if ($temple['status'] === 'active') $active_temples++;
+            }
+            ?>
+            <div class="card p-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-amber-100">ວັດທີ່ເປີດໃຊ້ງານ</p>
+                        <p class="text-2xl font-bold"><?= $active_temples ?></p>
+                    </div>
+                    <i class="fas fa-check-circle text-3xl text-amber-200"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- เพิ่มเมนูสำหรับ province_admin -->
+        <?php if ($user_role === 'province_admin'): ?>
+        <div class="card p-4 mb-6 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200">
+            <h3 class="text-lg font-semibold text-indigo-800 mb-3 flex items-center">
+                <i class="fas fa-tools mr-2"></i>
+                ເຄື່ອງມືການຈັດການແຂວງ
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a href="<?= $base_url ?>districts/index.php" class="flex items-center p-3 bg-white rounded-lg border border-indigo-200 hover:border-indigo-400 hover:shadow-md transition-all">
+                    <div class="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-city text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900">ຈັດການເມືອງ</h4>
+                        <p class="text-sm text-gray-500">ເພີ່ມ, ແກ້ໄຂ, ລຶບເມືອງໃນແຂວງ</p>
+                    </div>
+                </a>
+                <a href="<?= $base_url ?>temples/add.php" class="flex items-center p-3 bg-white rounded-lg border border-indigo-200 hover:border-indigo-400 hover:shadow-md transition-all">
+                    <div class="flex-shrink-0 w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-plus text-indigo-600"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-medium text-gray-900">ເພີ່ມວັດໃໝ່</h4>
+                        <p class="text-sm text-gray-500">ສ້າງວັດໃໝ່ໃນແຂວງຂອງທ່ານ</p>
+                    </div>
+                </a>
+            </div>
+        </div>
         <?php endif; ?>
-    </div>
 
         <!-- Filters -->
         <div class="card filter-section p-6 mb-6">
@@ -106,20 +265,24 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                         type="text" 
                         name="search" 
                         value="<?= htmlspecialchars($search) ?>" 
-                        placeholder="ຊື່ວັດ, ທີ່ຢູ່..." 
+                        placeholder="ຊື່ວັດ, ທີ່ຢູ່, ເຈົ້າອາວາດ..." 
                         class="form-input w-full"
                     >
                 </div>
                 
+                <?php if (count($provinces) > 0): ?>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">ແຂວງ</label>
                     <select name="province" class="form-select w-full">
                         <option value="">-- ທຸກແຂວງ --</option>
                         <?php foreach($provinces as $prov): ?>
-                        <option value="<?= $prov ?>" <?= $province === $prov ? 'selected' : '' ?>><?= $prov ?></option>
+                        <option value="<?= htmlspecialchars($prov) ?>" <?= $province === $prov ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($prov) ?>
+                        </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <?php endif; ?>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">ສະຖານະ</label>
@@ -150,8 +313,8 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
             <thead class="table-header">
                 <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຊື່ວັດ</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານທີ່</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ເຈົ້າອະທິການ</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ແຂວງ/ເມືອງ</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ເຈົ້າອາວາດ</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ສະຖານະ</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ຈັດການ</th>
                 </tr>
@@ -160,16 +323,27 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                 <?php foreach($temples as $temple): ?>
                 <tr class="table-row hover:bg-gray-50">
                 <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900"><?= htmlspecialchars($temple['name']) ?></div>
+                    <div class="flex items-center">
+                        <div class="category-icon mr-3">
+                            <i class="fas fa-gopuram"></i>
+                        </div>
+                        <div>
+                            <div class="font-medium text-gray-900"><?= htmlspecialchars($temple['name']) ?></div>
+                            <div class="text-sm text-gray-500"><?= htmlspecialchars($temple['address'] ?? '') ?></div>
+                        </div>
+                    </div>
                 </td>
                 <td class="px-6 py-4">
-                    <div class="text-gray-500"><?= htmlspecialchars($temple['district']) ?>, <?= htmlspecialchars($temple['province']) ?></div>
+                    <div class="text-gray-500">
+                        <div class="font-medium"><?= htmlspecialchars($temple['province_name'] ?? $temple['province'] ?? '-') ?></div>
+                        <div class="text-sm"><?= htmlspecialchars($temple['district'] ?? '-') ?></div>
+                    </div>
                 </td>
                 <td class="px-6 py-4">
                     <div class="text-gray-500"><?= htmlspecialchars($temple['abbot_name'] ?? '-') ?></div>
                 </td>
                 <td class="px-6 py-4">
-                    <?php if($can_edit): ?>
+                    <?php if($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id))): ?>
                     <!-- ปุ่มสลับสถานะแบบ toggle switch -->
                     <label class="status-toggle relative inline-block">
                         <input type="checkbox" 
@@ -203,20 +377,23 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div class="flex space-x-3">
-                    <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" class="text-amber-600 hover:text-amber-800">
+                    <a href="<?= $base_url ?>temples/view.php?id=<?= $temple['id'] ?>" class="text-amber-600 hover:text-amber-800" title="ເບິ່ງລາຍລະອຽດ">
                         <i class="fas fa-eye"></i>
                     </a>
                     
-                    <?php if ($can_edit): ?>
-                    <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" class="text-blue-600 hover:text-blue-800">
+                    <?php if ($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id))): ?>
+                    <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" class="text-blue-600 hover:text-blue-800" title="ແກ້ໄຂຂໍ້ມູນ">
                         <i class="fas fa-edit"></i>
                     </a>
+                    <?php endif; ?>
                     
-                    <?php if ($_SESSION['user']['role'] === 'superadmin'): /* เพิ่มเงื่อนไขให้เฉพาะ superadmin สามารถลบวัด */ ?>
-                    <a href="javascript:void(0)" class="text-red-500 hover:text-red-700 delete-temple" data-id="<?= $temple['id'] ?>" data-name="<?= htmlspecialchars($temple['name']) ?>">
+                    <?php if ($can_delete_temple): ?>
+                    <a href="javascript:void(0)" class="text-red-500 hover:text-red-700 delete-temple" 
+                       data-id="<?= $temple['id'] ?>" 
+                       data-name="<?= htmlspecialchars($temple['name']) ?>"
+                       title="ລຶບວັດ">
                         <i class="fas fa-trash"></i>
                     </a>
-                    <?php endif; ?>
                     <?php endif; ?>
                     </div>
                 </td>
@@ -230,7 +407,12 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
             <?php foreach($temples as $temple): ?>
             <div class="border-b p-4">
                 <div class="flex justify-between items-start mb-2">
-                <h3 class="font-bold text-gray-900"><?= htmlspecialchars($temple['name']) ?></h3>
+                <h3 class="font-bold text-gray-900 flex items-center">
+                    <div class="category-icon mr-2" style="width: 1.5rem; height: 1.5rem;">
+                        <i class="fas fa-gopuram text-xs"></i>
+                    </div>
+                    <?= htmlspecialchars($temple['name']) ?>
+                </h3>
                 <div>
                     <?php if($temple['status'] === 'active'): ?>
                     <span class="inline-block px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
@@ -246,17 +428,22 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                 
                 <div class="text-sm text-gray-600 mb-1">
                 <i class="fas fa-map-marker-alt mr-1"></i> 
-                <?= htmlspecialchars($temple['district']) ?>, <?= htmlspecialchars($temple['province']) ?>
+                <?= htmlspecialchars($temple['province_name'] ?? $temple['province'] ?? '-') ?>
+                <?php if (!empty($temple['district'])): ?>
+                    , <?= htmlspecialchars($temple['district']) ?>
+                <?php endif; ?>
                 </div>
                 
+                <?php if (!empty($temple['abbot_name'])): ?>
                 <div class="text-sm text-gray-600 mb-3">
                 <i class="fas fa-user mr-1"></i> 
-                <?= htmlspecialchars($temple['abbot_name'] ?? '-') ?>
+                <?= htmlspecialchars($temple['abbot_name']) ?>
                 </div>
+                <?php endif; ?>
                 
                 <div class="flex justify-between items-center mt-2">
                 <!-- Status toggle for mobile -->
-                <?php if($can_edit): ?>
+                <?php if($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id))): ?>
                 <div class="flex-grow">
                     <label class="status-toggle relative inline-block">
                     <input type="checkbox" 
@@ -284,20 +471,20 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                     <i class="fas fa-eye mr-1"></i> <span class="text-xs">ເບິ່ງ</span>
                     </a>
                     
-                    <?php if ($can_edit): ?>
+                    <?php if ($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id))): ?>
                     <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" 
                        class="flex items-center text-blue-600 hover:text-blue-800">
                     <i class="fas fa-edit mr-1"></i> <span class="text-xs">ແກ້ໄຂ</span>
                     </a>
+                    <?php endif; ?>
                     
-                    <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
+                    <?php if ($can_delete_temple): ?>
                     <a href="javascript:void(0)" 
                        class="flex items-center text-red-500 hover:text-red-700 delete-temple" 
                        data-id="<?= $temple['id'] ?>" 
                        data-name="<?= htmlspecialchars($temple['name']) ?>">
                     <i class="fas fa-trash mr-1"></i> <span class="text-xs">ລຶບ</span>
                     </a>
-                    <?php endif; ?>
                     <?php endif; ?>
                 </div>
                 </div>
@@ -333,7 +520,13 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
             
             <?php else: ?>
             <div class="p-6 text-center">
-            <div class="text-gray-500">ບໍ່ພົບລາຍການວັດ</div>
+                <div class="text-gray-500 mb-4">
+                    <i class="fas fa-gopuram text-4xl text-gray-300 mb-2"></i>
+                    <p>ບໍ່ພົບລາຍການວັດ</p>
+                    <?php if ($user_role === 'province_admin'): ?>
+                    <p class="text-sm">ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບເພື່ອມອບໝາຍແຂວງໃຫ້ທ່ານ</p>
+                    <?php endif; ?>
+                </div>
             </div>
             <?php endif; ?>
         </div>
@@ -364,9 +557,10 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
     </div>
 </div>
 
-<!-- JavaScript for delete confirmation -->
+<!-- JavaScript for functionality -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Delete modal functionality
     const deleteModal = document.getElementById('deleteModal');
     const deleteTempleNameDisplay = document.getElementById('deleteTempleNameDisplay');
     const confirmDelete = document.getElementById('confirmDelete');
@@ -394,9 +588,8 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteModal.classList.add('hidden');
         });
     });
-});
-document.addEventListener('DOMContentLoaded', function() {
-    // เพิ่ม JavaScript สำหรับการทำงานของ toggle status
+    
+    // Status toggle functionality
     const toggles = document.querySelectorAll('.temple-status-toggle');
     
     toggles.forEach(toggle => {
@@ -422,18 +615,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     temple_id: templeId,
                     status: newStatus
                 }),
-                credentials: 'include' // สำคัญสำหรับการส่ง session cookies
+                credentials: 'include'
             })
             .then(response => {
-                // จับ response ทั้ง success และ error
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.indexOf('application/json') !== -1) {
                     return response.json().then(data => {
-                        // ถ้าเป็น JSON ให้เพิ่ม status เพื่อใช้ต่อไป
                         return { ...data, status: response.status };
                     });
                 } else {
-                    // ถ้าไม่ใช่ JSON ให้อ่านเป็นข้อความ
                     return response.text().then(text => {
                         return { 
                             success: false, 
@@ -461,26 +651,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     showNotification('ອັບເດດສະຖານະວັດ ' + templeName + ' ສຳເລັດແລ້ວ', 'success');
                 } else {
-                    // กลับไปสถานะเดิมเฉพาะเมื่อเกิดข้อผิดพลาดจริงๆ (HTTP error codes)
                     if (data.status >= 400) {
                         this.checked = !this.checked;
                         showNotification('ເກີດຂໍ້ຜິດພາດ: ' + (data.message || 'ບໍ່ສາມາດອັບເດດສະຖານະໄດ້'), 'error');
                     } else {
-                        // ถ้า status code เป็น 2xx แต่ success เป็น false
-                        // แสดงว่าอัปเดตสำเร็จแล้ว แต่มีการรายงานผลผิดพลาด
                         showNotification('ອັບເດດສະຖານະສຳເລັດແລ້ວ ແຕ່ມີຂໍໜິດພາດບາງຢ່າງ', 'warning');
                     }
                 }
             })
             .catch(error => {
-                // จัดการกับข้อผิดพลาดในการเชื่อมต่อ
                 console.error('Fetch error:', error);
                 toggleLabel.classList.remove('loading');
                 
-                // เก็บสถานะปัจจุบันไว้
-                const currentStatus = this.checked;
-                
-                // ทำการอัปเดตด้วย form ปกติเพื่อความมั่นใจ
+                // Fallback to form submission
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '<?= $base_url ?>temples/direct-update-status.php';
@@ -509,9 +692,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // ฟังก์ชันแสดงข้อความแจ้งเตือน
+    // Notification function
     function showNotification(message, type = 'info') {
-        // ตรวจสอบว่ามี notification container หรือไม่
         let container = document.getElementById('notification-container');
         if (!container) {
             container = document.createElement('div');
@@ -520,11 +702,9 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(container);
         }
         
-        // สร้าง notification
         const notification = document.createElement('div');
         notification.className = `notification ${type} px-4 py-2 rounded shadow-lg flex items-center transition-all transform translate-x-full`;
         
-        // กำหนดสีตาม type
         if (type === 'success') {
             notification.classList.add('bg-green-100', 'border-l-4', 'border-green-500', 'text-green-700');
             notification.innerHTML = '<i class="fas fa-check-circle mr-2"></i>' + message;
@@ -536,21 +716,17 @@ document.addEventListener('DOMContentLoaded', function() {
             notification.innerHTML = '<i class="fas fa-info-circle mr-2"></i>' + message;
         }
         
-        // เพิ่ม notification ไปยัง container
         container.appendChild(notification);
         
-        // แสดง notification ด้วยการเลื่อนเข้ามา
         setTimeout(() => {
             notification.classList.remove('translate-x-full');
             notification.classList.add('translate-x-0');
         }, 10);
         
-        // ซ่อน notification หลังจาก 3 วินาที
         setTimeout(() => {
             notification.classList.remove('translate-x-0');
             notification.classList.add('translate-x-full');
             
-            // ลบ notification หลังจากการเคลื่อนไหวเสร็จสิ้น
             setTimeout(() => {
                 container.removeChild(notification);
             }, 300);

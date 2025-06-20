@@ -1,0 +1,117 @@
+/* Base Styles */
+body {
+    font-family: 'Noto Sans Lao', sans-serif;
+    scroll-behavior: smooth;
+}
+
+.section-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.manual-section {
+    padding: 2rem 0;
+    border-bottom: 1px solid #f0deb1;
+}
+
+.manual-section:last-child {
+    border-bottom: none;
+}
+
+.header-underline {
+    position: relative;
+    display: inline-block;
+    padding-bottom: 5px;
+}
+
+.header-underline::after {
+    content: '';
+    position: absolute;
+    width: 30%;
+    height: 3px;
+    bottom: 0;
+    left: 0;
+    background: linear-gradient(90deg, #b08542, transparent);
+}
+
+.card {
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    background-color: white;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s;
+}
+
+.card:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    transform: translateY(-3px);
+}
+
+.top-scroll-btn {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: #b08542;
+    color: white;
+    border-radius: 50%;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s;
+    z-index: 100;
+}
+
+.top-scroll-btn.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.faq-item {
+    border-bottom: 1px solid #f0deb1;
+    padding: 1rem 0;
+}
+
+.faq-question {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+    padding-left: 1.5rem;
+    color: #4b5563;
+}
+
+.faq-answer.show {
+    max-height: 200px;
+    padding-top: 0.75rem;
+}
+
+.hero-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='100' height='20' viewBox='0 0 100 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M21.184 20c.357-.13.72-.264.888-.14 1.005.626 1.87 1.05 2.693 1.08.896.033 1.342-.19 1.187-.962-.215-1.08-1.882-2.272-2.817-2.952-.574-.42-.14-.362.235-.4.466-.045.936-.16 1.355-.31.6-.21.51.375.317.56 1.17 1.196 2.93 2.09 4.188 1.61.04-.01.187 0 .252.22.07.027.08.197-.123.27-1.06.39-2.47.276-3.514-.24-.38-.19-.87-.042-1.207.236-1.764 1.495-4.394 2.392-5.14.578-.023-.145-.02-.273.03-.374.236-.462 2.46-1.235 3.63-1.885.33-.186.337-.38.035-.57-.838-.538-1.815-.97-2.94-1.19-.223-.046-.466-.018-.65.127-.62.58-1.456 1.153-2.53 1.337-.67.12-.607.552.05.494.58-.043 1.578-.74 2.13-1.455.17-.216.115-.46-.08-.65-.704-.716-1.968-.873-3.03-.738-.106.027-.27.038-.293.177-.24.66-.763 1.38-1.304 1.887-.663.622-.58.55 0 1.273.52.7 1.243 1.7 1.55 2.47.13.3.337.372.768.2.91-.35.99-1.4.29-1.88-.52-.354-1.165-.59-2.023-.48-.62.086-1.13.303-1.56.57-.12.07-.23.17-.2.27.122.59.687 1.8.96 2.485.167.43.673.584 1.18.544 1.406-.11 2.47-1.005 3.105-2.222.23-.444.22-.903-.023-1.088-.06-.11-.21-.086-.23-.134-.266-.585-.89-1.077-1.82-1.47.03-.027-.06-.13-.03-.162.855-.436 1.927-.814 2.947-.7.503.716-.013 1.35-.324 1.93-.2.374.152.744.512.52.361-.227.92-.39 1.375.017.312.29.466.68.333.956-.37.267-.94.59-1.5.507-.823-.207-1.036-.614-1.457-.59' fill='%23e7c782' fill-opacity='0.2' fill-rule='evenodd'/%3E%3C/svg%3E");
+}
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    .header-underline::after {
+        width: 50%;
+    }
+    
+    .card {
+        padding: 1rem;
+    }
+    
+    .faq-answer.show {
+        max-height: 300px;
+    }
+}

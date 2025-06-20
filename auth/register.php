@@ -551,7 +551,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="text-sm text-center">
                     <p class="text-gray-600">
                         ມີບັນຊີແລ້ວບໍ?
-                        <a href="<?= $base_url ?>auth/login.php" class="font-medium text-amber-600 hover:text-amber-800 transition-colors duration-300 ml-1">
+                        <a href="<?= $base_url ?>auth/" class="font-medium text-amber-600 hover:text-amber-800 transition-colors duration-300 ml-1">
                             <i class="fas fa-sign-in-alt mr-1"></i> ເຂົ້າສູ່ລະບົບ
                         </a>
                     </p>

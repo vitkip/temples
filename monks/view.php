@@ -16,11 +16,17 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 
 $monk_id = (int)$_GET['id'];
 
-// ດຶງຂໍ້ມູນພະສົງພ້ອມກັບຂໍ້ມູນວັດ
+// ດຶງຂໍ້ມູນພະສົງພ້ອມກັບຂໍ້ມູນວັດ - ปรับ query ให้ใช้ JOIN กับ districts และ provinces
 $stmt = $pdo->prepare("
-    SELECT m.*, t.name as temple_name, t.district, t.province 
+    SELECT 
+        m.*, 
+        t.name as temple_name,
+        d.district_name,
+        p.province_name
     FROM monks m
     LEFT JOIN temples t ON m.temple_id = t.id
+    LEFT JOIN districts d ON t.district_id = d.district_id
+    LEFT JOIN provinces p ON t.province_id = p.province_id
     WHERE m.id = ?
 ");
 $stmt->execute([$monk_id]);
@@ -40,243 +46,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
 
 <!-- เพิ่ม CSS นี้ไว้ในส่วนหัวของ view.php หลังจาก require header.php -->
 <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
-<style>
-  /* นำเข้าฟอนต์ภาษาไทย/ลาว */
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap');
-  
-  :root {
-    --color-primary: #C8A97E;        /* สีทองอ่อน */
-    --color-primary-dark: #A38455;   /* สีทองเข้ม */
-    --color-secondary: #8E6F4D;      /* สีน้ำตาล */
-    --color-accent: #D4B68F;         /* สีทองนวล */
-    --color-light: #F5EFE6;          /* สีครีมอ่อน */
-    --color-lightest: #FAF8F4;       /* สีครีมสว่าง */
-    --color-dark: #453525;           /* สีน้ำตาลเข้ม */
-    --color-success: #7E9F7E;        /* สีเขียวอ่อนนุ่ม */
-    --color-danger: #D68F84;         /* สีแดงอ่อนนุ่ม */
-    --shadow-sm: 0 2px 8px rgba(138, 103, 57, 0.08);
-    --shadow-md: 0 4px 12px rgba(138, 103, 57, 0.12);
-    --shadow-lg: 0 8px 24px rgba(138, 103, 57, 0.15);
-    --border-radius: 0.75rem;
-  }
-  
-  * {
-    font-family: 'Noto Sans Thai', 'Noto Sans Lao', sans-serif;
-  }
-  
-  body {
-    background-color: var(--color-lightest);
-    color: #5a4631;
-  }
-  
-  .page-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1.5rem;
-  }
-  
-  /* สไตล์หัวเรื่อง */
-  .view-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    padding: 1.5rem;
-    border-radius: var(--border-radius);
-    background: linear-gradient(to right, #f3e9dd, #f5efe6);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(200, 169, 126, 0.2);
-  }
-  
-  .monk-title {
-    color: var(--color-secondary);
-    font-weight: 700;
-    font-size: 1.75rem;
-    margin-bottom: 0.25rem;
-  }
-  
-  /* การ์ดข้อมูล */
-  .info-card {
-    background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(200, 169, 126, 0.2);
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-  }
-  
-  .info-card-header {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid rgba(200, 169, 126, 0.1);
-    background: linear-gradient(to right, rgba(200, 169, 126, 0.08), rgba(212, 182, 143, 0.05));
-  }
-  
-  .info-card-title {
-    color: var(--color-secondary);
-    font-size: 1.25rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  .info-card-body {
-    padding: 1.5rem;
-  }
-  
-  /* รูปภาพพระสงฆ์ */
-  .monk-image-container {
-    width: 100%;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-  }
-  
-  .monk-image-container img {
-    width: 100%;
-    height: auto;
-    object-fit: cover;
-  }
-  
-  .monk-image-placeholder {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    background: linear-gradient(135deg, #f3e9dd, #e5d9c8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-primary-dark);
-    font-size: 4rem;
-    border-radius: var(--border-radius);
-  }
-  
-  /* รายละเอียดข้อมูล */
-  .info-label {
-    display: block;
-    font-size: 0.875rem;
-    color: #8d7766;
-    margin-bottom: 0.25rem;
-  }
-  
-  .info-value {
-    font-weight: 500;
-    color: #453525;
-    margin-bottom: 1rem;
-  }
-  
-  /* ปุ่มกด */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    gap: 0.5rem;
-  }
-  
-  .btn-back {
-    background-color: #f0e6d9;
-    color: var(--color-secondary);
-    box-shadow: 0 2px 4px rgba(162, 132, 85, 0.1);
-  }
-  
-  .btn-back:hover {
-    background-color: #e5d9c8;
-    transform: translateY(-1px);
-  }
-  
-  .btn-edit {
-    background: linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark));
-    color: #fff;
-    box-shadow: 0 2px 4px rgba(162, 132, 85, 0.2);
-  }
-  
-  .btn-edit:hover {
-    background: linear-gradient(to bottom right, #d4b68f, #bb9c6a);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(162, 132, 85, 0.3);
-  }
-  
-  /* สถานะพระ */
-  .status-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-  
-  .status-active {
-    background-color: rgba(126, 159, 126, 0.15);
-    color: #4d7a4d;
-    border: 1px solid rgba(126, 159, 126, 0.3);
-  }
-  
-  .status-inactive {
-    background-color: rgba(169, 169, 169, 0.15);
-    color: #696969;
-    border: 1px solid rgba(169, 169, 169, 0.3);
-  }
-  
-  /* ไอคอนการ์ด */
-  .icon-circle {
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    margin-right: 1rem;
-  }
-  
-  .icon-circle.amber {
-    background-color: #FEF3C7;
-    color: #92400E;
-  }
-  
-  .icon-circle.indigo {
-    background-color: #E0E7FF;
-    color: #4338CA;
-  }
-  
-  .icon-circle.green {
-    background-color: #D1FAE5;
-    color: #047857;
-  }
-  
-  .icon-circle.blue {
-    background-color: #DBEAFE;
-    color: #1D4ED8;
-  }
-  
-  /* ปรับให้รองรับการแสดงผลบนอุปกรณ์พกพา */
-  @media (max-width: 768px) {
-    .view-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-    
-    .info-grid {
-      grid-template-columns: 1fr !important;
-    }
-    
-    .page-sidebar {
-      order: -1; /* แสดงก่อนส่วนเนื้อหาบนมือถือ */
-      margin-bottom: 1.5rem;
-    }
-  }
-  
-  /* Background pattern */
-  .bg-temple-pattern {
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTMwIDMwIEwwIDYwIEw2MCA2MCBaIiBmaWxsPSIjQzhhOTdlIi8+PC9zdmc+');
-    background-repeat: repeat;
-  }
-</style>
+
 
 <!-- แทนที่เนื้อหา HTML เดิมด้วยเนื้อหาที่มีการออกแบบใหม่ -->
 <div class="page-container bg-temple-pattern">
@@ -342,7 +112,16 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
               <span class="info-label">ພັນສາ</span>
               <p class="info-value flex items-center">
                 <i class="fas fa-dharmachakra text-amber-500 mr-2"></i>
-                <?= htmlspecialchars($monk['pansa'] ?? '-') ?> ພັນສາ
+                <?php
+                  if (!empty($monk['ordination_date'])) {
+                  $ordination = new DateTime($monk['ordination_date']);
+                  $now = new DateTime();
+                  $years = $ordination->diff($now)->y;
+                  echo $years . ' ພັນສາ';
+                  } else {
+                  echo htmlspecialchars($monk['pansa']) . ' ພັນສາ';
+                  }
+                  ?>
               </p>
             </div>
             
@@ -361,7 +140,8 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
                 <?= $monk['birth_date'] ? date('d/m/Y', strtotime($monk['birth_date'])) : '-' ?>
               </p>
             </div>
-                        <!-- เพิ่มหลังจากส่วนแสดงวันเดือนปีเกิด -->
+            
+            <!-- เพิ่มหลังจากส่วนแสดงวันเดือนปีเกิด -->
             <div>
                 <span class="info-label">ແຂວງເກີດ</span>
                 <p class="info-value flex items-center">
@@ -457,9 +237,9 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
                 <?= htmlspecialchars($monk['temple_name'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?>
               </h3>
               <p class="text-sm text-amber-700">
-                <?= htmlspecialchars($monk['district'] ?? '') ?>
-                <?= !empty($monk['district']) && !empty($monk['province']) ? ', ' : '' ?>
-                <?= htmlspecialchars($monk['province'] ?? '') ?>
+                <?= htmlspecialchars($monk['district_name'] ?? '') ?>
+                <?= !empty($monk['district_name']) && !empty($monk['province_name']) ? ', ' : '' ?>
+                <?= htmlspecialchars($monk['province_name'] ?? '') ?>
               </p>
             </div>
           </div>
@@ -517,7 +297,18 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
               </div>
               <div>
                 <p class="text-sm text-gray-500">ພັນສາ</p>
-                <p class="font-medium text-amber-900"><?= htmlspecialchars($monk['pansa']) ?> ພັນສາ</p>
+                <p class="font-medium text-amber-900">
+                  <?php
+                  if (!empty($monk['ordination_date'])) {
+                  $ordination = new DateTime($monk['ordination_date']);
+                  $now = new DateTime();
+                  $years = $ordination->diff($now)->y;
+                  echo $years . ' ພັນສາ';
+                  } else {
+                  echo htmlspecialchars($monk['pansa']) . ' ພັນສາ';
+                  }
+                  ?>
+                </p>
               </div>
             </div>
             <?php endif; ?>

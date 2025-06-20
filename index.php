@@ -20,7 +20,7 @@ try {
         $settings[$row['setting_key']] = $row['setting_value'];
     }
 } catch (PDOException $e) {
-    // จัดการข้อผิดพลาด
+    error_log('Settings error: ' . $e->getMessage());
 }
 
 // ดึงสถิติจากฐานข้อมูล
@@ -35,34 +35,79 @@ try {
     // จำนวนวัดทั้งหมด
     $stmt = $pdo->query("SELECT COUNT(*) FROM temples WHERE status = 'active'");
     $stats['temples'] = $stmt->fetchColumn();
+    $total_temples = $stats['temples']; // ใช้ค่าเดียวกันแทนการ query ซ้ำ
     
     // จำนวนพระสงฆ์ทั้งหมด
     $stmt = $pdo->query("SELECT COUNT(*) FROM monks WHERE status = 'active'");
     $stats['monks'] = $stmt->fetchColumn();
     
     // จำนวนกิจกรรมทั้งหมด
-    $stmt = $pdo->query("SELECT COUNT(*) FROM events");
+    $stmt = $pdo->query("SELECT COUNT(*) FROM events WHERE event_date >= CURDATE()");
     $stats['events'] = $stmt->fetchColumn();
     
     // จำนวนจังหวัดที่มีวัดในระบบ
-    $stmt = $pdo->query("SELECT COUNT(DISTINCT province) FROM temples WHERE status = 'active'");
+    $stmt = $pdo->query("
+        SELECT COUNT(DISTINCT t.province_id) 
+        FROM temples t 
+        JOIN provinces p ON t.province_id = p.province_id
+        WHERE t.status = 'active'
+    ");
     $stats['provinces'] = $stmt->fetchColumn();
 } catch (PDOException $e) {
-    // จัดการข้อผิดพลาด
+    error_log('Stats error: ' . $e->getMessage());
 }
 
-// ดึงข้อมูลวัดล่าสุด
+// ดึงข้อมูลวัดล่าสุดพร้อมข้อมูลแขวง/เมือง
 $recent_temples = [];
 try {
-    $stmt = $pdo->query("SELECT * FROM temples WHERE status = 'active' ORDER BY created_at DESC LIMIT 4");
+    $stmt = $pdo->query("
+        SELECT 
+            t.*, 
+            d.district_name, 
+            p.province_name 
+        FROM temples t 
+        LEFT JOIN districts d ON t.district_id = d.district_id
+        LEFT JOIN provinces p ON t.province_id = p.province_id
+        WHERE t.status = 'active' 
+        ORDER BY t.created_at DESC 
+        LIMIT 6
+    ");
     $recent_temples = $stmt->fetchAll();
 } catch (PDOException $e) {
-    // จัดการข้อผิดพลาด
+    error_log('Recent temples error: ' . $e->getMessage());
+}
+
+// ดึงกิจกรรมที่จะมาถึงเร็วๆ นี้
+$upcoming_events = [];
+try {
+    $stmt = $pdo->query("
+        SELECT 
+            e.*, 
+            t.name as temple_name,
+            p.province_name
+        FROM events e
+        LEFT JOIN temples t ON e.temple_id = t.id
+        LEFT JOIN provinces p ON t.province_id = p.province_id
+        WHERE e.event_date >= CURDATE()
+        ORDER BY e.event_date ASC
+        LIMIT 5
+    ");
+    $upcoming_events = $stmt->fetchAll();
+} catch (PDOException $e) {
+    error_log('Upcoming events error: ' . $e->getMessage());
 }
 
 // กำหนดชื่อเว็บไซต์
 $site_name = $settings['site_name'] ?? 'ລະບົບຈັດການວັດ';
 $site_description = $settings['site_description'] ?? 'ລະບົບຈັດການຂໍ້ມູນວັດ ແລະ ກິດຈະກໍາ';
+// นับจำนวนวัดทั้งหมด
+$total_temples = 0;
+try {
+    $stmt = $pdo->query("SELECT COUNT(*) FROM temples WHERE status = 'active'");
+    $total_temples = $stmt->fetchColumn();
+} catch (PDOException $e) {
+    error_log('Count temples error: ' . $e->getMessage());
+}
 ?>
 
 <!DOCTYPE html>
@@ -71,10 +116,12 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#B08542">
+    <meta name="description" content="<?= htmlspecialchars($site_description) ?>">
     <title><?= htmlspecialchars($site_name) ?></title>
     
-    <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Preload critical fonts -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap"></noscript>
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -85,148 +132,19 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- นำเข้า monk-style.css -->
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
+    <link rel="stylesheet" href="<?= $base_url ?>assets/css/index.css">
     
-    <style>
-        body {
-            font-family: 'Noto Sans Lao', sans-serif;
-        }
-        
-        .temple-card {
-            transition: all 0.3s ease;
-        }
-        
-        .temple-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(176, 133, 66, 0.2);
-        }
-        
-        .hero-section {
-            background-image: url('assets/images/temple-bg.jpg');
-            background-size: cover;
-            background-position: center;
-            position: relative;
-        }
-        
-        .hero-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to right, rgba(176, 133, 66, 0.8) 0%, rgba(212, 167, 98, 0.7) 100%);
-        }
-        
-        /* Mobile-specific enhancements */
-        @media (max-width: 640px) {
-            .temple-card {
-                margin-bottom: 1rem;
-            }
-            
-            .hero-section {
-                padding: 4rem 0;
-                text-align: center;
-            }
-            
-            .hero-section h1 {
-                font-size: 2rem !important;
-                line-height: 1.2;
-            }
-            
-            .stats-card {
-                margin-bottom: 0.75rem;
-            }
-            
-            .mobile-scroll-container {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                padding-bottom: 1rem;
-                margin: 0 -1rem;
-                padding-left: 1rem;
-                padding-right: 1rem;
-                scroll-snap-type: x mandatory;
-            }
-            
-            .mobile-scroll-item {
-                scroll-snap-align: start;
-                flex-shrink: 0;
-                width: 85%;
-                margin-right: 0.75rem;
-            }
-            
-            .mobile-full-width {
-                width: 100vw;
-                position: relative;
-                left: 50%;
-                right: 50%;
-                margin-left: -50vw;
-                margin-right: -50vw;
-            }
-            
-            .feature-icon {
-                margin-bottom: 0.5rem !important;
-            }
-            
-            /* Bottom navigation bar */
-            .mobile-navbar {
-                display: flex;
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                background: white;
-                box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-                z-index: 100;
-                height: 3.5rem;
-            }
-            
-            .mobile-nav-item {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                font-size: 0.7rem;
-                color: #666;
-                padding: 0.25rem;
-            }
-            
-            .mobile-nav-item.active {
-                color: #B08542;
-            }
-            
-            .mobile-nav-item i {
-                font-size: 1.2rem;
-                margin-bottom: 0.25rem;
-            }
-            
-            /* Add padding to bottom to account for mobile navbar */
-            .has-mobile-nav {
-                padding-bottom: 4rem;
-            }
-            
-            /* Improved touch targets */
-            .btn, button, .card a {
-                padding: 0.75rem 1rem;
-            }
-            
-            /* Fix for charts on mobile */
-            .chart-container {
-                height: 250px !important;
-                margin-bottom: 1.5rem;
-            }
-        }
-    </style>
 </head>
-<body class="bg-gray-50 has-mobile-nav">
-    <!-- Mobile navigation (visible only on small screens) -->
-    <nav class="mobile-navbar sm:hidden">
+<body class="bg-gray-50 mobile-safe-area">
+    <!-- Mobile Navigation -->
+    <nav class="mobile-nav sm:hidden">
         <a href="<?= $base_url ?>" class="mobile-nav-item active">
             <i class="fas fa-home"></i>
             <span>ໜ້າຫຼັກ</span>
         </a>
-        <a href="all-temples.php" class="mobile-nav-item">
+        <a href="<?= $base_url ?>all-temples.php" class="mobile-nav-item">
             <i class="fas fa-place-of-worship"></i>
             <span>ວັດ</span>
         </a>
@@ -237,39 +155,47 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
         <?php if ($logged_in): ?>
         <a href="<?= $base_url ?>dashboard.php" class="mobile-nav-item">
             <i class="fas fa-tachometer-alt"></i>
-            <span>ແຜງຄວບຄຸມ</span>
+            <span>Dashboard</span>
         </a>
         <?php else: ?>
-        <a href="<?= $base_url ?>auth/login.php" class="mobile-nav-item">
+        <a href="<?= $base_url ?>auth/" class="mobile-nav-item">
             <i class="fas fa-sign-in-alt"></i>
             <span>ເຂົ້າລະບົບ</span>
         </a>
         <?php endif; ?>
     </nav>
 
-    <!-- Desktop navigation (hidden on mobile) -->
-    <nav class="bg-white shadow-sm hidden sm:block">
+    <!-- Desktop Navigation -->
+    <nav class="bg-white/95 backdrop-blur-sm shadow-sm sticky top-0 z-50 hidden sm:block">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
-                <div class="flex">
+                <div class="flex items-center">
                     <div class="flex-shrink-0 flex items-center">
-                        <img class="h-8 w-auto" src="<?= $base_url ?>assets/images/logo.png" alt="<?= htmlspecialchars($site_name) ?>">
+                        <div class="w-8 h-8 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-place-of-worship text-white text-lg"></i>
+                        </div>
                         <span class="ml-3 text-xl font-semibold text-gray-800"><?= htmlspecialchars($site_name) ?></span>
                     </div>
                 </div>
-                <div class="flex items-center">
+                <div class="flex items-center space-x-4">
+                    <a href="<?= $base_url ?>all-temples.php" class="text-gray-600 hover:text-amber-600 px-3 py-2 rounded-md text-sm font-medium transition">
+                        <i class="fas fa-place-of-worship mr-1"></i> ວັດ
+                    </a>
+                    <a href="<?= $base_url ?>events/" class="text-gray-600 hover:text-amber-600 px-3 py-2 rounded-md text-sm font-medium transition">
+                        <i class="fas fa-calendar-alt mr-1"></i> ກິດຈະກໍາ
+                    </a>
                     <?php if ($logged_in): ?>
                         <a href="<?= $base_url ?>dashboard.php" class="text-amber-700 hover:text-amber-800 px-3 py-2 rounded-md text-sm font-medium">
-                            <i class="fas fa-tachometer-alt mr-1"></i> ໜ້າຄວບຄຸມ
+                            <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
                         </a>
-                        <a href="<?= $base_url ?>auth/logout.php" class="ml-4 btn-primary">
+                        <a href="<?= $base_url ?>auth/logout.php" class="btn-primary">
                             <i class="fas fa-sign-out-alt mr-1"></i> ອອກຈາກລະບົບ
                         </a>
                     <?php else: ?>
-                        <a href="<?= $base_url ?>auth/login.php" class="text-amber-700 hover:text-amber-800 px-3 py-2 rounded-md text-sm font-medium">
+                        <a href="<?= $base_url ?>auth/" class="text-amber-700 hover:text-amber-800 px-3 py-2 rounded-md text-sm font-medium">
                             <i class="fas fa-sign-in-alt mr-1"></i> ເຂົ້າສູ່ລະບົບ
                         </a>
-                        <a href="<?= $base_url ?>auth/register.php" class="ml-4 btn-primary">
+                        <a href="<?= $base_url ?>auth/register.php" class="btn-primary">
                             <i class="fas fa-user-plus mr-1"></i> ລົງທະບຽນ
                         </a>
                     <?php endif; ?>
@@ -279,30 +205,29 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
     </nav>
 
     <!-- Hero Section -->
-    <section class="hero-section py-16 md:py-32 relative">
-        <div class="hero-overlay"></div>
+    <section class="hero-section py-12 md:py-20 relative">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center md:text-left md:max-w-2xl">
-                <h1 class="text-2xl md:text-5xl font-bold text-white leading-tight">
-                    ລະບົບຈັດການຂໍ້ມູນວັດ ແລະ ພະສົງ
+            <div class="text-center">
+                <h1 class="hero-title text-3xl md:text-5xl font-bold text-white leading-tight fade-in-up">
+                    ລະບົບຈັດການຂໍ້ມູນວັດ
                 </h1>
-                <p class="mt-4 text-base md:text-lg text-gray-100">
+                <p class="hero-subtitle text-lg md:text-xl text-gray-100 mt-4 max-w-3xl mx-auto fade-in-up" style="animation-delay: 0.2s">
                     <?= htmlspecialchars($site_description) ?>
                 </p>
-                <div class="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-center fade-in-up" style="animation-delay: 0.4s">
                     <?php if (!$logged_in): ?>
-                        <a href="<?= $base_url ?>auth/register.php" class="w-full sm:w-auto btn-primary text-center">
-                            <i class="fas fa-user-plus mr-1"></i> ເລີ່ມໃຊ້ງານເລີຍ
+                        <a href="<?= $base_url ?>auth/register.php" class="btn-primary inline-flex items-center justify-center px-6 py-3">
+                            <i class="fas fa-user-plus mr-2"></i> ເລີ່ມໃຊ້ງານ
                         </a>
-                        <a href="<?= $base_url ?>about.php" class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-lg text-base font-medium text-white bg-gray-800 bg-opacity-60 hover:bg-opacity-70 text-center">
-                            <i class="fas fa-info-circle mr-1"></i> ຮຽນຮູ້ເພີ່ມເຕີມ
+                        <a href="<?= $base_url ?>temples/" class="px-6 py-3 border-2 border-white text-white hover:bg-white hover:text-amber-700 rounded-lg font-medium transition inline-flex items-center justify-center">
+                            <i class="fas fa-search mr-2"></i> ຄົ້ນຫາວັດ
                         </a>
                     <?php else: ?>
-                        <a href="<?= $base_url ?>dashboard.php" class="btn-primary">
-                            <i class="fas fa-tachometer-alt mr-1"></i> ໄປທີ່ໜ້າຄວບຄຸມ
+                        <a href="<?= $base_url ?>dashboard.php" class="btn-primary inline-flex items-center justify-center px-6 py-3">
+                            <i class="fas fa-tachometer-alt mr-2"></i> ໄປ Dashboard
                         </a>
-                        <a href="<?= $base_url ?>about.php" class="px-6 py-3 border border-transparent rounded-lg text-base font-medium text-white bg-gray-800 bg-opacity-60 hover:bg-opacity-70">
-                            <i class="fas fa-info-circle mr-1"></i> ຮຽນຮູ້ເພີ່ມເຕີມ
+                        <a href="<?= $base_url ?>temples/add.php" class="px-6 py-3 border-2 border-white text-white hover:bg-white hover:text-amber-700 rounded-lg font-medium transition inline-flex items-center justify-center">
+                            <i class="fas fa-plus mr-2"></i> ເພີ່ມວັດໃໝ່
                         </a>
                     <?php endif; ?>
                 </div>
@@ -310,537 +235,514 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
         </div>
     </section>
 
-    <!-- Stats Section - Convert to horizontal scroll on mobile -->
-    <div class="page-container py-8 md:py-12">
+    <!-- Stats Section -->
+    <section class="py-8 md:py-12 -mt-16 relative z-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-8 md:mb-12">
-                <h2 class="text-2xl md:text-3xl font-extrabold text-gray-900">ສະຖິຕິໂດຍລວມ</h2>
-                <p class="mt-3 max-w-2xl text-base md:text-xl text-gray-500 mx-auto">
-                    ລະບົບຈັດການຂໍ້ມູນວັດຊ່ວຍໃຫ້ການບໍລິຫານຂໍ້ມູນພຣະພຸດທະສາສະໜາເປັນລະບົບ ແລະ ມີປະສິດທິພາບ.
-                </p>
-            </div>
-
-            <!-- Convert to horizontally scrolling cards on mobile -->
-            <div class="mobile-scroll-container sm:hidden">
-                <div class="flex">
-                    <!-- Temple Stats -->
-                    <div class="mobile-scroll-item stats-card">
-                        <div class="card p-4 text-center bg-gradient-to-br from-amber-50 to-amber-100 h-full">
-                            <div class="flex justify-center mb-3">
-                                <div class="icon-circle">
-                                    <i class="fas fa-place-of-worship"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-bold text-amber-800"><?= number_format($stats['temples']) ?></div>
-                            <div class="mt-1 text-amber-700 font-medium">ວັດທັງໝົດ</div>
-                        </div>
-                    </div>
-
-                    <!-- Monks Stats -->
-                    <div class="mobile-scroll-item stats-card">
-                        <div class="card p-4 text-center bg-gradient-to-br from-amber-50 to-amber-100 h-full">
-                            <div class="flex justify-center mb-3">
-                                <div class="icon-circle">
-                                    <i class="fas fa-user"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-bold text-amber-800"><?= number_format($stats['monks']) ?></div>
-                            <div class="mt-1 text-amber-700 font-medium">ພຣະສົງທັງໝົດ</div>
-                        </div>
-                    </div>
-
-                    <!-- Events Stats -->
-                    <div class="mobile-scroll-item stats-card">
-                        <div class="card p-4 text-center bg-gradient-to-br from-amber-50 to-amber-100 h-full">
-                            <div class="flex justify-center mb-3">
-                                <div class="icon-circle">
-                                    <i class="fas fa-calendar-alt"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-bold text-amber-800"><?= number_format($stats['events']) ?></div>
-                            <div class="mt-1 text-amber-700 font-medium">ກິດຈະກຳທັງໝົດ</div>
-                        </div>
-                    </div>
-
-                    <!-- Provinces Stats -->
-                    <div class="mobile-scroll-item stats-card">
-                        <div class="card p-4 text-center bg-gradient-to-br from-amber-50 to-amber-100 h-full">
-                            <div class="flex justify-center mb-3">
-                                <div class="icon-circle">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                </div>
-                            </div>
-                            <div class="text-3xl font-bold text-amber-800"><?= number_format($stats['provinces']) ?></div>
-                            <div class="mt-1 text-amber-700 font-medium">ແຂວງທີ່ມີວັດໃນລະບົບ</div>
-                        </div>
-                    </div>
+            <!-- Mobile: Horizontal scroll -->
+            <div class="stats-mobile sm:hidden">
+                <div class="stat-card-mobile card p-4 text-center bg-white shadow-lg">
+                    <div class="text-2xl font-bold text-amber-600"><?= number_format($stats['temples']) ?></div>
+                    <div class="text-sm text-gray-600 mt-1">ວັດທັງໝົດ</div>
+                    <i class="fas fa-place-of-worship text-amber-400 mt-2"></i>
+                </div>
+                <div class="stat-card-mobile card p-4 text-center bg-white shadow-lg">
+                    <div class="text-2xl font-bold text-amber-600"><?= number_format($stats['monks']) ?></div>
+                    <div class="text-sm text-gray-600 mt-1">ພຣະສົງ</div>
+                    <i class="fas fa-user text-amber-400 mt-2"></i>
+                </div>
+                <div class="stat-card-mobile card p-4 text-center bg-white shadow-lg">
+                    <div class="text-2xl font-bold text-amber-600"><?= number_format($stats['events']) ?></div>
+                    <div class="text-sm text-gray-600 mt-1">ກິດຈະກໍາ</div>
+                    <i class="fas fa-calendar-alt text-amber-400 mt-2"></i>
+                </div>
+                <div class="stat-card-mobile card p-4 text-center bg-white shadow-lg">
+                    <div class="text-2xl font-bold text-amber-600"><?= number_format($stats['provinces']) ?></div>
+                    <div class="text-sm text-gray-600 mt-1">ແຂວງ</div>
+                    <i class="fas fa-map-marker-alt text-amber-400 mt-2"></i>
                 </div>
             </div>
 
-            <!-- Desktop grid layout (hidden on mobile) -->
-            <div class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- Temple Stats -->
-                <div class="card p-6 text-center bg-gradient-to-br from-amber-50 to-amber-100">
+            <!-- Desktop: Grid layout -->
+            <div class="hidden sm:grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="card p-6 text-center bg-white shadow-lg">
                     <div class="flex justify-center mb-4">
                         <div class="icon-circle">
                             <i class="fas fa-place-of-worship"></i>
                         </div>
                     </div>
-                    <div class="text-2xl sm:text-4xl font-bold text-amber-800"><?= number_format($stats['temples']) ?></div>
-                    <div class="mt-2 text-amber-700 font-medium">ວັດທັງໝົດ</div>
+                    <div class="text-3xl font-bold text-amber-600"><?= number_format($stats['temples']) ?></div>
+                    <div class="text-gray-600 mt-2">ວັດທັງໝົດ</div>
                 </div>
-
-                <!-- Monks Stats -->
-                <div class="card p-6 text-center bg-gradient-to-br from-amber-50 to-amber-100">
+                <div class="card p-6 text-center bg-white shadow-lg">
                     <div class="flex justify-center mb-4">
                         <div class="icon-circle">
                             <i class="fas fa-user"></i>
                         </div>
                     </div>
-                    <div class="text-2xl sm:text-4xl font-bold text-amber-800"><?= number_format($stats['monks']) ?></div>
-                    <div class="mt-2 text-amber-700 font-medium">ພຣະສົງທັງໝົດ</div>
+                    <div class="text-3xl font-bold text-amber-600"><?= number_format($stats['monks']) ?></div>
+                    <div class="text-gray-600 mt-2">ພຣະສົງທັງໝົດ</div>
                 </div>
-
-                <!-- Events Stats -->
-                <div class="card p-6 text-center bg-gradient-to-br from-amber-50 to-amber-100">
+                <div class="card p-6 text-center bg-white shadow-lg">
                     <div class="flex justify-center mb-4">
                         <div class="icon-circle">
                             <i class="fas fa-calendar-alt"></i>
                         </div>
                     </div>
-                    <div class="text-2xl sm:text-4xl font-bold text-amber-800"><?= number_format($stats['events']) ?></div>
-                    <div class="mt-2 text-amber-700 font-medium">ກິດຈະກຳທັງໝົດ</div>
+                    <div class="text-3xl font-bold text-amber-600"><?= number_format($stats['events']) ?></div>
+                    <div class="text-gray-600 mt-2">ກິດຈະກໍາທີ່ຈະມາ</div>
                 </div>
-
-                <!-- Provinces Stats -->
-                <div class="card p-6 text-center bg-gradient-to-br from-amber-50 to-amber-100">
+                <div class="card p-6 text-center bg-white shadow-lg">
                     <div class="flex justify-center mb-4">
                         <div class="icon-circle">
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
                     </div>
-                    <div class="text-2xl sm:text-4xl font-bold text-amber-800"><?= number_format($stats['provinces']) ?></div>
-                    <div class="mt-2 text-amber-700 font-medium">ແຂວງທີ່ມີວັດໃນລະບົບ</div>
+                    <div class="text-3xl font-bold text-amber-600"><?= number_format($stats['provinces']) ?></div>
+                    <div class="text-gray-600 mt-2">ແຂວງທີ່ມີວັດ</div>
                 </div>
             </div>
+        </div>
+    </section>
 
-            <!-- Data visualization with improved mobile display -->
-            <div class="mt-8 md:mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <!-- Temple distribution by province -->
-                <div class="card">
-                    <div class="px-4 py-4 md:px-6 md:py-5 flex justify-between items-center border-b border-amber-100">
-                        <h3 class="text-md md:text-lg leading-6 font-medium text-gray-900 flex items-center">
-                            <div class="category-icon">
+    <!-- Charts Section -->
+    <section class="py-8 md:py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Temple Distribution Chart -->
+                <div class="card bg-white shadow-lg">
+                    <div class="p-4 border-b border-gray-100">
+                        <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <div class="category-icon mr-3">
                                 <i class="fas fa-chart-pie"></i>
                             </div>
-                            ການກະຈາຍຂອງວັດຕາມແຂວງ
+                            ການກະຈາຍວັດຕາມແຂວງ
                         </h3>
                     </div>
-                    <div class="p-4 md:px-6 md:py-5">
-                        <div class="chart-container h-64">
+                    <div class="p-6">
+                        <div class="chart-mobile h-64">
                             <canvas id="templesChart"></canvas>
                         </div>
                     </div>
                 </div>
 
-                <!-- Monthly Activities -->
-                <div class="card">
-                    <div class="px-4 py-4 md:px-6 md:py-5 flex justify-between items-center border-b border-amber-100">
-                        <h3 class="text-md md:text-lg leading-6 font-medium text-gray-900 flex items-center">
-                            <div class="category-icon">
+                <!-- Monthly Events Chart -->
+                <div class="card bg-white shadow-lg">
+                    <div class="p-4 border-b border-gray-100">
+                        <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+                            <div class="category-icon mr-3">
                                 <i class="fas fa-chart-line"></i>
                             </div>
                             ກິດຈະກໍາປະຈໍາເດືອນ
                         </h3>
                     </div>
-                    <div class="p-4 md:px-6 md:py-5">
-                        <div class="chart-container h-64">
+                    <div class="p-6">
+                        <div class="chart-mobile h-64">
                             <canvas id="activitiesChart"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Recent Temples Section - Convert to scrollable cards on mobile -->
-    <section class="page-container py-8 md:py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="header-section p-4 md:p-6 mb-6 md:mb-8">
-                <h2 class="text-2xl md:text-3xl font-bold text-gray-800 flex items-center">
-                    <div class="category-icon">
-                        <i class="fas fa-place-of-worship"></i>
-                    </div>
+    </section>
+    
+    <!-- Recent Temples Section -->
+    <section class="py-16 md:py-24 gradient-bg relative overflow-hidden">
+        <!-- Background decoration -->
+        <div class="absolute inset-0 opacity-10">
+            <div class="absolute top-10 left-10 w-20 h-20 bg-white rounded-full floating-animation"></div>
+            <div class="absolute top-32 right-20 w-16 h-16 bg-white rounded-full floating-animation" style="animation-delay: -2s;"></div>
+            <div class="absolute bottom-20 left-1/4 w-12 h-12 bg-white rounded-full floating-animation" style="animation-delay: -4s;"></div>
+        </div>
+        
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+            <div class="text-center mb-16 fade-in">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-white bg-opacity-20 rounded-full mb-6 icon-bounce">
+                    <i class="fas fa-place-of-worship text-white text-2xl"></i>
+                </div>
+                <h2 class="text-3xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
                     ວັດລ່າສຸດໃນລະບົບ
                 </h2>
-                <p class="mt-2 text-amber-700">
-                    ຂໍ້ມູນວັດທີ່ຫາກໍ່ຖືກເພີ່ມເຂົ້າລະບົບ
+                <p class="text-white text-lg md:text-xl opacity-90 max-w-2xl mx-auto">
+                    ຂໍ້ມູນວັດທີ່ຫາກໍ່ຖືກເພີ່ມເຂົ້າລະບົບ ພ້ອມລາຍລະອຽດທີ່ຄົບຖ້ວນ
                 </p>
+                <div class="mt-6 text-white/80">
+                    <span class="inline-flex items-center bg-white/20 rounded-full px-4 py-2">
+                        <i class="fas fa-list-ul mr-2"></i>
+                        ທັງໝົດ <?= number_format($total_temples) ?> ວັດ
+                    </span>
+                </div>
             </div>
 
-            <!-- Horizontal scrolling temples on mobile -->
-            <div class="mobile-scroll-container sm:hidden">
-                <div class="flex">
-                    <?php foreach($recent_temples as $temple): ?>
-                    <div class="mobile-scroll-item">
-                        <div class="card overflow-hidden h-full">
-                            <div class="h-36 overflow-hidden">
-                                <?php if($temple['photo']): ?>
-                                    <img src="<?= $base_url . htmlspecialchars($temple['photo']) ?>" 
-                                        alt="<?= htmlspecialchars($temple['name']) ?>" 
-                                        class="w-full h-full object-cover">
-                                <?php else: ?>
-                                    <div class="w-full h-full flex items-center justify-center bg-amber-50">
-                                        <i class="fas fa-place-of-worship text-amber-300 text-4xl"></i>
+            <?php if (!empty($recent_temples)): ?>
+                <!-- Desktop Grid Layout -->
+                <div class="hidden sm:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <?php 
+                    $stagger_classes = ['stagger-1', 'stagger-2', 'stagger-3', 'stagger-4', 'stagger-5', 'stagger-6'];
+                    foreach($recent_temples as $index => $temple): 
+                        $stagger_class = $stagger_classes[$index % 6];
+                    ?>
+                    <div class="temple-card glass-card rounded-2xl overflow-hidden fade-in <?= $stagger_class ?>">
+                        <div class="h-52 overflow-hidden relative">
+                            <?php if(!empty($temple['photo']) && file_exists($temple['photo'])): ?>
+                                <img src="<?= $base_url . htmlspecialchars($temple['photo']) ?>" 
+                                     alt="<?= htmlspecialchars($temple['name']) ?>" 
+                                     class="w-full h-full object-cover">
+                            <?php else: ?>
+                                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
+                                    <i class="fas fa-place-of-worship text-amber-400 text-5xl"></i>
+                                </div>
+                            <?php endif; ?>
+                            <div class="absolute top-4 right-4 bg-white bg-opacity-90 px-3 py-1 rounded-full text-xs font-medium text-amber-700">
+                                ໃໝ່
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <h3 class="text-xl font-semibold text-gray-900 mb-4"><?= htmlspecialchars($temple['name']) ?></h3>
+                            <div class="space-y-3 mb-6">
+                                <div class="text-sm text-gray-600 flex items-center">
+                                    <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mr-3">
+                                        <i class="fas fa-map-marker-alt text-amber-600 text-xs"></i>
                                     </div>
+                                    <span>
+                                        <?= htmlspecialchars($temple['district_name'] ?? 'ບໍ່ລະບຸເມືອງ') ?>
+                                        <?= !empty($temple['province_name']) ? ', ' . htmlspecialchars($temple['province_name']) : '' ?>
+                                    </span>
+                                </div>
+                                <?php if(!empty($temple['abbot_name'])): ?>
+                                <div class="text-sm text-gray-600 flex items-center">
+                                    <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mr-3">
+                                        <i class="fas fa-user text-amber-600 text-xs"></i>
+                                    </div>
+                                    <span><?= htmlspecialchars($temple['abbot_name']) ?></span>
+                                </div>
+                                <?php endif; ?>
+                                <?php if(!empty($temple['phone'])): ?>
+                                <div class="text-sm text-gray-600 flex items-center">
+                                    <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mr-3">
+                                        <i class="fas fa-phone text-amber-600 text-xs"></i>
+                                    </div>
+                                    <span><?= htmlspecialchars($temple['phone']) ?></span>
+                                </div>
                                 <?php endif; ?>
                             </div>
-                            <div class="p-3">
-                                <h3 class="text-base font-semibold text-gray-900 mb-1"><?= htmlspecialchars($temple['name']) ?></h3>
-                                <div class="flex items-center text-xs text-gray-500 mb-1">
-                                    <i class="fas fa-map-marker-alt mr-1 text-amber-600"></i>
-                                    <?= htmlspecialchars($temple['district'] ? $temple['district'] . ', ' : '') . htmlspecialchars($temple['province'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?>
-                                </div>
-                                <div class="flex items-center text-xs text-gray-500 mb-1">
-                                    <i class="fas fa-user mr-1 text-amber-600"></i>
-                                    <?= htmlspecialchars($temple['abbot_name'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?>
-                                </div>
-                                <div class="mt-2">
-                                    <a href="<?= $base_url ?>temples/view-detaile.php?id=1<?= $temple['id'] ?>" class="btn-primary w-full flex items-center justify-center text-xs py-2">
-                                        <i class="fas fa-info-circle mr-1"></i> ເບິ່ງລາຍລະອຽດ
-                                    </a>
-                                </div>
-                            </div>
+                            <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" 
+                               class="btn-modern w-full text-white font-medium py-3 px-6 rounded-xl transition-all duration-300 block text-center">
+                                <i class="fas fa-eye mr-2"></i> ເບິ່ງລາຍລະອຽດ
+                            </a>
                         </div>
                     </div>
                     <?php endforeach; ?>
+                </div>
 
-                    <?php if(empty($recent_temples)): ?>
-                    <div class="mobile-scroll-item">
-                        <div class="card p-6 text-center">
-                            <i class="fas fa-temple text-amber-300 text-4xl mb-4"></i>
-                            <p class="text-gray-500">ຍັງບໍ່ມີຂໍ້ມູນວັດໃນລະບົບ</p>
+                <!-- Mobile Scroll View -->
+                <div class="temples-mobile sm:hidden">
+                    <?php foreach($recent_temples as $temple): ?>
+                    <div class="temple-card-mobile glass-card rounded-2xl overflow-hidden">
+                        <div class="h-40 overflow-hidden relative">
+                            <?php if(!empty($temple['photo']) && file_exists($temple['photo'])): ?>
+                                <img src="<?= $base_url . htmlspecialchars($temple['photo']) ?>" 
+                                     alt="<?= htmlspecialchars($temple['name']) ?>" 
+                                     class="w-full h-full object-cover">
+                            <?php else: ?>
+                                <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
+                                    <i class="fas fa-place-of-worship text-amber-400 text-4xl"></i>
+                                </div>
+                            <?php endif; ?>
+                            <div class="absolute top-3 right-3 bg-white bg-opacity-90 px-2 py-1 rounded-full text-xs font-medium text-amber-700">
+                                ໃໝ່
+                            </div>
+                        </div>
+                        <div class="p-4">
+                            <h3 class="font-semibold text-gray-900 mb-2 truncate"><?= htmlspecialchars($temple['name']) ?></h3>
+                            <div class="text-sm text-gray-600 mb-1 flex items-center">
+                                <i class="fas fa-map-marker-alt mr-2 text-amber-500"></i>
+                                <span class="truncate">
+                                    <?= htmlspecialchars($temple['district_name'] ?? 'ບໍ່ລະບຸເມືອງ') ?>
+                                    <?= !empty($temple['province_name']) ? ', ' . htmlspecialchars($temple['province_name']) : '' ?>
+                                </span>
+                            </div>
+                            <?php if(!empty($temple['abbot_name'])): ?>
+                            <div class="text-sm text-gray-600 mb-3 flex items-center">
+                                <i class="fas fa-user mr-2 text-amber-500"></i>
+                                <span class="truncate"><?= htmlspecialchars($temple['abbot_name']) ?></span>
+                            </div>
+                            <?php endif; ?>
+                            <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" 
+                               class="btn-modern w-full text-center text-white font-medium py-2 text-sm rounded-lg block">
+                                <i class="fas fa-eye mr-1"></i> ເບິ່ງລາຍລະອຽດ
+                            </a>
                         </div>
                     </div>
-                    <?php endif; ?>
+                    <?php endforeach; ?>
                 </div>
-            </div>
-
-            <!-- Desktop grid layout (hidden on mobile) -->
-            <div class="hidden sm:grid gap-6 lg:grid-cols-4 md:grid-cols-2">
-                <?php foreach($recent_temples as $temple): ?>
-                <div class="card overflow-hidden">
-                    <div class="h-48 overflow-hidden">
-                        <?php if($temple['photo']): ?>
-                            <img src="<?= $base_url . htmlspecialchars($temple['photo']) ?>" 
-                                alt="<?= htmlspecialchars($temple['name']) ?>" 
-                                class="w-full h-full object-cover">
-                        <?php else: ?>
-                            <div class="w-full h-full flex items-center justify-center bg-amber-50">
-                                <i class="fas fa-place-of-worship text-amber-300 text-4xl"></i>
-                            </div>
+            <?php else: ?>
+                <!-- No Data State -->
+                <div class="text-center py-16">
+                    <div class="glass-card rounded-2xl p-12 max-w-md mx-auto">
+                        <i class="fas fa-place-of-worship text-amber-400 text-6xl mb-6"></i>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">ຍັງບໍ່ມີຂໍ້ມູນວັດ</h3>
+                        <p class="text-gray-600 mb-6">ຂໍ້ມູນວັດຍັງບໍ່ໄດ້ຖືກເພີ່ມເຂົ້າລະບົບ</p>
+                        <?php if ($logged_in): ?>
+                        <a href="<?= $base_url ?>temples/add.php" 
+                           class="btn-modern text-white font-medium py-3 px-6 rounded-xl transition-all duration-300 inline-flex items-center">
+                            <i class="fas fa-plus mr-2"></i> ເພີ່ມວັດໃໝ່
+                        </a>
                         <?php endif; ?>
                     </div>
-                    <div class="p-4">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2"><?= htmlspecialchars($temple['name']) ?></h3>
-                        <div class="flex items-center text-sm text-gray-500 mb-2">
-                            <i class="fas fa-map-marker-alt mr-2 text-amber-600"></i>
-                            <?= htmlspecialchars($temple['district'] ? $temple['district'] . ', ' : '') . htmlspecialchars($temple['province'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?>
-                        </div>
-                        <div class="flex items-center text-sm text-gray-500 mb-2">
-                            <i class="fas fa-user mr-2 text-amber-600"></i>
-                            <?= htmlspecialchars($temple['abbot_name'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?>
-                        </div>
-                        <div class="flex items-center text-sm text-gray-500 mb-4">
-                            <i class="fas fa-phone mr-2 text-amber-600"></i>
-                            <?= htmlspecialchars($temple['phone'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?>
-                        </div>
-                        
-                        <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" class="btn-primary w-full flex items-center justify-center">
-                            <i class="fas fa-info-circle mr-2"></i> ເບິ່ງລາຍລະອຽດ
-                        </a>
-                    </div>
                 </div>
-                <?php endforeach; ?>
+            <?php endif; ?>
 
-                <?php if(empty($recent_temples)): ?>
-                <div class="col-span-full text-center py-8">
-                    <i class="fas fa-temple text-amber-300 text-5xl mb-4"></i>
-                    <p class="text-gray-500 text-lg">ຍັງບໍ່ມີຂໍ້ມູນວັດໃນລະບົບ</p>
-                </div>
-                <?php endif; ?>
-            </div>
-
-            <div class="mt-8 text-center">
-                <a href="all-temples.php" class="btn px-6 py-3 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg inline-flex items-center">
-                    <i class="fas fa-list mr-2"></i> ເບິ່ງວັດທັງໝົດ
+            <!-- View all button -->
+            <div class="mt-12 text-center fade-in">
+                <a href="<?= $base_url ?>all-temples.php" 
+                   class="glass-card px-8 py-4 text-amber-800 font-medium rounded-2xl hover:bg-white hover:bg-opacity-100 transition-all duration-300 inline-flex items-center shadow-lg hover:shadow-xl transform hover:scale-105">
+                    <i class="fas fa-list mr-3"></i> 
+                    <span>ເບິ່ງວັດທັງໝົດ (<?= number_format($total_temples) ?> ວັດ)</span>
+                    <i class="fas fa-arrow-right ml-3 text-sm"></i>
                 </a>
             </div>
         </div>
     </section>
 
-    <!-- Features Section - Improved for mobile -->
-    <section class="page-container py-8 md:py-12">
+    <!-- Features Section -->
+    <section class="py-8 md:py-12 bg-gradient-to-br from-amber-50 to-orange-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="header-section p-4 md:p-6 mb-6 md:mb-8">
-                <h2 class="text-2xl md:text-3xl font-bold text-gray-800 flex items-center">
-                    <div class="category-icon">
-                        <i class="fas fa-list-check"></i>
-                    </div>
-                    ຄຸນສົມບັດຂອງລະບົບ
-                </h2>
-                <p class="mt-2 text-amber-700">
-                    ລະບົບຈັດການຂໍ້ມູນວັດຊ່ວຍໃຫ້ການບໍລິຫານມີປະສິດທິພາບ ແລະ ທັນສະໄໝ
+            <div class="text-center mb-12">
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-800">ຄຸນສົມບັດຂອງລະບົບ</h2>
+                <p class="text-gray-600 mt-2 max-w-2xl mx-auto">
+                    ລະບົບຈັດການຂໍ້ມູນວັດທີ່ທັນສະໄໝ ແລະ ມີປະສິດທິພາບ
                 </p>
             </div>
 
-            <!-- Horizontal scrolling features on mobile -->
-            <div class="mobile-scroll-container sm:hidden">
-                <div class="flex">
-                    <!-- Feature 1: Temple Management -->
-                    <div class="mobile-scroll-item">
-                        <div class="card p-4 h-full">
-                            <div class="icon-circle mb-3 w-10 h-10 feature-icon">
-                                <i class="fas fa-place-of-worship"></i>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">ຈັດການຂໍ້ມູນວັດ</h3>
-                            <p class="text-gray-600 text-sm">
-                                ເກັບກຳຂໍ້ມູນວັດ ແລະ ສະຖານທີໍາຄັນທາງພຸດທະສາສະໜາຢ່າງເປັນລະບົບ.
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <!-- Feature 2: Monk Database -->
-                    <div class="mobile-scroll-item">
-                        <div class="card p-4 h-full">
-                            <div class="icon-circle mb-3 w-10 h-10 feature-icon">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">ຖານຂໍ້ມູນພຣະສົງ</h3>
-                            <p class="text-gray-600 text-sm">
-                                ບັນທຶກປະຫວັດ, ການສຶກສາ, ແລະ ຂໍ້ມູນສໍາຄັນຂອງພຣະສົງ.
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <!-- Feature 3: Event Management -->
-                    <div class="mobile-scroll-item">
-                        <div class="card p-4 h-full">
-                            <div class="icon-circle mb-3 w-10 h-10 feature-icon">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">ຈັດການກິດຈະກໍາ</h3>
-                            <p class="text-gray-600 text-sm">
-                                ວາງແຜນ ແລະ ຈັດການກິດຈະກໍາທາງສາສະໜາ ແລະ ງານບຸນຕ່າງໆ.
-                            </p>
-                        </div>
-                    </div>
-                    
-                    <!-- Additional features -->
-                    <div class="mobile-scroll-item">
-                        <div class="card p-4 h-full">
-                            <div class="icon-circle mb-3 w-10 h-10 feature-icon">
-                                <i class="fas fa-chart-line"></i>
-                            </div>
-                            <h3 class="text-lg font-semibold text-gray-900 mb-2">ແຜງຄວບຄຸມ</h3>
-                            <p class="text-gray-600 text-sm">
-                                ເຂົ້າເຖິບຂໍ້ມູນສະຖິຕິ ແລະ ການວິເຄາະທີໍາຄັນເພື່ອການຕັດສິນໃຈ.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Desktop grid layout (hidden on mobile) -->
-            <div class="hidden sm:grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <!-- Feature 1: Temple Management -->
-                <div class="card p-6">
-                    <div class="icon-circle mb-4 w-12 h-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="card bg-white shadow-lg p-6 text-center">
+                    <div class="icon-circle mx-auto mb-4">
                         <i class="fas fa-place-of-worship"></i>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 mb-2">ຈັດການຂໍ້ມູນວັດ</h3>
                     <p class="text-gray-600">
-                        ເກັບກຳຂໍ້ມູນວັດ ແລະ ສະຖານທີໍາຄັນທາງພຸດທະສາສະໜາຢ່າງເປັນລະບົບ, ພ້ອມລາຍລະອຽດ ແລະ ຮູບພາບ.
+                        ເກັບກຳຂໍ້ມູນວັດຢ່າງເປັນລະບົບ ພ້ອມລາຍລະອຽດ ແລະ ຮູບພາບ
                     </p>
                 </div>
 
-                <!-- Feature 2: Monk Database -->
-                <div class="card p-6">
-                    <div class="icon-circle mb-4 w-12 h-12">
+                <div class="card bg-white shadow-lg p-6 text-center">
+                    <div class="icon-circle mx-auto mb-4">
                         <i class="fas fa-user"></i>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 mb-2">ຖານຂໍ້ມູນພຣະສົງ</h3>
                     <p class="text-gray-600">
-                        ບັນທຶກປະຫວັດ, ການສຶກສາ, ແລະ ຂໍ້ມູນສໍາຄັນຂອງພຣະສົງ ເພື່ອໃຊ້ໃນການບໍລິຫານ ແລະ ຕິດຕາມ.
+                        ບັນທຶກປະຫວັດ ການສຶກສາ ແລະ ຂໍ້ມູນສໍາຄັນຂອງພຣະສົງ
                     </p>
                 </div>
 
-                <!-- Feature 3: Event Management -->
-                <div class="card p-6">
-                    <div class="icon-circle mb-4 w-12 h-12">
+                <div class="card bg-white shadow-lg p-6 text-center">
+                    <div class="icon-circle mx-auto mb-4">
                         <i class="fas fa-calendar-alt"></i>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 mb-2">ຈັດການກິດຈະກໍາ</h3>
                     <p class="text-gray-600">
-                        ວາງແຜນ ແລະ ຈັດການກິດຈະກໍາທາງສາສະໜາ, ງານບຸນ, ແລະ ພິທີກໍາຕ່າງໆ ຢ່າງເປັນລະບົບ.
+                        ວາງແຜນ ແລະ ຈັດການກິດຈະກໍາທາງສາສະໜາຢ່າງເປັນລະບົບ
                     </p>
                 </div>
 
-                <!-- Feature 4: Dashboard & Analytics -->
-                <div class="card p-6">
-                    <div class="icon-circle mb-4 w-12 h-12">
+                <div class="card bg-white shadow-lg p-6 text-center">
+                    <div class="icon-circle mx-auto mb-4">
                         <i class="fas fa-chart-line"></i>
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">ແຜງຄວບຄຸມ ແລະ ການວິເຄາະ</h3>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">ແຜງຄວບຄຸມ</h3>
                     <p class="text-gray-600">
-                        ເຂົ້າເຖິບຂໍ້ມູນສະຖິຕິ ແລະ ການວິເຄາະທີໍາຄັນເພື່ອຊ່ວຍໃນການວາງແຜນ ແລະ ຕັດສິນໃຈ.
+                        ເຂົ້າເຖິບຂໍ້ມູນສະຖິຕິ ແລະ ການວິເຄາະທີໍາຄັນ
                     </p>
                 </div>
 
-                <!-- Feature 5: Reports -->
-                <div class="card p-6">
-                    <div class="icon-circle mb-4 w-12 h-12">
-                        <i class="fas fa-file-alt"></i>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">ລາຍງານ</h3>
-                    <p class="text-gray-600">
-                        ສ້າງລາຍງານຫຼາກຫຼາຍຮູບແບບເພື່ອສະຫຼຸບຂໍ້ມູນກ່ຽວກັບວັດ, ພຣະສົງ, ແລະ ກິດຈະກໍາຕ່າງໆ.
-                    </p>
-                </div>
-
-                <!-- Feature 6: Mobile Responsive -->
-                <div class="card p-6">
-                    <div class="icon-circle mb-4 w-12 h-12">
+                <div class="card bg-white shadow-lg p-6 text-center">
+                    <div class="icon-circle mx-auto mb-4">
                         <i class="fas fa-mobile-alt"></i>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-900 mb-2">ໃຊ້ງານໄດ້ທຸກອຸປະກອນ</h3>
                     <p class="text-gray-600">
-                        ເຂົ້າເຖິບລະບົບໄດ້ທຸກທີ່ທຸກເວລາ ໂດຍຜ່ານຄອມພິວເຕີ, ແທັບເລັດ, ຫຼື ສະມາດໂຟນ.
+                        ເຂົ້າເຖິບລະບົບໄດ້ທຸກທີ່ທຸກເວລາ ຜ່ານມືຖື ແລະ ຄອມພິວເຕີ
+                    </p>
+                </div>
+
+                <div class="card bg-white shadow-lg p-6 text-center">
+                    <div class="icon-circle mx-auto mb-4">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">ຄວາມປອດໄພສູງ</h3>
+                    <p class="text-gray-600">
+                        ລະບົບຄຸ້ມຄອງຂໍ້ມູນທີ່ປອດໄພ ແລະ ການຈັດການສິດນຳໃຊ້
                     </p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- CTA Section - Mobile optimized -->
-    <section class="bg-gradient-to-r from-amber-700 to-amber-600 py-8 md:py-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
-            <h2 class="text-2xl md:text-3xl font-extrabold tracking-tight text-white sm:text-4xl text-center lg:text-left">
-                <span class="block">ພ້ອມຕົ້ນແລ້ວບໍ?</span>
-                <span class="block text-amber-200 text-xl md:text-2xl mt-2">ລົງທະບຽນເຂົ້າໃຊ້ງານລະບົບຟຣີ</span>
+    <!-- CTA Section -->
+    <section class="bg-gradient-to-r from-amber-700 to-amber-600 py-12 md:py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">
+                ພ້ອມເລີ່ມຕົ້ນແລ້ວບໍ?
             </h2>
-            <div class="mt-6 lg:mt-0 lg:flex-shrink-0 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-                <a href="<?= $base_url ?>auth/register.php" class="w-full sm:w-auto inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-amber-700 bg-white hover:bg-amber-50 shadow-md">
-                    <i class="fas fa-user-plus mr-2"></i> ລົງທະບຽນ
+            <p class="text-amber-100 text-lg mb-8 max-w-2xl mx-auto">
+                ລົງທະບຽນເຂົ້າໃຊ້ງານລະບົບຈັດການຂໍ້ມູນວັດແບບຟຣີ ແລະ ເລີ່ມຈັດການຂໍ້ມູນຂອງທ່ານແບບມືອາຊີບ
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="<?= $base_url ?>auth/register.php" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-amber-700 bg-white hover:bg-amber-50 shadow-lg transition">
+                    <i class="fas fa-user-plus mr-2"></i> ລົງທະບຽນຟຣີ
                 </a>
-                <a href="<?= $base_url ?>auth/login.php" class="w-full sm:w-auto btn-primary inline-flex items-center justify-center">
-                    <i class="fas fa-sign-in-alt mr-2"></i> ເຂົ້າສູ່ລະບົບ
+                <a href="<?= $base_url ?>temples/" class="inline-flex items-center justify-center px-6 py-3 border-2 border-white text-base font-medium rounded-lg text-white hover:bg-white hover:text-amber-700 transition">
+                    <i class="fas fa-search mr-2"></i> ສຳຫຼວດວັດ
                 </a>
             </div>
         </div>
     </section>
 
-    <!-- Footer - Mobile optimized -->
-    <footer class="bg-gray-800 pt-10 pb-16 sm:pb-10">
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div>
-                    <h3 class="text-sm font-semibold text-gray-400 tracking-wider uppercase">ກ່ຽວກັບພວກເຮົາ</h3>
-                    <p class="mt-4 text-base text-gray-300">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center mb-4">
+                        <div class="w-8 h-8 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-place-of-worship text-white"></i>
+                        </div>
+                        <span class="ml-3 text-xl font-semibold"><?= htmlspecialchars($site_name) ?></span>
+                    </div>
+                    <p class="text-gray-300 mb-4">
                         <?= htmlspecialchars($site_description) ?>
                     </p>
-                    <div class="mt-4 flex space-x-6">
-                        <a href="#" class="text-gray-400 hover:text-amber-300">
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-amber-400 transition">
                             <i class="fab fa-facebook-f"></i>
                         </a>
-                        <a href="#" class="text-gray-400 hover:text-amber-300">
+                        <a href="#" class="text-gray-400 hover:text-amber-400 transition">
                             <i class="fab fa-twitter"></i>
                         </a>
-                        <a href="#" class="text-gray-400 hover:text-amber-300">
+                        <a href="#" class="text-gray-400 hover:text-amber-400 transition">
                             <i class="fab fa-instagram"></i>
                         </a>
                     </div>
                 </div>
+
                 <div>
-                    <h3 class="text-sm font-semibold text-gray-400 tracking-wider uppercase">ລິ້ງຄ໌ດ່ວນ</h3>
-                    <ul class="mt-4 space-y-4">
-                        <li>
-                            <a href="<?= $base_url ?>about.php" class="text-base text-gray-300 hover:text-amber-200">
-                                ກ່ຽວກັບລະບົບ
-                            </a>
-                        </li>
-                        <li>
-                            <a href="<?= $base_url ?>all-temples.php" class="text-base text-gray-300 hover:text-amber-200">
-                                ລາຍຊື່ວັດ
-                            </a>
-                        </li>
-                        <li>
-                            <a href="<?= $base_url ?>events/" class="text-base text-gray-300 hover:text-amber-200">
-                                ກິດຈະກໍາ
-                            </a>
-                        </li>
-                        <li>
-                            <a href="<?= $base_url ?>contact.php" class="text-base text-gray-300 hover:text-amber-200">
-                                ຕິດຕໍ່ພວກເຮົາ
-                            </a>
-                        </li>
+                    <h3 class="text-lg font-semibold mb-4">ລິ້ງຄ໌ດ່ວນ</h3>
+                    <ul class="space-y-2">
+                        <li><a href="<?= $base_url ?>temples/" class="text-gray-300 hover:text-amber-400 transition">ລາຍຊື່ວັດ</a></li>
+                        <li><a href="<?= $base_url ?>events/" class="text-gray-300 hover:text-amber-400 transition">ກິດຈະກໍາ</a></li>
+                        <li><a href="<?= $base_url ?>about.php" class="text-gray-300 hover:text-amber-400 transition">ກ່ຽວກັບລະບົບ</a></li>
+                        <li><a href="<?= $base_url ?>contact.php" class="text-gray-300 hover:text-amber-400 transition">ຕິດຕໍ່ພວກເຮົາ</a></li>
                     </ul>
                 </div>
+
                 <div>
-                    <h3 class="text-sm font-semibold text-gray-400 tracking-wider uppercase">ຕິດຕໍ່</h3>
-                    <ul class="mt-4 space-y-4">
-                        <li class="flex">
-                            <i class="fas fa-map-marker-alt text-amber-500 mt-1 mr-2"></i>
-                            <span class="text-gray-300">
-                                ນະຄອນຫຼວງວຽງຈັນ, ສປປລາວ
-                            </span>
+                    <h3 class="text-lg font-semibold mb-4">ຕິດຕໍ່</h3>
+                    <ul class="space-y-2 text-gray-300">
+                        <li class="flex items-center">
+                            <i class="fas fa-map-marker-alt mr-2 text-amber-400"></i>
+                            ນະຄອນຫຼວງວຽງຈັນ, ສປປລາວ
                         </li>
-                        <li class="flex">
-                            <i class="fas fa-phone text-amber-500 mt-1 mr-2"></i>
-                            <span class="text-gray-300">
-                                <?= htmlspecialchars($settings['contact_phone'] ?? '+856 21 XXXXXX') ?>
-                            </span>
+                        <li class="flex items-center">
+                            <i class="fas fa-phone mr-2 text-amber-400"></i>
+                            <?= htmlspecialchars($settings['contact_phone'] ?? '+856 21 XXXXXX') ?>
                         </li>
-                        <li class="flex">
-                            <i class="fas fa-envelope text-amber-500 mt-1 mr-2"></i>
-                            <span class="text-gray-300">
-                                <?= htmlspecialchars($settings['admin_email'] ?? 'contact@example.com') ?>
-                            </span>
+                        <li class="flex items-center">
+                            <i class="fas fa-envelope mr-2 text-amber-400"></i>
+                            <?= htmlspecialchars($settings['contact_email'] ?? 'contact@example.com') ?>
                         </li>
                     </ul>
                 </div>
             </div>
-            
-            <div class="mt-10 border-t border-gray-700 pt-6">
-                <p class="text-sm text-gray-400 text-center">
-                    <?= htmlspecialchars($settings['footer_text'] ?? '© ' . date('Y') . ' ລະບົບຈັດການຂໍ້ມູນວັດ . ສະຫງວນລິຂະສິດ.') ?>
-                </p>
+
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
+                <p>&copy; <?= date('Y') ?> <?= htmlspecialchars($site_name) ?>. ສະຫງວນລິຂະສິດ.</p>
             </div>
         </div>
     </footer>
 
     <script>
-        // Temples distribution by province chart
-        async function loadTempleData() {
+        // Chart initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTempleChart();
+            loadActivitiesChart();
+            
+            // Observer for animation effects
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '0% 0% -10% 0%'
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if(entry.isIntersecting) {
+                        entry.target.classList.add('fade-in');
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('.temple-card').forEach(card => {
+                observer.observe(card);
+            });
+
+            // Mobile smooth scroll
+            document.querySelectorAll('.temples-mobile, .mobile-scroll').forEach(element => {
+                let isDown = false;
+                let startX;
+                let scrollLeft;
+
+                element.addEventListener('mousedown', (e) => {
+                    isDown = true;
+                    startX = e.pageX - element.offsetLeft;
+                    scrollLeft = element.scrollLeft;
+                });
+
+                element.addEventListener('mouseleave', () => {
+                    isDown = false;
+                });
+
+                element.addEventListener('mouseup', () => {
+                    isDown = false;
+                });
+
+                element.addEventListener('mousemove', (e) => {
+                    if (!isDown) return;
+                    e.preventDefault();
+                    const x = e.pageX - element.offsetLeft;
+                    const walk = (x - startX) * 2;
+                    element.scrollLeft = scrollLeft - walk;
+                });
+            });
+            
+            // Mobile nav active state
+            document.querySelectorAll('.mobile-nav-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        });
+
+        // Temple distribution chart
+        async function loadTempleChart() {
             try {
-                const response = await fetch('<?= $base_url ?>api/stats/temples_by_province.php');
+                const response = await fetch('<?= $base_url ?>api/temple_stats.php');
                 const data = await response.json();
                 
                 const ctx = document.getElementById('templesChart').getContext('2d');
                 const isMobile = window.innerWidth < 640;
                 
                 new Chart(ctx, {
-                    type: 'pie',
+                    type: 'doughnut',
                     data: {
-                        labels: data.map(item => item.province),
+                        labels: data.map(item => item.province || 'ບໍ່ລະບຸ'),
                         datasets: [{
-                            data: data.map(item => item.count),
+                            data: data.map(item => parseInt(item.count) || 0),
                             backgroundColor: [
                                 '#D4A762', '#B08542', '#9B7C59', '#E9CDA8', 
-                                '#F0E5D3', '#E8D8B8', '#C6AA7B', '#D9BA85',
-                                '#CEB394', '#B6965A', '#E1C394', '#BEA575'
+                                '#F0E5D3', '#E8D8B8', '#C6AA7B', '#D9BA85'
                             ],
-                            borderWidth: 1
+                            borderWidth: 2,
+                            borderColor: '#fff'
                         }]
                     },
                     options: {
@@ -851,9 +753,20 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                                 position: isMobile ? 'bottom' : 'right',
                                 labels: {
                                     boxWidth: isMobile ? 12 : 20,
-                                    padding: isMobile ? 10 : 20,
+                                    padding: isMobile ? 8 : 15,
                                     font: {
                                         size: isMobile ? 10 : 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                        return `${label}: ${value} ວັດ (${percentage}%)`;
                                     }
                                 }
                             }
@@ -861,42 +774,15 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                     }
                 });
             } catch (error) {
-                console.error('Error loading temple data:', error);
+                console.error('Error loading temple chart:', error);
                 fallbackTempleChart();
             }
         }
 
-        // Fallback chart with sample data if API fails
-        function fallbackTempleChart() {
-            const ctx = document.getElementById('templesChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['ນະຄອນຫຼວງວຽງຈັນ', 'ຫຼວງພຣະບາງ', 'ໄຊຍະບູລີ', 'ຄໍາມ່ວນ', 'ອຸດົມໄຊ'],
-                    datasets: [{
-                        data: [5, 3, 2, 1, 1],
-                        backgroundColor: [
-                            '#D4A762', '#B08542', '#9B7C59', '#E9CDA8', '#F0E5D3'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                        }
-                    }
-                }
-            });
-        }
-
-        // Activities by month chart
-        async function loadActivitiesData() {
+        // Activities chart
+        async function loadActivitiesChart() {
             try {
-                const response = await fetch('<?= $base_url ?>api/stats/events_by_month.php');
+                const response = await fetch('<?= $base_url ?>api/event_stats.php');
                 const data = await response.json();
 
                 const ctx = document.getElementById('activitiesChart').getContext('2d');
@@ -910,7 +796,10 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                             borderColor: '#D4A762',
                             backgroundColor: 'rgba(212, 167, 98, 0.1)',
                             fill: true,
-                            tension: 0.4
+                            tension: 0.4,
+                            pointBackgroundColor: '#B08542',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2
                         }]
                     },
                     options: {
@@ -920,31 +809,70 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                             y: {
                                 beginAtZero: true,
                                 ticks: {
-                                    stepSize: 1
+                                    stepSize: 1,
+                                    font: {
+                                        size: window.innerWidth < 640 ? 10 : 12
+                                    }
                                 }
+                            },
+                            x: {
+                                ticks: {
+                                    font: {
+                                        size: window.innerWidth < 640 ? 10 : 12
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
                             }
                         }
                     }
                 });
             } catch (error) {
-                console.error('Error loading activities data:', error);
+                console.error('Error loading activities chart:', error);
                 fallbackActivitiesChart();
             }
         }
 
-        // Fallback activities chart
+        // Fallback charts
+        function fallbackTempleChart() {
+            const ctx = document.getElementById('templesChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['ນະຄອນຫຼວງວຽງຈັນ', 'ຫຼວງພຣະບາງ', 'ອື່ນໆ'],
+                    datasets: [{
+                        data: [5, 3, 2],
+                        backgroundColor: ['#D4A762', '#B08542', '#E9CDA8'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: window.innerWidth < 640 ? 'bottom' : 'right'
+                        }
+                    }
+                }
+            });
+        }
+
         function fallbackActivitiesChart() {
-            const months = ['ມັງກອນ', 'ກຸມພາ', 'ມີນາ', 'ເມສາ', 'ພຶດສະພາ', 'ມິຖຸນາ', 
-                            'ກໍລະກົດ', 'ສິງຫາ', 'ກັນຍາ', 'ຕຸລາ', 'ພະຈິກ', 'ທັນວາ'];
-            
             const ctx = document.getElementById('activitiesChart').getContext('2d');
+            const months = ['ມັງກອນ', 'ກຸມພາ', 'ມີນາ', 'ເມສາ', 'ພຶດສະພາ', 'ມິຖຸນາ'];
+            
             new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: months,
                     datasets: [{
                         label: 'ກິດຈະກຳ',
-                        data: [3, 2, 5, 4, 6, 3, 2, 4, 5, 7, 4, 3],
+                        data: [3, 2, 5, 4, 6, 3],
                         borderColor: '#D4A762',
                         backgroundColor: 'rgba(212, 167, 98, 0.1)',
                         fill: true,
@@ -957,70 +885,101 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: {
-                                stepSize: 1
-                            }
+                            ticks: { stepSize: 1 }
                         }
+                    },
+                    plugins: {
+                        legend: { display: false }
                     }
                 }
             });
         }
 
-        // Load charts when DOM is ready
-        document.addEventListener('DOMContentLoaded', () => {
-            loadTempleData();
-            loadActivitiesData();
-        });
-        
-        // Add scroll snap behavior for mobile scrolling components
-        document.addEventListener('DOMContentLoaded', () => {
-            // Add smooth scrolling behavior to mobile containers
-            const mobileContainers = document.querySelectorAll('.mobile-scroll-container');
-            mobileContainers.forEach(container => {
-                let isDown = false;
-                let startX;
-                let scrollLeft;
-                
-                container.addEventListener('mousedown', (e) => {
-                    isDown = true;
-                    startX = e.pageX - container.offsetLeft;
-                    scrollLeft = container.scrollLeft;
-                });
-                
-                container.addEventListener('mouseleave', () => {
-                    isDown = false;
-                });
-                
-                container.addEventListener('mouseup', () => {
-                    isDown = false;
-                });
-                
-                container.addEventListener('mousemove', (e) => {
-                    if(!isDown) return;
-                    e.preventDefault();
-                    const x = e.pageX - container.offsetLeft;
-                    const walk = (x - startX) * 2;
-                    container.scrollLeft = scrollLeft - walk;
-                });
+        // Smooth scrolling for mobile
+        let isScrolling = false;
+        document.querySelectorAll('.mobile-scroll').forEach(element => {
+            element.addEventListener('scroll', () => {
+                if (!isScrolling) {
+                    window.requestAnimationFrame(() => {
+                        isScrolling = false;
+                    });
+                    isScrolling = true;
+                }
             });
         });
-        
-        // Adjust chart options for mobile
-        function adjustChartForScreenSize() {
-            const isMobile = window.innerWidth < 640;
+
+        // Update mobile nav active state
+        document.querySelectorAll('.mobile-nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+          // Add scroll reveal animation
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0% 0% -10% 0%'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if(entry.isIntersecting) {
+                    entry.target.classList.add('fade-in');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.temple-card').forEach(card => {
+            observer.observe(card);
+        });
+
+        // Add hover effects
+        document.querySelectorAll('.temple-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-12px) scale(1.02)';
+            });
             
-            // Modify chart options if needed based on screen size
-            if (templesChart && activitiesChart) {
-                templesChart.options.plugins.legend.position = isMobile ? 'bottom' : 'right';
-                templesChart.update();
-                
-                activitiesChart.options.scales.y.ticks.maxTicksLimit = isMobile ? 5 : 10;
-                activitiesChart.update();
-            }
-        }
-        
-        // Call this function when window resizes
-        window.addEventListener('resize', adjustChartForScreenSize);
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Mobile nav active state
+        document.querySelectorAll('.mobile-nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Smooth scroll for mobile
+        document.querySelectorAll('.temples-mobile').forEach(element => {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            element.addEventListener('mousedown', (e) => {
+                isDown = true;
+                startX = e.pageX - element.offsetLeft;
+                scrollLeft = element.scrollLeft;
+            });
+
+            element.addEventListener('mouseleave', () => {
+                isDown = false;
+            });
+
+            element.addEventListener('mouseup', () => {
+                isDown = false;
+            });
+
+            element.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - element.offsetLeft;
+                const walk = (x - startX) * 2;
+                element.scrollLeft = scrollLeft - walk;
+            });
+        });
     </script>
 </body>
 </html>

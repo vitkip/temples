@@ -9,22 +9,44 @@ require_once '../includes/header.php';
 
 // ກວດສອບການຕັ້ງຄ່າຕົວກອງ temple_id
 $temple_filter = isset($_GET['temple_id']) ? (int)$_GET['temple_id'] : null;
+$province_filter = isset($_GET['province_id']) ? (int)$_GET['province_id'] : null;
+
+// ກວດສອບສິດທິຜູ້ໃຊ້
+$user_role = $_SESSION['user']['role'];
+$user_temple_id = $_SESSION['user']['temple_id'] ?? null;
+$user_id = $_SESSION['user']['id'];
 
 // ກຽມຄິວລີຕາມຕົວກອງ ແລະ ສິດທິຂອງຜູ່ໃຊ້
 $params = [];
-$query = "SELECT m.*, t.name as temple_name FROM monks m 
-          LEFT JOIN temples t ON m.temple_id = t.id WHERE 1=1";
+$query = "SELECT m.*, t.name as temple_name, t.province_id, p.province_name 
+          FROM monks m 
+          LEFT JOIN temples t ON m.temple_id = t.id 
+          LEFT JOIN provinces p ON t.province_id = p.province_id
+          WHERE 1=1";
+
+// ກຳນົດການເຂົ້າເຖິງຂໍ້ມູນຕາມບົດບາດ
+if ($user_role === 'admin') {
+    // admin ສາມາດເບິ່ງພະສົງໃນວັດຂອງຕົນເອງເທົ່ານັ້ນ
+    $query .= " AND m.temple_id = ?";
+    $params[] = $user_temple_id;
+} elseif ($user_role === 'province_admin') {
+    // province_admin ສາມາດເບິ່ງພະສົງໃນແຂວງທີ່ຮັບຜິດຊອບເທົ່ານັ້ນ
+    $query .= " AND t.province_id IN (SELECT province_id FROM user_province_access WHERE user_id = ?)";
+
+    $params[] = $user_id;
+}
+// superadmin ສາມາດເບິ່ງທັງໝົດ (ບໍ່ມີເງື່ອນໄຂເພີ່ມ)
+
+// ນໍາໃຊ້ຕົວກອງແຂວງ ຖ້າມີການລະບຸ
+if ($province_filter) {
+    $query .= " AND t.province_id = ?";
+    $params[] = $province_filter;
+}
 
 // ນໍາໃຊ້ຕົວກອງວັດ ຖ້າມີການລະບຸ
 if ($temple_filter) {
     $query .= " AND m.temple_id = ?";
     $params[] = $temple_filter;
-}
-
-// ຖ້າຜູໃຊເປັນຜູ້ດູແລວັດ, ສະແດງສະເພາະພະສົງໃນວັດຂອງເຂົາເທົ່ານັ້ນ
-if ($_SESSION['user']['role'] === 'admin') {
-    $query .= " AND m.temple_id = ?";
-    $params[] = $_SESSION['user']['temple_id'];
 }
 
 // ນໍາໃຊ້ການຄົ້ນຫາຖ້າມີການລະບຸ
@@ -42,6 +64,12 @@ if ($status_filter !== 'all') {
     $params[] = $status_filter;
 }
 
+// ຕົວກອງແຂວງເກີດ
+if (!empty($_GET['birth_province'])) {
+    $query .= " AND m.birth_province LIKE ?";
+    $params[] = "%" . $_GET['birth_province'] . "%";
+}
+
 // ຈັດລຽງຕາມພັນສາ (ຫຼຸດລົງ) ແລະ ຊື່
 $query .= " ORDER BY m.pansa DESC, m.name ASC";
 
@@ -50,330 +78,67 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $monks = $stmt->fetchAll();
 
-// ດຶງຂໍ້ມູນວັດສຳລັບ dropdown ຕົວກອງ (ຖ້າຜູໃຊເປັນ superadmin)
+// ດຶງຂໍ້ມູນແຂວງສຳລັບ dropdown ຕົວກອງ (ຖ້າຜູໃຊເປັນ superadmin)
+$provinces = [];
+if ($user_role === 'superadmin') {
+    // superadmin ເບິ່ງແຂວງທັງໝົດ
+    $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
+    $provinces = $province_stmt->fetchAll();
+} elseif ($user_role === 'province_admin') {
+    // province_admin ເບິ່ງສະເພາະແຂວງທີ່ຮັບຜິດຊອບ
+    $province_stmt = $pdo->prepare("
+        SELECT p.province_id, p.province_name 
+        FROM provinces p 
+        JOIN user_province_access upa ON p.province_id = upa.province_id 
+        WHERE upa.user_id = ? 
+        ORDER BY p.province_name
+    ");
+    $province_stmt->execute([$user_id]);
+    $provinces = $province_stmt->fetchAll();
+}
+
+// ດຶງຂໍ້ມູນວັດສຳລັບ dropdown ຕົວກອງ
 $temples = [];
-if ($_SESSION['user']['role'] === 'superadmin') {
-    $temple_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active' ORDER BY name");
+if ($user_role === 'superadmin') {
+    // superadmin ເບິ່ງວັດທັງໝົດ
+    $temple_sql = "SELECT t.id, t.name, p.province_name 
+                   FROM temples t 
+                   LEFT JOIN provinces p ON t.province_id = p.province_id 
+                   WHERE t.status = 'active' 
+                   ORDER BY p.province_name, t.name";
+    $temple_stmt = $pdo->query($temple_sql);
+    $temples = $temple_stmt->fetchAll();
+} elseif ($user_role === 'admin') {
+    // admin ເບິ່ງສະເພາະວັດຂອງຕົນເອງ
+    $temple_stmt = $pdo->prepare("
+        SELECT t.id, t.name, p.province_name 
+        FROM temples t 
+        LEFT JOIN provinces p ON t.province_id = p.province_id 
+        WHERE t.id = ?
+    ");
+    $temple_stmt->execute([$user_temple_id]);
+    $temples = $temple_stmt->fetchAll();
+} elseif ($user_role === 'province_admin') {
+    // province_admin ເບິ່ງວັດໃນແຂວງທີ່ຮັບຜິດຊອບ
+    $temple_stmt = $pdo->prepare("
+        SELECT t.id, t.name, p.province_name 
+        FROM temples t
+        JOIN provinces p ON t.province_id = p.province_id
+        JOIN user_province_access upa ON p.province_id = upa.province_id
+        WHERE upa.user_id = ? AND t.status = 'active'
+        ORDER BY p.province_name, t.name
+    ");
+    $temple_stmt->execute([$user_id]);
     $temples = $temple_stmt->fetchAll();
 }
-// ກວດສອບຕົວກອງເກີດ ແລະ ຕັ້ງໃນ WHERE
-if (!empty($_GET['birth_province'])) {
-    $where_conditions[] = "birth_province LIKE ?";
-    $params[] = "%" . $_GET['birth_province'] . "%";
-}
+
 // ກວດສອບສິດໃນການເພີ່ມ/ແກ້ໄຂພະສົງ
-$can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['role'] === 'admin');
+$can_edit = ($user_role === 'superadmin' || $user_role === 'admin' || $user_role === 'province_admin');
 ?>
 
 <!-- เพิ่ม CSS นี้ในส่วนหัวของไฟล์ หรือในไฟล์ CSS แยก -->
  <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
-<style>
-  /* นำเข้าฟอนต์ภาษาไทย/ลาว */
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap');
-  
-  :root {
-    --color-primary: #C8A97E;        /* สีทองอ่อน */
-    --color-primary-dark: #A38455;   /* สีทองเข้ม */
-    --color-secondary: #8E6F4D;      /* สีน้ำตาล */
-    --color-accent: #D4B68F;         /* สีทองนวล */
-    --color-light: #F5EFE6;          /* สีครีมอ่อน */
-    --color-lightest: #FAF8F4;       /* สีครีมสว่าง */
-    --color-dark: #453525;           /* สีน้ำตาลเข้ม */
-    --color-success: #7E9F7E;        /* สีเขียวอ่อนนุ่ม */
-    --color-danger: #D68F84;         /* สีแดงอ่อนนุ่ม */
-    --shadow-sm: 0 2px 8px rgba(138, 103, 57, 0.08);
-    --shadow-md: 0 4px 12px rgba(138, 103, 57, 0.12);
-    --shadow-lg: 0 8px 24px rgba(138, 103, 57, 0.15);
-    --border-radius: 0.75rem;
-  }
-  
-  * {
-    font-family: 'Noto Sans Thai', 'Noto Sans Lao', sans-serif;
-  }
-  
-  /* การปรับแต่งส่วนประกอบต่างๆ */
-  body {
-    background-color: var(--color-lightest);
-    color: #5a4631;
-  }
-  
-  .page-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 1rem;
-  }
-  
-  /* ส่วนหัว */
-  .header-section {
-    border-radius: var(--border-radius);
-    background: linear-gradient(to right, #f3e9dd, #f5efe6);
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(200, 169, 126, 0.2);
-  }
-  
-  .header-title {
-    color: var(--color-secondary);
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    font-size: 1.75rem;
-  }
-  
-  /* ตัวกรอง */
-  .filter-section {
-    background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(200, 169, 126, 0.2);
-    margin-bottom: 1.5rem;
-    overflow: hidden;
-  }
-  
-  .filter-header {
-    background: linear-gradient(to right, rgba(200, 169, 126, 0.15), rgba(212, 182, 143, 0.1));
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid rgba(200, 169, 126, 0.2);
-  }
-  
-  .filter-title {
-    color: var(--color-secondary);
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    font-size: 1.125rem;
-  }
-  
-  /* ตาราง */
-  .data-table {
-    background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-sm);
-    border: 1px solid rgba(200, 169, 126, 0.2);
-    overflow: hidden;
-  }
-  
-  .table-header {
-    background: linear-gradient(to right, rgba(200, 169, 126, 0.15), rgba(212, 182, 143, 0.1));
-  }
-  
-  .table-header th {
-    color: var(--color-dark);
-    font-weight: 500;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 0.5px;
-    padding: 1rem;
-  }
-  
-  .table-row {
-    transition: all 0.2s ease;
-  }
-  
-  .table-row:hover {
-    background-color: var(--color-lightest);
-  }
-  
-  .table-cell {
-    padding: 1rem;
-    border-bottom: 1px solid rgba(200, 169, 126, 0.1);
-  }
-  
-  /* ปุ่มต่างๆ */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-  }
-  
-  .btn-primary {
-    background: linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark));
-    color: #fff;
-    box-shadow: 0 2px 4px rgba(162, 132, 85, 0.2);
-  }
-  
-  .btn-primary:hover {
-    background: linear-gradient(to bottom right, #d4b68f, #bb9c6a);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(162, 132, 85, 0.3);
-  }
-  
-  .btn-secondary {
-    background-color: #f0e6d9;
-    color: var(--color-secondary);
-    box-shadow: 0 2px 4px rgba(162, 132, 85, 0.1);
-  }
-  
-  .btn-secondary:hover {
-    background-color: #e5d9c8;
-    transform: translateY(-1px);
-  }
-  
-  .btn-danger {
-    background-color: var(--color-danger);
-    color: white;
-  }
-  
-  .btn-danger:hover {
-    background-color: #c57b70;
-  }
-  
-  /* สถานะพระ */
-  .status-active {
-    background-color: rgba(126, 159, 126, 0.15);
-    color: #4d7a4d;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    border: 1px solid rgba(126, 159, 126, 0.3);
-  }
-  
-  .status-inactive {
-    background-color: rgba(169, 169, 169, 0.15);
-    color: #696969;
-    padding: 0.25rem 0.75rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    border: 1px solid rgba(169, 169, 169, 0.3);
-  }
-  
-  /* Input fields และ select */
-  .form-input,
-  .form-select {
-    width: 100%;
-    padding: 0.5rem;
-    border-radius: 0.5rem;
-    border: 1px solid #e0d3c3;
-    background-color: #fff;
-    transition: all 0.2s;
-  }
-  
-  .form-input:focus,
-  .form-select:focus {
-    border-color: var(--color-primary);
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(200, 169, 126, 0.2);
-  }
-  
-  .form-label {
-    font-size: 0.875rem;
-    color: var(--color-secondary);
-    margin-bottom: 0.25rem;
-    display: block;
-    font-weight: 500;
-  }
-  
-  /* Modal */
-  .modal-overlay {
-    background-color: rgba(69, 53, 37, 0.5);
-    backdrop-filter: blur(4px);
-  }
-  
-  .modal-container {
-    background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-lg);
-    border: 1px solid rgba(200, 169, 126, 0.3);
-  }
-  
-  /* Animations */
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  .animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
-  }
-  
-  /* Responsive */
-  @media (max-width: 768px) {
-    .form-grid {
-      grid-template-columns: 1fr;
-    }
-    
-    .btn-group {
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    
-    .header-section {
-      flex-direction: column;
-      gap: 1rem;
-      align-items: flex-start;
-    }
-    
-    .data-table {
-      overflow-x: auto;
-    }
-  }
-  
-  /* รูปภาพพระสงฆ์ */
-  .monk-image {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid var(--color-accent);
-  }
-  
-  .monk-placeholder {
-    width: 3rem;
-    height: 3rem;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #f3e9dd, #e5d9c8);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--color-primary-dark);
-  }
-  
-  /* ไอคอนเพิ่มเติม */
-  .icon {
-    color: var(--color-primary);
-    display: inline-flex;
-  }
-  
-  /* Toast notifications */
-  .toast {
-    background: linear-gradient(to right, var(--color-primary-dark), var(--color-primary));
-    color: white;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    margin: 1rem;
-    box-shadow: var(--shadow-md);
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    animation: slideIn 0.3s ease-out forwards;
-  }
-  
-  @keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-  }
-  
-  /* พื้นหลังพิเศษ */
-  .bg-temple-pattern {
-    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTMwIDMwIEwwIDYwIEw2MCA2MCBaIiBmaWxsPSIjQzhhOTdlIi8+PC9zdmc+');
-    background-repeat: repeat;
-  }
-</style>
+ <link rel="stylesheet" href="<?= $base_url ?>assets/css/style-monks.css">
 
 <!-- ปรับคลาส HTML เพื่อใช้สไตล์ใหม่ -->
 <div class="page-container bg-temple-pattern">
@@ -384,6 +149,17 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
         <i class="fas fa-pray text-amber-700"></i> ຈັດການພະສົງ
       </h1>
       <p class="text-sm text-amber-800 mt-1">ຈັດການຂໍໍາູນທັງໝົດຂອງພະສົງ</p>
+      <?php if ($user_role === 'province_admin'): ?>
+        <p class="text-xs text-amber-600 mt-1">
+          <i class="fas fa-map-marker-alt mr-1"></i>
+          ສະແດງພະສົງໃນແຂວງທີ່ທ່ານຮັບຜິດຊອບເທົ່ານັ້ນ
+        </p>
+      <?php elseif ($user_role === 'admin'): ?>
+        <p class="text-xs text-amber-600 mt-1">
+          <i class="fas fa-place-of-worship mr-1"></i>
+          ສະແດງພະສົງໃນວັດຂອງທ່ານເທົ່ານັ້ນ
+        </p>
+      <?php endif; ?>
     </div>
     <div class="flex flex-wrap gap-3">
       <!-- ปุ่มส่งออก PDF -->
@@ -410,7 +186,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
       </h2>
     </div>
     <div class="p-6">
-      <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-6 form-grid">
+      <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-6 form-grid">
         <!-- ค้นหา -->
         <div>
           <label for="search" class="form-label">
@@ -421,19 +197,44 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                  placeholder="ພິມຊື່ພະສົງ..." 
                  class="form-input">
         </div>
-        <!-- ตัวกรอง prefix -->
+
+        <!-- ตัวกรองแขวง (เฉพาะ superadmin และ province_admin) -->
+        <?php if (!empty($provinces)): ?>
         <div>
-          <label for="prefix" class="form-label">
-            <i class="fas fa-user-tag text-amber-700 mr-1"></i> ຄຳນຳໜ້າ
+          <label for="province_id" class="form-label">
+            <i class="fas fa-map-marked-alt text-amber-700 mr-1"></i> ແຂວງ
           </label>
-          <select name="prefix" id="prefix" class="form-select">
+          <select name="province_id" id="province_id" class="form-select">
             <option value="">-- ທັງໝົດ --</option>
-            <option value="ພຣະ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ພຣະ' ? 'selected' : '' ?>>ພຣະ</option>
-            <option value="ຄຸນແມ່ຂາວ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ຄຸນແມ່ຂາວ' ? 'selected' : '' ?>>ຄຸນແມ່ຂາວ</option>
-            <option value="ສ.ນ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສ.ນ' ? 'selected' : '' ?>>ສ.ນ</option>
-            <option value="ສັງກະລີ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສັງກະລີ' ? 'selected' : '' ?>>ສັງກະລີ</option>
+            <?php foreach($provinces as $province): ?>
+            <option value="<?= $province['province_id'] ?>" <?= isset($_GET['province_id']) && $_GET['province_id'] == $province['province_id'] ? 'selected' : '' ?>>
+              <?= htmlspecialchars($province['province_name']) ?>
+            </option>
+            <?php endforeach; ?>
           </select>
         </div>
+        <?php endif; ?>
+        
+        <!-- ตัวกรองวัด -->
+        <?php if (!empty($temples)): ?>
+        <div>
+          <label for="temple_id" class="form-label">
+            <i class="fas fa-place-of-worship text-amber-700 mr-1"></i> ວັດ
+          </label>
+          <select name="temple_id" id="temple_id" class="form-select">
+            <option value="">-- ທັງໝົດ --</option>
+            <?php foreach($temples as $temple): ?>
+            <option value="<?= $temple['id'] ?>" <?= isset($_GET['temple_id']) && $_GET['temple_id'] == $temple['id'] ? 'selected' : '' ?>>
+              <?= htmlspecialchars($temple['name']) ?>
+              <?php if (!empty($temple['province_name'])): ?>
+                (<?= htmlspecialchars($temple['province_name']) ?>)
+              <?php endif; ?>
+            </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <?php endif; ?>
+        
         <!-- ตัวกรองสถานะ -->
         <div>
           <label for="status" class="form-label">
@@ -445,8 +246,12 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
             <option value="inactive" <?= isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'selected' : '' ?>>ສິກແລ້ວ</option>
           </select>
         </div>
-        <div class="mb-4">
-            <label for="birth_province" class="info-label">ແຂວງເກີດ</label>
+
+        <!-- ตัวกรองแขวงเกิด -->
+        <div>
+            <label for="birth_province" class="form-label">
+                <i class="fas fa-baby text-amber-700 mr-1"></i> ແຂວງເກີດ
+            </label>
             <select name="birth_province" id="birth_province" class="form-select">
               <option value="">-- ທັງໝົດ --</option>
               <option value="ນະຄອນຫຼວງວຽງຈັນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ນະຄອນຫຼວງວຽງຈັນ' ? 'selected' : '' ?>>ນະຄອນຫຼວງວຽງຈັນ</option>
@@ -468,27 +273,11 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
               <option value="ໄຊສົມບູນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ໄຊສົມບູນ' ? 'selected' : '' ?>>ໄຊສົມບູນ</option>
             </select>
         </div>
-        <!-- ตัวกรองวัด (เฉพาะ superadmin) -->
-        <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
-        <div>
-          <label for="temple_id" class="form-label">
-            <i class="fas fa-place-of-worship text-amber-700 mr-1"></i> ວັດ
-          </label>
-          <select name="temple_id" id="temple_id" class="form-select">
-            <option value="">-- ທັງໝົດ --</option>
-            <?php foreach($temples as $temple): ?>
-            <option value="<?= $temple['id'] ?>" <?= isset($_GET['temple_id']) && $_GET['temple_id'] == $temple['id'] ? 'selected' : '' ?>>
-              <?= htmlspecialchars($temple['name']) ?>
-            </option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <?php endif; ?>
         
         <!-- ปุ่มส่งค้นหา -->
-        <div class="self-end">
+        <div class="md:col-span-5 flex justify-end">
           <div class="flex space-x-2 btn-group">
-            <button type="submit" class="btn btn-primary flex-grow">
+            <button type="submit" class="btn btn-primary">
               <i class="fas fa-search mr-2"></i> ຄົ້ນຫາ
             </button>
             <a href="<?= $base_url ?>monks/" class="btn btn-secondary flex items-center justify-center" title="ລ້າງຕົວກອງທັງໝົດ">
@@ -535,6 +324,11 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
       <div class="flex flex-wrap justify-between items-center gap-2">
         <div class="text-amber-900">
           <i class="fas fa-users-class mr-2"></i> ພົບຂໍ້ມູນ <span class="font-semibold text-amber-700"><?= count($monks) ?></span> ລາຍການ
+          <?php if ($user_role === 'province_admin' && !empty($provinces)): ?>
+            <span class="text-xs ml-2">
+              (ໃນແຂວງທີ່ຮັບຜິດຊອບ: <?= count($provinces) ?> ແຂວງ)
+            </span>
+          <?php endif; ?>
         </div>
         <!-- เพิ่มปุ่มส่งออก Excel -->
         <a href="<?= $base_url ?>reports/generate_excel_monks.php" target="_blank" 
@@ -551,10 +345,9 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
         <thead class="table-header">
           <tr>
             <th class="px-6 py-3.5 text-left">ຮູບພາບ</th>
-            <th class="px-6 py-3.5 text-left">ຄຳນຳໜ້າ</th>
             <th class="px-6 py-3.5 text-left">ຊື່ ແລະ ນາມສະກຸນ</th>
             <th class="px-6 py-3.5 text-left">ພັນສາ</th>
-            <th class="px-6 py-3.5 text-left">ວັດ</th>
+            <th class="px-6 py-3.5 text-left">ວັດ / ແຂວງ</th>
             <th class="px-6 py-3.5 text-left">ສະຖານະ</th>
             <th class="px-6 py-3.5 text-left">ຈັດການ</th>
           </tr>
@@ -573,27 +366,47 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
               <?php endif; ?>
             </td>
             <td class="table-cell">
-              <div class="font-medium"><?= htmlspecialchars($monk['prefix'] ?? '-') ?></div>
-            </td>
-            <td class="table-cell">
               <div class="font-medium text-amber-900">
-                <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>" class="hover:text-amber-700 transition-colors"><?= htmlspecialchars($monk['name']) ?></a>
+                <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>" class="hover:text-amber-700 transition-colors">
+                  <?= htmlspecialchars($monk['prefix'] ?? '') ?> <?= htmlspecialchars($monk['name']) ?>
+                </a>
               </div>
               <?php if (!empty($monk['lay_name'])): ?>
               <div class="text-sm text-gray-500"><?= htmlspecialchars($monk['lay_name']) ?></div>
               <?php endif; ?>
             </td>
             <td class="table-cell">
-              <div class="text-gray-700"><?= htmlspecialchars($monk['pansa'] ?? '-') ?> <span class="text-xs">ພັນສາ</span></div>
+              <div class="text-gray-700"> <?php
+                  if (!empty($monk['ordination_date'])) {
+                  $ordination = new DateTime($monk['ordination_date']);
+                  $now = new DateTime();
+                  $years = $ordination->diff($now)->y;
+                  echo $years . ' ພັນສາ';
+                  } else {
+                  echo htmlspecialchars($monk['pansa']) . ' ພັນສາ';
+                  }
+                  ?> <span class="text-xs"></span></div>
             </td>
             <td class="table-cell">
-              <div class="text-gray-700 flex items-center">
+              <div class="text-gray-700 flex items-center mb-1">
                 <i class="fas fa-place-of-worship text-amber-500 mr-1.5 text-xs"></i>
                 <?= htmlspecialchars($monk['temple_name'] ?? '-') ?>
               </div>
+              <?php if (!empty($monk['province_name'])): ?>
+              <div class="text-xs text-gray-500 flex items-center">
+                <i class="fas fa-map-marker-alt text-amber-400 mr-1"></i>
+                <?= htmlspecialchars($monk['province_name']) ?>
+              </div>
+              <?php endif; ?>
             </td>
             <td class="table-cell">
-              <?php if ($can_edit && ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['temple_id'] == $monk['temple_id'])): ?>
+              <?php
+              $can_edit_monk = ($user_role === 'superadmin') || 
+                              ($user_role === 'admin' && $user_temple_id == $monk['temple_id']) ||
+                              ($user_role === 'province_admin' && !empty($monk['province_id']) && 
+                               in_array($monk['province_id'], array_column($provinces, 'province_id')));
+              ?>
+              <?php if ($can_edit_monk): ?>
                 <button type="button" class="toggle-status-btn w-full text-left" data-monk-id="<?= $monk['id'] ?>" data-current-status="<?= $monk['status'] ?>">
                   <?php if($monk['status'] === 'active'): ?>
                     <span class="status-active">
@@ -628,7 +441,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
                   <i class="fas fa-eye"></i>
                 </a>
                 
-                <?php if ($can_edit && ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['temple_id'] == $monk['temple_id'])): ?>
+                <?php if ($can_edit_monk): ?>
                 <a href="<?= $base_url ?>monks/edit.php?id=<?= $monk['id'] ?>" 
                    class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 p-1.5 rounded-full transition">
                   <i class="fas fa-edit"></i>
@@ -677,13 +490,24 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
               <span class="text-gray-500">ພັນສາ:</span> 
               <span class="font-medium"><?= htmlspecialchars($monk['pansa'] ?? '-') ?></span>
             </div>
-            <div>
+            <div class="col-span-2">
               <span class="text-gray-500">ວັດ:</span> 
               <span class="font-medium"><?= htmlspecialchars($monk['temple_name'] ?? '-') ?></span>
+              <?php if (!empty($monk['province_name'])): ?>
+                <div class="text-xs text-gray-400 mt-1">
+                  <i class="fas fa-map-marker-alt mr-1"></i><?= htmlspecialchars($monk['province_name']) ?>
+                </div>
+              <?php endif; ?>
             </div>
             <div class="col-span-2">
               <span class="text-gray-500">ສະຖານະ:</span> 
-              <?php if ($can_edit && ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['temple_id'] == $monk['temple_id'])): ?>
+              <?php
+              $can_edit_monk = ($user_role === 'superadmin') || 
+                              ($user_role === 'admin' && $user_temple_id == $monk['temple_id']) ||
+                              ($user_role === 'province_admin' && !empty($monk['province_id']) && 
+                               in_array($monk['province_id'], array_column($provinces, 'province_id')));
+              ?>
+              <?php if ($can_edit_monk): ?>
                 <button type="button" class="toggle-status-btn inline-flex" data-monk-id="<?= $monk['id'] ?>" data-current-status="<?= $monk['status'] ?>">
                   <?php if($monk['status'] === 'active'): ?>
                     <span class="status-active">
@@ -719,7 +543,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
               <i class="fas fa-eye mr-2"></i> ເບິ່ງ
             </a>
             
-            <?php if ($can_edit && ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['temple_id'] == $monk['temple_id'])): ?>
+            <?php if ($can_edit_monk): ?>
             <a href="<?= $base_url ?>monks/edit.php?id=<?= $monk['id'] ?>" 
                class="flex items-center justify-center p-2 px-3 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition">
               <i class="fas fa-edit mr-2"></i> ແກ້ໄຂ
@@ -741,7 +565,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['ro
       <div class="bg-amber-50 rounded-xl py-8 sm:py-10 max-w-md mx-auto">
         <i class="fas fa-pray text-4xl sm:text-5xl mb-4 text-amber-300"></i>
         <p class="text-amber-800 mb-4">ບໍ່ພົບຂໍໍາູນພະສົງ</p>
-        <?php if (!empty($_GET['search']) || !empty($_GET['temple_id']) || (isset($_GET['status']) && $_GET['status'] !== 'active')): ?>
+        <?php if (!empty($_GET['search']) || !empty($_GET['temple_id']) || !empty($_GET['province_id']) || (isset($_GET['status']) && $_GET['status'] !== 'active')): ?>
         <a href="<?= $base_url ?>monks/" 
            class="inline-block mt-2 text-amber-600 hover:text-amber-800 border border-amber-300 hover:border-amber-400 px-4 py-2 rounded-lg transition">
            <i class="fas fa-redo mr-1"></i> ລຶບຕົວກອງທັງໝົດ
@@ -849,6 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
 // ระบบเปลี่ยนสถานะพระสงฆ์แบบ AJAX
 document.querySelectorAll('.toggle-status-btn').forEach(button => {
     button.addEventListener('click', async function() {
@@ -900,24 +725,26 @@ document.querySelectorAll('.toggle-status-btn').forEach(button => {
                 showToast(result.message, 'success');
                 
                 // Highlight the changed row
-                const row = this.closest('tr');
-                row.style.backgroundColor = '#FFEDD5'; 
-                row.style.boxShadow = '0 0 8px rgba(251, 146, 60, 0.7)';
+                const row = this.closest('tr, .p-4');
+                if (row) {
+                    row.style.backgroundColor = '#FFEDD5'; 
+                    row.style.boxShadow = '0 0 8px rgba(251, 146, 60, 0.7)';
 
-                // Add blinking effect
-                let flash = 0;
-                const flashInterval = setInterval(() => {
-                  if (flash >= 3) {
-                    clearInterval(flashInterval);
-                    row.style.transition = 'all 0.5s ease-out';
-                    row.style.backgroundColor = '';
-                    row.style.boxShadow = '';
-                    return;
-                  }
-                  
-                  row.style.backgroundColor = flash % 2 === 0 ? '#ffffff' : '#FFEDD5';
-                  flash++;
-                }, 500);
+                    // Add blinking effect
+                    let flash = 0;
+                    const flashInterval = setInterval(() => {
+                      if (flash >= 3) {
+                        clearInterval(flashInterval);
+                        row.style.transition = 'all 0.5s ease-out';
+                        row.style.backgroundColor = '';
+                        row.style.boxShadow = '';
+                        return;
+                      }
+                      
+                      row.style.backgroundColor = flash % 2 === 0 ? '#ffffff' : '#FFEDD5';
+                      flash++;
+                    }, 500);
+                }
             } else {
                 // Revert to original HTML on error
                 statusElement.innerHTML = originalHTML;
@@ -938,7 +765,6 @@ function showToast(message, type = 'success') {
     // ส้าง toast notification
     const toast = document.createElement('div');
     
-    // เพิ่มประเภท 'info' สีฟ้า
     let bgColor = 'bg-green-600';
     let iconClass = 'fa-check-circle';
     

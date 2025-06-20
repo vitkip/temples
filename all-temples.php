@@ -448,7 +448,7 @@ try {
                             <i class="fas fa-sign-out-alt mr-1"></i> ອອກຈາກລະບົບ
                         </a>
                     <?php else: ?>
-                        <a href="<?= $base_url ?>auth/login.php" class="text-amber-700 hover:text-amber-800 px-3 py-2 rounded-md text-sm font-medium">
+                        <a href="<?= $base_url ?>auth/" class="text-amber-700 hover:text-amber-800 px-3 py-2 rounded-md text-sm font-medium">
                             <i class="fas fa-sign-in-alt mr-1"></i> ເຂົ້າສູ່ລະບົບ
                         </a>
                         <a href="<?= $base_url ?>auth/register.php" class="ml-4 btn-primary">

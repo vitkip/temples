@@ -4,37 +4,108 @@ require_once '../config/db.php';
 require_once '../config/base_url.php';
 require_once '../includes/header.php';
 
+// ตรวจสอบสิทธิ์การเข้าถึง
+if (!isset($_SESSION['user'])) {
+    $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
+    header('Location: ' . $base_url . 'login.php');
+    exit;
+}
+
+$user_role = $_SESSION['user']['role'];
+$user_id = $_SESSION['user']['id'];
+$user_temple_id = $_SESSION['user']['temple_id'] ?? null;
 
 // Check if ID was provided
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    $_SESSION['error'] = "ບໍ່ພົບ ID ຂອງວັດ";
     header('Location: ' . $base_url . 'temples/');
     exit;
 }
 
 $temple_id = (int)$_GET['id'];
 
+// ตรวจสอบสิทธิ์การแก้ไข
+$can_edit = false;
+if ($user_role === 'superadmin') {
+    $can_edit = true;
+} elseif ($user_role === 'admin' && $temple_id == $user_temple_id) {
+    $can_edit = true;
+} elseif ($user_role === 'province_admin') {
+    // ตรวจสอบว่าวัดนี้อยู่ในแขวงที่ province_admin ดูแลหรือไม่
+    $check_access = $pdo->prepare("
+        SELECT COUNT(*) FROM temples t
+        JOIN user_province_access upa ON t.province_id = upa.province_id
+        WHERE t.id = ? AND upa.user_id = ?
+    ");
+    $check_access->execute([$temple_id, $user_id]);
+    $can_edit = ($check_access->fetchColumn() > 0);
+}
+
+if (!$can_edit) {
+    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດແກ້ໄຂວັດນີ້";
+    header('Location: ' . $base_url . 'temples/');
+    exit;
+}
+
 // Get temple data
-$stmt = $pdo->prepare("SELECT * FROM temples WHERE id = ?");
+$stmt = $pdo->prepare("
+    SELECT 
+        t.*,
+        d.district_name,
+        p.province_name
+    FROM temples t 
+    LEFT JOIN districts d ON t.district_id = d.district_id
+    LEFT JOIN provinces p ON t.province_id = p.province_id
+    WHERE t.id = ?
+");
 $stmt->execute([$temple_id]);
 $temple = $stmt->fetch();
 
 if (!$temple) {
+    $_SESSION['error'] = "ບໍ່ພົບຂໍ້ມູນວັດ";
     header('Location: ' . $base_url . 'temples/');
     exit;
+}
+
+// ดึงแขวงที่ผู้ใช้สามารถแก้ไขได้
+$available_provinces = [];
+if ($user_role === 'superadmin') {
+    // superadmin เห็นทุกแขวง
+    $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
+    $available_provinces = $province_stmt->fetchAll();
+} elseif ($user_role === 'province_admin') {
+    // province_admin เห็นเฉพาะแขวงที่ตัวเองดูแล
+    $province_stmt = $pdo->prepare("
+        SELECT p.province_id, p.province_name 
+        FROM provinces p 
+        JOIN user_province_access upa ON p.province_id = upa.province_id 
+        WHERE upa.user_id = ? 
+        ORDER BY p.province_name
+    ");
+    $province_stmt->execute([$user_id]);
+    $available_provinces = $province_stmt->fetchAll();
+} elseif ($user_role === 'admin') {
+    // admin เห็นเฉพาะแขวงของวัดตัวเอง
+    $province_stmt = $pdo->prepare("
+        SELECT DISTINCT p.province_id, p.province_name 
+        FROM temples t 
+        JOIN provinces p ON t.province_id = p.province_id 
+        WHERE t.id = ?
+    ");
+    $province_stmt->execute([$temple_id]);
+    $available_provinces = $province_stmt->fetchAll();
 }
 
 $success = false;
 $error = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // CSRF protection would go here
-    
     try {
         // Extract form data with validation
         $name = trim($_POST['name']);
         $address = trim($_POST['address'] ?? '');
-        $district = trim($_POST['district'] ?? '');
-        $province = trim($_POST['province'] ?? '');
+        $district_id = !empty($_POST['district_id']) ? (int)$_POST['district_id'] : null;
+        $province_id = !empty($_POST['province_id']) ? (int)$_POST['province_id'] : null;
         $phone = trim($_POST['phone'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $website = trim($_POST['website'] ?? '');
@@ -48,6 +119,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Basic validation
         if (empty($name)) {
             throw new Exception('ກະລຸນາປ້ອນຊື່ວັດ');
+        }
+        
+        // ตรวจสอบสิทธิ์ province_admin
+        if ($user_role === 'province_admin' && $province_id) {
+            $check_access = $pdo->prepare("SELECT COUNT(*) FROM user_province_access WHERE user_id = ? AND province_id = ?");
+            $check_access->execute([$user_id, $province_id]);
+            if ($check_access->fetchColumn() == 0) {
+                throw new Exception('ທ່ານບໍ່ມີສິດແກ້ໄຂວັດໃນແຂວງນີ້');
+            }
         }
         
         // Process photo upload
@@ -78,7 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $photo = 'uploads/temples/' . $photo_name;
                 }
             } else {
-                $error = 'ປະເພດໄຟລ໌ບໍ່ຮອງຮັບ. ອະນຸຍາດສະເພາະ JPG, JPEG, PNG ແລະ GIF ເທົ່ານັ້ນ';
+                throw new Exception('ປະເພດໄຟລ໌ບໍ່ຮອງຮັບ. ອະນຸຍາດສະເພາະ JPG, JPEG, PNG ແລະ GIF ເທົ່ານັ້ນ');
             }
         }
         
@@ -105,21 +185,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $logo = 'uploads/temples/' . $logo_name;
                 }
             } else {
-                $error = 'ປະເພດໄຟລ໌ບໍ່ຮອງຮັບ. ອະນຸຍາດສະເພາະ JPG, JPEG, PNG ແລະ GIF ເທົ່ານັ້ນ';
+                throw new Exception('ປະເພດໄຟລ໌ບໍ່ຮອງຮັບ. ອະນຸຍາດສະເພາະ JPG, JPEG, PNG ແລະ GIF ເທົ່ານັ້ນ');
             }
         }
         
         // Update database
         $stmt = $pdo->prepare("
             UPDATE temples SET
-                name = ?, address = ?, district = ?, province = ?, phone = ?, email = ?, 
+                name = ?, address = ?, district_id = ?, province_id = ?, phone = ?, email = ?, 
                 website = ?, founding_date = ?, abbot_name = ?, description = ?, 
                 photo = ?, logo = ?, latitude = ?, longitude = ?, status = ?, updated_at = NOW()
             WHERE id = ?
         ");
         
         $stmt->execute([
-            $name, $address, $district, $province, $phone, $email, 
+            $name, $address, $district_id, $province_id, $phone, $email, 
             $website, $founding_date, $abbot_name, $description, 
             $photo, $logo, $latitude, $longitude, $status,
             $temple_id
@@ -128,7 +208,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $success = 'ແກ້ໄຂຂໍ້ມູນວັດສຳເລັດແລ້ວ';
         
         // Refresh temple data
-        $stmt = $pdo->prepare("SELECT * FROM temples WHERE id = ?");
+        $stmt = $pdo->prepare("
+            SELECT 
+                t.*,
+                d.district_name,
+                p.province_name
+            FROM temples t 
+            LEFT JOIN districts d ON t.district_id = d.district_id
+            LEFT JOIN provinces p ON t.province_id = p.province_id
+            WHERE t.id = ?
+        ");
         $stmt->execute([$temple_id]);
         $temple = $stmt->fetch();
         
@@ -138,7 +227,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
-<!-- เพิ่ม link เพื่อนำเข้า monk-style.css -->
+<!-- เพิ่ม CSS ของหน้า -->
 <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
 
 <div class="page-container">
@@ -154,14 +243,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </h1>
                 <p class="text-sm text-amber-700 mt-1">ແກ້ໄຂລາຍລະອຽດຂອງວັດ <?= htmlspecialchars($temple['name']) ?></p>
             </div>
-            <a href="<?= $base_url ?>temples/" class="btn px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center transition">
-                <i class="fas fa-arrow-left mr-2"></i> ກັບຄືນ
-            </a>
+            <div class="flex space-x-2">
+                <a href="<?= $base_url ?>temples/view.php?id=<?= $temple_id ?>" class="btn px-4 py-2 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-lg flex items-center transition">
+                    <i class="fas fa-eye mr-2"></i> ເບິ່ງ
+                </a>
+                <a href="<?= $base_url ?>temples/" class="btn px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg flex items-center transition">
+                    <i class="fas fa-arrow-left mr-2"></i> ກັບຄືນ
+                </a>
+            </div>
         </div>
 
         <!-- Alert Messages -->
         <?php if ($success): ?>
-        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded">
+        <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6 rounded-lg">
             <div class="flex items-center">
                 <i class="fas fa-check-circle text-green-500 mr-3"></i>
                 <p class="text-green-700"><?= $success ?></p>
@@ -170,7 +264,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <?php if ($error): ?>
-        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
+        <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-lg">
             <div class="flex items-center">
                 <i class="fas fa-exclamation-circle text-red-500 mr-3"></i>
                 <p class="text-red-700"><?= $error ?></p>
@@ -179,12 +273,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <!-- Temple Form -->
-        <div class="card">
-            <form method="POST" enctype="multipart/form-data" class="p-6">
+        <div class="card bg-white p-6">
+            <form method="POST" enctype="multipart/form-data">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- Basic Information -->
                     <div class="space-y-6">
-                        <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                        <h3 class="text-lg font-medium flex items-center">
                             <div class="icon-circle">
                                 <i class="fas fa-info-circle"></i>
                             </div>
@@ -197,8 +291,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 type="text" 
                                 name="name" 
                                 required
-                                value="<?= htmlspecialchars($temple['name']) ?>"
                                 class="form-input w-full"
+                                value="<?= htmlspecialchars($temple['name']) ?>"
                             >
                         </div>
                         
@@ -207,47 +301,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input 
                                 type="text" 
                                 name="address"
-                                value="<?= htmlspecialchars($temple['address'] ?? '') ?>"
                                 class="form-input w-full"
+                                value="<?= htmlspecialchars($temple['address'] ?? '') ?>"
                             >
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ເມືອງ</label>
-                                <input 
-                                    type="text" 
-                                    name="district"
-                                    value="<?= htmlspecialchars($temple['district'] ?? '') ?>"
-                                    class="form-input w-full"
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ແຂວງ <span class="text-red-500">*</span></label>
+                                <select 
+                                    name="province_id"
+                                    id="province_id"
+                                    class="form-select w-full"
+                                    required
+                                    onchange="loadDistricts(this.value)"
+                                    <?= $user_role === 'admin' ? 'disabled' : '' ?>
                                 >
+                                    <option value="">ເລືອກແຂວງ</option>
+                                    <?php foreach($available_provinces as $province): ?>
+                                    <option value="<?= $province['province_id'] ?>" 
+                                        <?= $temple['province_id'] == $province['province_id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($province['province_name']) ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <?php if ($user_role === 'admin'): ?>
+                                    <input type="hidden" name="province_id" value="<?= $temple['province_id'] ?>">
+                                <?php endif; ?>
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ແຂວງ</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ເມືອງ</label>
                                 <select 
-                                    name="province"
+                                    name="district_id"
+                                    id="district_id"
                                     class="form-select w-full"
                                 >
-                                    <option value="">-- ເລືອກແຂວງ --</option>
-                                    <option value="ອັດຕະປື" <?= $temple['province'] === 'ອັດຕະປື' ? 'selected' : '' ?>>ອັດຕະປື</option>
-                                    <option value="ບໍ່ແກ້ວ" <?= $temple['province'] === 'ບໍ່ແກ້ວ' ? 'selected' : '' ?>>ບໍ່ແກ້ວ</option>
-                                    <option value="ບໍລິຄໍາໄຊ" <?= $temple['province'] === 'ບໍລິຄໍາໄຊ' ? 'selected' : '' ?>>ບໍລິຄໍາໄຊ</option>
-                                    <option value="ຈໍາປາສັກ" <?= $temple['province'] === 'ຈໍາປາສັກ' ? 'selected' : '' ?>>ຈໍາປາສັກ</option>
-                                    <option value="ຫົວພັນ" <?= $temple['province'] === 'ຫົວພັນ' ? 'selected' : '' ?>>ຫົວພັນ</option>
-                                    <option value="ຄໍາມ່ວນ" <?= $temple['province'] === 'ຄໍາມ່ວນ' ? 'selected' : '' ?>>ຄໍາມ່ວນ</option>
-                                    <option value="ຫລວງນໍ້າທາ" <?= $temple['province'] === 'ຫລວງນໍ້າທາ' ? 'selected' : '' ?>>ຫລວງນໍ້າທາ</option>
-                                    <option value="ຫລວງພະບາງ" <?= $temple['province'] === 'ຫລວງພະບາງ' ? 'selected' : '' ?>>ຫລວງພະບາງ</option>
-                                    <option value="ອຸດົມໄຊ" <?= $temple['province'] === 'ອຸດົມໄຊ' ? 'selected' : '' ?>>ອຸດົມໄຊ</option>
-                                    <option value="ຜົ້ງສາລີ" <?= $temple['province'] === 'ຜົ້ງສາລີ' ? 'selected' : '' ?>>ຜົ້ງສາລີ</option>
-                                    <option value="ໄຊຍະບູລີ" <?= $temple['province'] === 'ໄຊຍະບູລີ' ? 'selected' : '' ?>>ໄຊຍະບູລີ</option>
-                                    <option value="ສາລະວັນ" <?= $temple['province'] === 'ສາລະວັນ' ? 'selected' : '' ?>>ສາລະວັນ</option>
-                                    <option value="ສະຫວັນນະເຂດ" <?= $temple['province'] === 'ສະຫວັນນະເຂດ' ? 'selected' : '' ?>>ສະຫວັນນະເຂດ</option>
-                                    <option value="ເຊກອງ" <?= $temple['province'] === 'ເຊກອງ' ? 'selected' : '' ?>>ເຊກອງ</option>
-                                    <option value="ແຂວງວຽງຈັນ" <?= $temple['province'] === 'ແຂວງວຽງຈັນ' ? 'selected' : '' ?>>ແຂວງວຽງຈັນ</option>
-                                    <option value="ນະຄອນຫຼວງວຽງຈັນ" <?= $temple['province'] === 'ນະຄອນຫຼວງວຽງຈັນ' ? 'selected' : '' ?>>ນະຄອນຫຼວງວຽງຈັນ</option>
-                                    <option value="ໄຊສົມບູນ" <?= $temple['province'] === 'ໄຊສົມບູນ' ? 'selected' : '' ?>>ໄຊສົມບູນ</option>
-                                    <option value="ຊຽງຂວາງ" <?= $temple['province'] === 'ຊຽງຂວາງ' ? 'selected' : '' ?>>ຊຽງຂວາງ</option>
+                                    <option value="">ເລືອກແຂວງກ່ອນ</option>
+                                    <?php if ($temple['district_id']): ?>
+                                    <option value="<?= $temple['district_id'] ?>" selected>
+                                        <?= htmlspecialchars($temple['district_name'] ?? '') ?>
+                                    </option>
+                                    <?php endif; ?>
                                 </select>
                             </div>
                         </div>
@@ -258,8 +353,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input 
                                     type="tel" 
                                     name="phone"
-                                    value="<?= htmlspecialchars($temple['phone'] ?? '') ?>"
                                     class="form-input w-full"
+                                    value="<?= htmlspecialchars($temple['phone'] ?? '') ?>"
                                 >
                             </div>
                             
@@ -268,8 +363,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input 
                                     type="email" 
                                     name="email"
-                                    value="<?= htmlspecialchars($temple['email'] ?? '') ?>"
                                     class="form-input w-full"
+                                    value="<?= htmlspecialchars($temple['email'] ?? '') ?>"
                                 >
                             </div>
                         </div>
@@ -279,9 +374,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input 
                                 type="url" 
                                 name="website"
-                                value="<?= htmlspecialchars($temple['website'] ?? '') ?>"
                                 placeholder="https://"
                                 class="form-input w-full"
+                                value="<?= htmlspecialchars($temple['website'] ?? '') ?>"
                             >
                         </div>
                         
@@ -290,8 +385,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input 
                                 type="text" 
                                 name="abbot_name"
-                                value="<?= htmlspecialchars($temple['abbot_name'] ?? '') ?>"
                                 class="form-input w-full"
+                                value="<?= htmlspecialchars($temple['abbot_name'] ?? '') ?>"
                             >
                         </div>
                         
@@ -300,15 +395,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input 
                                 type="date" 
                                 name="founding_date"
-                                value="<?= $temple['founding_date'] ?? '' ?>"
                                 class="form-input w-full"
+                                value="<?= $temple['founding_date'] ?? '' ?>"
                             >
                         </div>
                     </div>
                     
                     <!-- Additional Information -->
                     <div class="space-y-6">
-                        <h3 class="text-lg font-medium text-gray-900 flex items-center">
+                        <h3 class="text-lg font-medium flex items-center">
                             <div class="icon-circle">
                                 <i class="fas fa-file-alt"></i>
                             </div>
@@ -330,8 +425,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input 
                                     type="text" 
                                     name="latitude"
-                                    value="<?= $temple['latitude'] ?? '' ?>"
                                     class="form-input w-full"
+                                    value="<?= $temple['latitude'] ?? '' ?>"
                                 >
                             </div>
                             
@@ -340,8 +435,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 <input 
                                     type="text" 
                                     name="longitude"
-                                    value="<?= $temple['longitude'] ?? '' ?>"
                                     class="form-input w-full"
+                                    value="<?= $temple['longitude'] ?? '' ?>"
                                 >
                             </div>
                         </div>
@@ -395,13 +490,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <a href="<?= $base_url ?>temples/" class="btn px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition">
                         ຍົກເລີກ
                     </a>
-                    <button type="submit" class="btn-primary">
-                        <i class="fas fa-save mr-2"></i> ບັນທຶກ
+                    <button type="submit" class="btn btn-primary px-6 py-2 text-white rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-save"></i> ບັນທຶກການແກ້ໄຂ
                     </button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+// โหลดรายการเมืองตามแขวงที่เลือก
+function loadDistricts(provinceId) {
+    const districtSelect = document.getElementById('district_id');
+    const currentDistrictId = <?= $temple['district_id'] ?? 'null' ?>;
+    
+    // Clear existing options except current one
+    districtSelect.innerHTML = '<option value="">ກຳລັງໂຫຼດ...</option>';
+    
+    if (!provinceId) {
+        districtSelect.innerHTML = '<option value="">ເລືອກແຂວງກ່ອນ</option>';
+        return;
+    }
+    
+    // Fetch districts
+    fetch('<?= $base_url ?>api/get-districts.php?province_id=' + provinceId)
+        .then(response => response.json())
+        .then(data => {
+            districtSelect.innerHTML = '<option value="">-- ເລືອກເມືອງ --</option>';
+            
+            if (data.success && data.districts) {
+                data.districts.forEach(district => {
+                    const option = document.createElement('option');
+                    option.value = district.district_id;
+                    option.textContent = district.district_name;
+                    
+                    // ถ้าเป็นเมืองปัจจุบัน ให้เลือกไว้
+                    if (district.district_id == currentDistrictId) {
+                        option.selected = true;
+                    }
+                    
+                    districtSelect.appendChild(option);
+                });
+            } else {
+                districtSelect.innerHTML = '<option value="">ບໍ່ມີເມືອງໃນແຂວງນີ້</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            districtSelect.innerHTML = '<option value="">ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນ</option>';
+        });
+}
+
+// Auto-load districts เมื่อโหลดหน้า
+document.addEventListener('DOMContentLoaded', function() {
+    const provinceSelect = document.getElementById('province_id');
+    if (provinceSelect.value) {
+        loadDistricts(provinceSelect.value);
+    }
+});
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

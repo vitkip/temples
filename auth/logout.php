@@ -1,5 +1,5 @@
 <?php
 session_start();
 session_destroy();
-header("Location: ../auth/login.php");
+header("Location: ../auth/index.php");
 exit;

@@ -2,23 +2,54 @@
 $page_title = 'ເພີ່ມວັດໃໝ່';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
-
 require_once '../includes/header.php';
 
+// ตรวจสอบสิทธิ์การเข้าถึง
+if (!isset($_SESSION['user'])) {
+    $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
+    header('Location: ' . $base_url . 'login.php');
+    exit;
+}
 
+$user_role = $_SESSION['user']['role'];
+$user_id = $_SESSION['user']['id'];
+
+// อนุญาตเฉพาะ superadmin และ province_admin
+if (!in_array($user_role, ['superadmin', 'province_admin'])) {
+    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້";
+    header('Location: ' . $base_url . 'dashboard.php');
+    exit;
+}
+
+// ดึงแขวงที่ผู้ใช้สามารถเพิ่มวัดได้
+$available_provinces = [];
+if ($user_role === 'superadmin') {
+    // superadmin เห็นทุกแขวง
+    $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
+    $available_provinces = $province_stmt->fetchAll();
+} elseif ($user_role === 'province_admin') {
+    // province_admin เห็นเฉพาะแขวงที่ตัวเองดูแล
+    $province_stmt = $pdo->prepare("
+        SELECT p.province_id, p.province_name 
+        FROM provinces p 
+        JOIN user_province_access upa ON p.province_id = upa.province_id 
+        WHERE upa.user_id = ? 
+        ORDER BY p.province_name
+    ");
+    $province_stmt->execute([$user_id]);
+    $available_provinces = $province_stmt->fetchAll();
+}
 
 $success = false;
 $error = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // CSRF protection would go here
-    
     try {
         // Extract form data with validation
         $name = trim($_POST['name']);
         $address = trim($_POST['address'] ?? '');
-        $district = trim($_POST['district'] ?? '');
-        $province = trim($_POST['province'] ?? '');
+        $district_id = !empty($_POST['district_id']) ? (int)$_POST['district_id'] : null;
+        $province_id = !empty($_POST['province_id']) ? (int)$_POST['province_id'] : null;
         $phone = trim($_POST['phone'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $website = trim($_POST['website'] ?? '');
@@ -32,6 +63,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Basic validation
         if (empty($name)) {
             throw new Exception('ກະລຸນາປ້ອນຊື່ວັດ');
+        }
+        
+        // ตรวจสอบสิทธิ์ province_admin
+        if ($user_role === 'province_admin' && $province_id) {
+            $check_access = $pdo->prepare("SELECT COUNT(*) FROM user_province_access WHERE user_id = ? AND province_id = ?");
+            $check_access->execute([$user_id, $province_id]);
+            if ($check_access->fetchColumn() == 0) {
+                throw new Exception('ທ່ານບໍ່ມີສິດເພີ່ມວັດໃນແຂວງນີ້');
+            }
         }
         
         // Process photo upload
@@ -66,7 +106,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Insert into database
         $stmt = $pdo->prepare("
             INSERT INTO temples (
-                name, address, district, province, phone, email, 
+                name, address, district_id, province_id, phone, email, 
                 website, founding_date, abbot_name, description, 
                 photo, logo, latitude, longitude, status, created_at, updated_at
             ) VALUES (
@@ -77,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ");
         
         $stmt->execute([
-            $name, $address, $district, $province, $phone, $email, 
+            $name, $address, $district_id, $province_id, $phone, $email, 
             $website, $founding_date, $abbot_name, $description, 
             $photo, $logo, $latitude, $longitude, $status
         ]);
@@ -104,6 +144,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <i class="fas fa-gopuram"></i>
                     </div>
                     ເພີ່ມວັດໃໝ່
+                    <?php if ($user_role === 'province_admin'): ?>
+                        <span class="text-sm font-normal text-amber-700 ml-2">(ແຂວງທີ່ຮັບຜິດຊອບ)</span>
+                    <?php endif; ?>
                 </h1>
                 <p class="text-sm text-amber-700 mt-1">ປ້ອນຂໍ້ມູນລາຍລະອຽດຂອງວັດ</p>
             </div>
@@ -151,6 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 name="name" 
                                 required
                                 class="form-input w-full"
+                                value="<?= isset($_POST['name']) ? htmlspecialchars($_POST['name']) : '' ?>"
                             >
                         </div>
                         
@@ -160,44 +204,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 type="text" 
                                 name="address"
                                 class="form-input w-full"
+                                value="<?= isset($_POST['address']) ? htmlspecialchars($_POST['address']) : '' ?>"
                             >
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ເມືອງ</label>
-                                <input 
-                                    type="text" 
-                                    name="district"
-                                    class="form-input w-full"
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ແຂວງ <span class="text-red-500">*</span></label>
+                                <select 
+                                    name="province_id"
+                                    id="province_id"
+                                    class="form-select w-full"
+                                    required
+                                    onchange="loadDistricts(this.value)"
                                 >
+                                    <option value="">ເລືອກແຂວງ</option>
+                                    <?php foreach($available_provinces as $province): ?>
+                                    <option value="<?= $province['province_id'] ?>" 
+                                        <?= isset($_POST['province_id']) && $_POST['province_id'] == $province['province_id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($province['province_name']) ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
                             </div>
                             
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">ແຂວງ</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">ເມືອງ</label>
                                 <select 
-                                    name="province"
+                                    name="district_id"
+                                    id="district_id"
                                     class="form-select w-full"
                                 >
-                                    <option value="">ເລືອກແຂວງ</option>
-                                    <option value="ອັດຕະປື">ອັດຕະປື</option>
-                                    <option value="ບໍ່ແກ້ວ">ບໍ່ແກ້ວ</option>
-                                    <option value="ບໍລິຄໍາໄຊ">ບໍລິຄໍາໄຊ</option>
-                                    <option value="ຈໍາປາສັກ">ຈໍາປາສັກ</option>
-                                    <option value="ຫົວພັນ">ຫົວພັນ</option>
-                                    <option value="ຄໍາມ່ວນ">ຄໍາມ່ວນ</option>
-                                    <option value="ຫລວງນໍ້າທາ">ຫລວງນໍ້າທາ</option>
-                                    <option value="ຫລວງພະບາງ">ຫລວງພະບາງ</option>
-                                    <option value="ອຸດົມໄຊ">ອຸດົມໄຊ</option>
-                                    <option value="ຜົ້ງສາລີ">ຜົ້ງສາລີ</option>
-                                    <option value="ໄຊຍະບູລີ">ໄຊຍະບູລີ</option>
-                                    <option value="ສາລະວັນ">ສາລະວັນ</option>
-                                    <option value="ສະຫວັນນະເຂດ">ສະຫວັນນະເຂດ</option>
-                                    <option value="ເຊກອງ">ເຊກອງ</option>
-                                    <option value="ແຂວງວຽງຈັນ">ແຂວງວຽງຈັນ</option>
-                                    <option value="ນະຄອນຫຼວງວຽງຈັນ">ນະຄອນຫຼວງວຽງຈັນ</option>
-                                    <option value="ໄຊສົມບູນ">ໄຊສົມບູນ</option>
-                                    <option value="ຊຽງຂວາງ">ຊຽງຂວາງ</option>
+                                    <option value="">ເລືອກແຂວງກ່ອນ</option>
                                 </select>
                             </div>
                         </div>
@@ -209,6 +247,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     type="tel" 
                                     name="phone"
                                     class="form-input w-full"
+                                    value="<?= isset($_POST['phone']) ? htmlspecialchars($_POST['phone']) : '' ?>"
                                 >
                             </div>
                             
@@ -218,6 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     type="email" 
                                     name="email"
                                     class="form-input w-full"
+                                    value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>"
                                 >
                             </div>
                         </div>
@@ -229,6 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 name="website"
                                 placeholder="https://"
                                 class="form-input w-full"
+                                value="<?= isset($_POST['website']) ? htmlspecialchars($_POST['website']) : '' ?>"
                             >
                         </div>
                         
@@ -238,6 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 type="text" 
                                 name="abbot_name"
                                 class="form-input w-full"
+                                value="<?= isset($_POST['abbot_name']) ? htmlspecialchars($_POST['abbot_name']) : '' ?>"
                             >
                         </div>
                         
@@ -247,6 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 type="date" 
                                 name="founding_date"
                                 class="form-input w-full"
+                                value="<?= isset($_POST['founding_date']) ? $_POST['founding_date'] : '' ?>"
                             >
                         </div>
                     </div>
@@ -266,7 +309,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 name="description" 
                                 rows="4" 
                                 class="form-input w-full"
-                            ></textarea>
+                            ><?= isset($_POST['description']) ? htmlspecialchars($_POST['description']) : '' ?></textarea>
                         </div>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -276,6 +319,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     type="text" 
                                     name="latitude"
                                     class="form-input w-full"
+                                    value="<?= isset($_POST['latitude']) ? htmlspecialchars($_POST['latitude']) : '' ?>"
                                 >
                             </div>
                             
@@ -285,6 +329,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     type="text" 
                                     name="longitude"
                                     class="form-input w-full"
+                                    value="<?= isset($_POST['longitude']) ? htmlspecialchars($_POST['longitude']) : '' ?>"
                                 >
                             </div>
                         </div>
@@ -308,7 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 accept="image/*"
                                 class="form-input w-full"
                             >
-                            <p class="text-xs text-gray-500 mt-1">ແນະນຳ: ຮູບພາບທີ່ມີພື້ນຫຼັກໂປ່ງໃສ, ສູງສຸດ 2MB</p>
+                            <p class="text-xs text-gray-500 mt-1">ແນະນຳ: ຮູບພາບທີ່ມີພື້ນຫຼັງໂປ່ງໃສ, ສູງສຸດ 2MB</p>
                         </div>
                         
                         <div>
@@ -317,8 +362,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 name="status"
                                 class="form-select w-full"
                             >
-                                <option value="active">ເປີດໃຊ້ງານ</option>
-                                <option value="inactive">ປິດໃຊ້ງານ</option>
+                                <option value="active" <?= !isset($_POST['status']) || $_POST['status'] === 'active' ? 'selected' : '' ?>>ເປີດໃຊ້ງານ</option>
+                                <option value="inactive" <?= isset($_POST['status']) && $_POST['status'] === 'inactive' ? 'selected' : '' ?>>ປິດໃຊ້ງານ</option>
                             </select>
                         </div>
                     </div>
@@ -336,5 +381,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
     </div>
 </div>
+
+<script>
+// โหลดรายการเมืองตามแขวงที่เลือก
+function loadDistricts(provinceId) {
+    const districtSelect = document.getElementById('district_id');
+    
+    // Clear existing options
+    districtSelect.innerHTML = '<option value="">ກຳລັງໂຫຼດ...</option>';
+    
+    if (!provinceId) {
+        districtSelect.innerHTML = '<option value="">ເລືອກແຂວງກ່ອນ</option>';
+        return;
+    }
+    
+    // Fetch districts
+    fetch('<?= $base_url ?>api/get-districts.php?province_id=' + provinceId)
+        .then(response => response.json())
+        .then(data => {
+            districtSelect.innerHTML = '<option value="">-- ເລືອກເມືອງ --</option>';
+            
+            if (data.success && data.districts) {
+                data.districts.forEach(district => {
+                    const option = document.createElement('option');
+                    option.value = district.district_id;
+                    option.textContent = district.district_name;
+                    
+                    // ถ้ามีการเลือกไว้แล้ว (เมื่อมี error และต้อง reload form)
+                    <?php if (isset($_POST['district_id'])): ?>
+                    if (district.district_id == <?= (int)$_POST['district_id'] ?>) {
+                        option.selected = true;
+                    }
+                    <?php endif; ?>
+                    
+                    districtSelect.appendChild(option);
+                });
+            } else {
+                districtSelect.innerHTML = '<option value="">ບໍ່ມີເມືອງໃນແຂວງນີ້</option>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            districtSelect.innerHTML = '<option value="">ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນ</option>';
+        });
+}
+
+// Auto-load districts ถ้ามีการเลือกแขวงไว้แล้ว
+document.addEventListener('DOMContentLoaded', function() {
+    const provinceSelect = document.getElementById('province_id');
+    if (provinceSelect.value) {
+        loadDistricts(provinceSelect.value);
+    }
+});
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

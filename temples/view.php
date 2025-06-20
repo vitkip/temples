@@ -18,7 +18,16 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $temple_id = (int)$_GET['id'];
 
 // Get temple data
-$stmt = $pdo->prepare("SELECT * FROM temples WHERE id = ?");
+$stmt = $pdo->prepare("
+    SELECT 
+        t.*,
+        d.district_name,
+        p.province_name
+    FROM temples t 
+    LEFT JOIN districts d ON t.district_id = d.district_id
+    LEFT JOIN provinces p ON t.province_id = p.province_id
+    WHERE t.id = ?
+");
 $stmt->execute([$temple_id]);
 $temple = $stmt->fetch();
 

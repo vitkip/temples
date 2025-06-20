@@ -7,11 +7,6 @@ require_once '../config/db.php';
 require_once '../config/base_url.php';
 require_once '../includes/header.php';
 
-// ສ້າງ CSRF token ຖ້າບໍ່ມີ
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
-
 // ກວດສອບວ່າຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບແລ້ວຫຼືບໍ່
 if (!isset($_SESSION['user'])) {
     $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
@@ -19,319 +14,363 @@ if (!isset($_SESSION['user'])) {
     exit;
 }
 
-// ກວດສອບສິດໃນການເພີ່ມຜູ້ໃຊ້ໃໝ່
+// ກວດສອບສິດການໃຊ້ງານ
 $is_superadmin = $_SESSION['user']['role'] === 'superadmin';
 $is_admin = $_SESSION['user']['role'] === 'admin';
+$is_province_admin = $_SESSION['user']['role'] === 'province_admin';
 
-// ກວດສອບສິດ - ສະເພາະ superadmin ແລະ admin ເທົ່ານັ້ນທີ່ສາມາດເພີ່ມຜູ້ໃຊ້ໃໝ່
-if (!$is_superadmin && !$is_admin) {
-    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດເພີ່ມຜູ້ໃຊ້ໃໝ່";
-    header('Location: ' . $base_url . 'users/');
+// ອະນຸຍາດໃຫ້ສະເພາະ superadmin, admin, ແລະ province_admin ເທົ່ານັ້ນ
+if (!$is_superadmin && !$is_admin && !$is_province_admin) {
+    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃຊ້ງານສ່ວນນີ້";
+    header('Location: ' . $base_url . 'dashboard.php');
     exit;
 }
 
-// ດຶງຂໍ້ມູນວັດສໍາລັບ dropdown
+// ດຶງຂໍ້ມູນວັດຕາມສິດການເຂົ້າເຖິງ
 $temples = [];
 if ($is_superadmin) {
-    // Superadmin ສາມາດເລືອກວັດໄດ້ທັງໝົດ
-    $temple_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active' ORDER BY name");
+    // Superadmin ສາມາດເລືອກວັດໃດກໍໄດ້
+    $temple_stmt = $pdo->query("SELECT id, name, province_id FROM temples ORDER BY name");
     $temples = $temple_stmt->fetchAll();
-} else if ($is_admin) {
-    // Admin ເຫັນສະເພາະວັດຂອງຕົນເອງ
-    $temple_stmt = $pdo->prepare("SELECT id, name FROM temples WHERE id = ? AND status = 'active'");
+} elseif ($is_province_admin) {
+    // Province admin ສາມາດເລືອກວັດໃນແຂວງທີ່ຮັບຜິດຊອບ
+    $province_stmt = $pdo->prepare("
+        SELECT t.id, t.name, t.province_id
+        FROM temples t 
+        JOIN user_province_access upa ON t.province_id = upa.province_id
+        WHERE upa.user_id = ?
+        ORDER BY t.name
+    ");
+    $province_stmt->execute([$_SESSION['user']['id']]);
+    $temples = $province_stmt->fetchAll();
+} elseif ($is_admin) {
+    // Admin ສາມາດເລືອກສະເພາະວັດຂອງຕົນເອງ
+    $temple_stmt = $pdo->prepare("SELECT id, name, province_id FROM temples WHERE id = ?");
     $temple_stmt->execute([$_SESSION['user']['temple_id']]);
     $temples = $temple_stmt->fetchAll();
 }
 
-// ກໍານົດຕົວແປເລີ່ມຕົ້ນ
-$errors = [];
-$form_data = [
-    'username' => '',
-    'name' => '',
-    'email' => '',    // เพิ่มฟิลด์อีเมล
-    'phone' => '',    // เพิ่มฟิลด์เบอร์โทรศัพท์
-    'role' => $is_admin ? 'user' : '', // Admin ສາມາດເພີ່ມໄດ້ສະເພາະ user
-    'temple_id' => $is_admin ? $_SESSION['user']['temple_id'] : '',
-    'password' => '',
-    'confirm_password' => ''
-];
+// ດຶງຂໍ້ມູນແຂວງ (ສຳລັບ province_admin)
+$provinces = [];
+if ($is_superadmin) {
+    $province_stmt = $pdo->query("SELECT * FROM provinces ORDER BY province_name");
+    $provinces = $province_stmt->fetchAll();
+} elseif ($is_province_admin) {
+    $province_stmt = $pdo->prepare("
+        SELECT p.*
+        FROM provinces p
+        JOIN user_province_access upa ON p.province_id = upa.province_id
+        WHERE upa.user_id = ?
+        ORDER BY p.province_name
+    ");
+    $province_stmt->execute([$_SESSION['user']['id']]);
+    $provinces = $province_stmt->fetchAll();
+}
 
-// ປະມວນຜົນການສົ່ງຟອມ
+// ເມື່ອສົ່ງຟອມ
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // ກວດສອບ CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        $_SESSION['error'] = "ການຮ້ອງຂໍບໍ່ຖືກຕ້ອງ";
-        header('Location: ' . $base_url . 'users/add.php');
-        exit;
-    }
+    // ຮັບຂໍ້ມູນຈາກຟອມ
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
+    $confirm_password = trim($_POST['confirm_password']);
+    $name = trim($_POST['name']);
+    $email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $role = $_POST['role'];
+    $temple_id = isset($_POST['temple_id']) ? (int)$_POST['temple_id'] : null;
+    $province_id = isset($_POST['province_id']) ? (int)$_POST['province_id'] : null;
+    $status = $_POST['status'];
     
-    // ກວດສອບຂໍ້ມູນທີ່ສົ່ງມາ
-    $form_data = [
-        'username' => trim($_POST['username'] ?? ''),
-        'name' => trim($_POST['name'] ?? ''),
-        'email' => trim($_POST['email'] ?? ''),    // เพิ่มการรับค่าอีเมล
-        'phone' => trim($_POST['phone'] ?? ''),    // เพิ่มการรับค่าเบอร์โทรศัพท์
-        'role' => $_POST['role'] ?? ($is_admin ? 'user' : ''),
-        'temple_id' => isset($_POST['temple_id']) ? (int)$_POST['temple_id'] : ($is_admin ? $_SESSION['user']['temple_id'] : ''),
-        'password' => $_POST['password'] ?? '',
-        'confirm_password' => $_POST['confirm_password'] ?? ''
-    ];
+    $errors = [];
     
-    // ກວດສອບ username
-    if (empty($form_data['username'])) {
+    // ກວດສອບຂໍ້ມູນທີ່ຈຳເປັນ
+    if (empty($username)) {
         $errors[] = "ກະລຸນາປ້ອນຊື່ຜູ້ໃຊ້";
-    } else {
-        // ກວດສອບວ່າ username ຊໍ້າກັນຫຼືບໍ່
-        $check_stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = ?");
-        $check_stmt->execute([$form_data['username']]);
-        if ($check_stmt->fetchColumn() > 0) {
-            $errors[] = "ຊື່ຜູ້ໃຊ້ນີ້ມີຢູ່ໃນລະບົບແລ້ວ";
-        }
     }
     
-    // ກວດສອບຊື່
-    if (empty($form_data['name'])) {
+    if (empty($password)) {
+        $errors[] = "ກະລຸນາປ້ອນລະຫັດຜ່ານ";
+    } elseif ($password !== $confirm_password) {
+        $errors[] = "ລະຫັດຜ່ານບໍ່ກົງກັນ";
+    } elseif (strlen($password) < 6) {
+        $errors[] = "ລະຫັດຜ່ານຕ້ອງມີຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ";
+    }
+    
+    if (empty($name)) {
         $errors[] = "ກະລຸນາປ້ອນຊື່-ນາມສະກຸນ";
     }
     
-    // ກວດສອບອີເມລ (ຖ້າມີ)
-    if (!empty($form_data['email']) && !filter_var($form_data['email'], FILTER_VALIDATE_EMAIL)) {
+    if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $errors[] = "ຮູບແບບອີເມວບໍ່ຖືກຕ້ອງ";
     }
     
-    // ກວດສອບເບີໂທລະສັບ (ຖ້າມີ)
-    if (!empty($form_data['phone']) && !preg_match('/^[0-9]{8,10}$/', $form_data['phone'])) {
-        $errors[] = "ຮູບແບບເບີໂທລະສັບບໍ່ຖືກຕ້ອງ (8-10 ຕົວເລກ)";
-    }
-    
-    // ກວດສອບລະຫັດຜ່ານ
-    if (empty($form_data['password'])) {
-        $errors[] = "ກະລຸນາປ້ອນລະຫັດຜ່ານ";
-    } else if (strlen($form_data['password']) < 6) {
-        $errors[] = "ລະຫັດຜ່ານຕ້ອງມີຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ";
-    } else if ($form_data['password'] !== $form_data['confirm_password']) {
-        $errors[] = "ລະຫັດຜ່ານບໍ່ກົງກັນ";
-    }
-    
-    // ກວດສອບບົດບາດ (role)
-    if ($is_superadmin && empty($form_data['role'])) {
-        $errors[] = "ກະລຸນາເລືອກບົດບາດ";
-    }
-    
-    // ກວດສອບວ່າ admin ພະຍາຍາມສ້າງ admin ຫຼື superadmin ຫຼືບໍ່
-    if ($is_admin && $form_data['role'] !== 'user') {
-        $errors[] = "ທ່ານສາມາດເພີ່ມໄດ້ສະເພາະຜູ້ໃຊ້ທົ່ວໄປເທົ່ານັ້ນ";
-    }
-    
-    // ກວດສອບວັດ (ສໍາລັບ admin ແລະ user)
-    if ($is_superadmin && in_array($form_data['role'], ['admin', 'user']) && empty($form_data['temple_id'])) {
+    // ກວດສອບວັດ
+    if (($role === 'admin' || $role === 'user') && empty($temple_id)) {
         $errors[] = "ກະລຸນາເລືອກວັດ";
     }
     
-    // ຖ້າບໍ່ມີຂໍ້ຜິດພາດ
+    // ກວດສອບແຂວງ (ສຳລັບ province_admin)
+    if ($role === 'province_admin' && empty($province_id)) {
+        $errors[] = "ກະລຸນາເລືອກແຂວງ";
+    }
+    
+    // ກວດສອບສິດໃນການສ້າງບົດບາດ
+    if ($role === 'superadmin' && !$is_superadmin) {
+        $errors[] = "ທ່ານບໍ່ສາມາດສ້າງຜູ້ໃຊ້ທີ່ມີບົດບາດສູງສຸດໄດ້";
+    }
+    
+    if ($role === 'province_admin' && !$is_superadmin) {
+        $errors[] = "ທ່ານບໍ່ສາມາດສ້າງຜູ້ດູແລລະດັບແຂວງໄດ້";
+    }
+    
+    // ກວດສອບວ່າຊື່ຜູ້ໃຊ້ມີແລ້ວຫຼືບໍ່
+    $check_stmt = $pdo->prepare("SELECT id FROM users WHERE username = ?");
+    $check_stmt->execute([$username]);
+    if ($check_stmt->rowCount() > 0) {
+        $errors[] = "ຊື່ຜູ້ໃຊ້ນີ້ມີຢູ່ໃນລະບົບແລ້ວ";
+    }
+    
+    // ຖ້າບໍ່ມີຂໍ້ຜິດພາດ, ບັນທຶກຂໍ້ມູນ
     if (empty($errors)) {
         try {
-            // ສ້າງ SQL ສໍາລັບການເພີ່ມຜູ້ໃຊ້ໃໝ່
-            if ($form_data['role'] === 'superadmin') {
-                // Superadmin ບໍ່ມີ temple_id
-                $sql = "INSERT INTO users (username, password, name, email, phone, role, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, NOW())";
-                $params = [
-                    $form_data['username'],
-                    password_hash($form_data['password'], PASSWORD_DEFAULT),
-                    $form_data['name'],
-                    $form_data['email'],    // เพิ่มอีเมล
-                    $form_data['phone'],    // เพิ่มเบอร์โทรศัพท์
-                    $form_data['role']
-                ];
-            } else {
-                // Admin ແລະ User ມີ temple_id
-                $sql = "INSERT INTO users (username, password, name, email, phone, role, temple_id, created_at) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())";
-                $params = [
-                    $form_data['username'],
-                    password_hash($form_data['password'], PASSWORD_DEFAULT),
-                    $form_data['name'],
-                    $form_data['email'],    // เพิ่มอีเมล
-                    $form_data['phone'],    // เพิ่มเบอร์โทรศัพท์
-                    $form_data['role'],
-                    $form_data['temple_id']
-                ];
+            // ເຂົ້າລະຫັດຜ່ານ
+            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            
+            // ເລີ່ມ transaction
+            $pdo->beginTransaction();
+            
+            // ບັນທຶກຂໍ້ມູນຜູ້ໃຊ້ໃໝ່
+            $stmt = $pdo->prepare("
+                INSERT INTO users (username, password, name, email, phone, role, temple_id, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            ");
+            
+            // ກຳນົດ temple_id ຕາມບົດບາດ
+            $assigned_temple = null;
+            if ($role === 'admin' || $role === 'user') {
+                $assigned_temple = $temple_id;
             }
             
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($params);
+            $stmt->execute([
+                $username,
+                $hashed_password,
+                $name,
+                $email,
+                $phone,
+                $role,
+                $assigned_temple,
+                $status
+            ]);
             
-            $_SESSION['success'] = "ເພີ່ມຜູ້ໃຊ້ " . $form_data['username'] . " ສໍາເລັດແລ້ວ";
-            header('Location: ' . $base_url . 'users/');
+            $new_user_id = $pdo->lastInsertId();
+            
+            // ຖ້າເປັນ province_admin, ບັນທຶກສິດການເຂົ້າເຖິງແຂວງ
+            if ($role === 'province_admin' && !empty($province_id)) {
+                $province_access_stmt = $pdo->prepare("
+                    INSERT INTO user_province_access (user_id, province_id, assigned_by, assigned_at)
+                    VALUES (?, ?, ?, NOW())
+                ");
+                
+                $province_access_stmt->execute([
+                    $new_user_id,
+                    $province_id,
+                    $_SESSION['user']['id']
+                ]);
+            }
+            
+            // ຢືນຢັນ transaction
+            $pdo->commit();
+            
+            $_SESSION['success'] = "ເພີ່ມຜູ້ໃຊ້ສຳເລັດແລ້ວ";
+            header('Location: ' . $base_url . 'users/view.php?id=' . $new_user_id);
             exit;
             
         } catch (PDOException $e) {
+            // ຍົກເລີກ transaction ກໍລະນີເກີດຂໍ້ຜິດພາດ
+            $pdo->rollBack();
+            
             $errors[] = "ເກີດຂໍ້ຜິດພາດ: " . $e->getMessage();
         }
     }
 }
+
+// HTML ຫົວຂໍ້
+$title = "ເພີ່ມຜູ້ໃຊ້ໃໝ່";
+require_once '../includes/header.php';
 ?>
 
-<!-- ສ່ວນຫົວຂອງໜ້າ -->
-<div class="max-w-4xl mx-auto">
-    <div class="flex justify-between items-center mb-8">
-        <div>
-            <h1 class="text-2xl font-bold text-gray-800">ເພີ່ມຜູ້ໃຊ້ໃໝ່</h1>
-            <p class="text-sm text-gray-600">ເພີ່ມບັນຊີຜູ້ໃຊ້ໃໝ່ໃນລະບົບ</p>
-        </div>
-        <div>
-            <a href="<?= $base_url ?>users/" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg flex items-center transition">
-                <i class="fas fa-arrow-left mr-2"></i> ກັບຄືນ
-            </a>
-        </div>
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold"><?= $title ?></h1>
+        <a href="<?= $base_url ?>users/" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition">
+            <i class="fas fa-arrow-left mr-1"></i> ກັບຄືນ
+        </a>
     </div>
     
     <?php if (!empty($errors)): ?>
-    <!-- ສະແດງຂໍ້ຜິດພາດ -->
-    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <i class="fas fa-exclamation-circle text-red-500"></i>
-            </div>
-            <div class="ml-3">
-                <h3 class="text-sm font-medium text-red-800">ພົບຂໍ້ຜິດພາດ <?= count($errors) ?> ລາຍການ</h3>
-                <div class="mt-2 text-sm text-red-700">
-                    <ul class="list-disc pl-5 space-y-1">
-                        <?php foreach ($errors as $error): ?>
-                        <li><?= $error ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            </div>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong class="font-bold">ເກີດຂໍ້ຜິດພາດ!</strong>
+            <ul class="mt-2 list-disc pl-5">
+                <?php foreach ($errors as $error): ?>
+                    <li><?= htmlspecialchars($error) ?></li>
+                <?php endforeach; ?>
+            </ul>
         </div>
-    </div>
     <?php endif; ?>
     
-    <!-- ຟອມເພີ່ມຜູ້ໃຊ້ໃໝ່ -->
-    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-        <form action="<?= $base_url ?>users/add.php" method="POST" class="p-6">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
-            
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <form method="POST" action="" id="userForm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ຜູ້ໃຊ້ <span class="text-red-600">*</span></label>
-                    <input type="text" name="username" id="username" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['username']) ?>" required>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">ຊື່ຜູ້ໃຊ້ <span class="text-red-600">*</span></label>
+                    <input type="text" id="username" name="username" value="<?= isset($username) ? htmlspecialchars($username) : '' ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 </div>
                 
                 <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-2">ຊື່-ນາມສະກຸນ <span class="text-red-600">*</span></label>
-                    <input type="text" name="name" id="name" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['name']) ?>" required>
-                </div>
-                
-                <!-- เพิ่มฟิลด์อีเมล -->
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">ອີເມວ</label>
-                    <input type="email" name="email" id="email" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['email']) ?>" placeholder="example@domain.com">
-                </div>
-                
-                <!-- เพิ่มฟิลด์เบอร์โทรศัพท์ -->
-                <div>
-                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">ເບີໂທລະສັບ</label>
-                    <input type="tel" name="phone" id="phone" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['phone']) ?>" placeholder="02012345678">
-                    <p class="text-xs text-gray-500 mt-1">ປ້ອນແຕ່ຕົວເລກ 8-10 ຕົວ</p>
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">ຊື່-ນາມສະກຸນ <span class="text-red-600">*</span></label>
+                    <input type="text" id="name" name="name" value="<?= isset($name) ? htmlspecialchars($name) : '' ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 </div>
                 
                 <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">ລະຫັດຜ່ານ <span class="text-red-600">*</span></label>
-                    <input type="password" name="password" id="password" class="form-input rounded-md w-full" minlength="6" required>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">ລະຫັດຜ່ານ <span class="text-red-600">*</span></label>
+                    <input type="password" id="password" name="password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <p class="text-sm text-gray-500 mt-1">ຕ້ອງມີຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ</p>
                 </div>
                 
                 <div>
-                    <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-2">ຢືນຢັນລະຫັດຜ່ານ <span class="text-red-600">*</span></label>
-                    <input type="password" name="confirm_password" id="confirm_password" class="form-input rounded-md w-full" minlength="6" required>
+                    <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">ຢືນຢັນລະຫັດຜ່ານ <span class="text-red-600">*</span></label>
+                    <input type="password" id="confirm_password" name="confirm_password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 </div>
                 
-                <?php if ($is_superadmin): ?>
-                <!-- ບົດບາດ (ສະເພາະ superadmin) -->
                 <div>
-                    <label for="role" class="block text-sm font-medium text-gray-700 mb-2">ບົດບາດ <span class="text-red-600">*</span></label>
-                    <select name="role" id="role" class="form-select rounded-md w-full" required>
-                        <option value="">-- ເລືອກບົດບາດ --</option>
-                        <option value="superadmin" <?= $form_data['role'] === 'superadmin' ? 'selected' : '' ?>>ຜູ້ດູແລລະບົບສູງສຸດ</option>
-                        <option value="admin" <?= $form_data['role'] === 'admin' ? 'selected' : '' ?>>ຜູ້ດູແລວັດ</option>
-                        <option value="user" <?= $form_data['role'] === 'user' ? 'selected' : '' ?>>ຜູ້ໃຊ້ທົ່ວໄປ</option>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">ອີເມວ</label>
+                    <input type="email" id="email" name="email" value="<?= isset($email) ? htmlspecialchars($email) : '' ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">ເບີໂທລະສັບ</label>
+                    <input type="text" id="phone" name="phone" value="<?= isset($phone) ? htmlspecialchars($phone) : '' ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div>
+                    <label for="role" class="block text-sm font-medium text-gray-700 mb-1">ບົດບາດ <span class="text-red-600">*</span></label>
+                    <select id="role" name="role" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <?php if ($is_superadmin): ?>
+                            <option value="superadmin" <?= isset($role) && $role === 'superadmin' ? 'selected' : '' ?>>ຜູ້ດູແລລະບົບສູງສຸດ (Superadmin)</option>
+                            <option value="province_admin" <?= isset($role) && $role === 'province_admin' ? 'selected' : '' ?>>ຜູ້ດູແລລະດັບແຂວງ (Province Admin)</option>
+                        <?php endif; ?>
+                        <option value="admin" <?= isset($role) && $role === 'admin' ? 'selected' : '' ?>>ຜູ້ດູແລວັດ (Temple Admin)</option>
+                        <option value="user" <?= isset($role) && $role === 'user' ? 'selected' : '' ?>>ຜູ້ໃຊ້ທົ່ວໄປ (User)</option>
                     </select>
                 </div>
                 
-                <!-- ວັດ (ສະເພາະ superadmin) -->
-                <div id="temple-container" class="<?= in_array($form_data['role'], ['admin', 'user']) ? '' : 'hidden' ?>">
-                    <label for="temple_id" class="block text-sm font-medium text-gray-700 mb-2">ວັດ <span class="text-red-600">*</span></label>
-                    <select name="temple_id" id="temple_id" class="form-select rounded-md w-full" <?= in_array($form_data['role'], ['admin', 'user']) ? 'required' : '' ?>>
-                        <option value="">-- ເລືອກວັດ --</option>
-                        <?php foreach ($temples as $temple): ?>
-                        <option value="<?= $temple['id'] ?>" <?= $form_data['temple_id'] == $temple['id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($temple['name']) ?>
-                        </option>
+                <div>
+                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">ສະຖານະ <span class="text-red-600">*</span></label>
+                    <select id="status" name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="active" <?= isset($status) && $status === 'active' ? 'selected' : '' ?>>ໃຊ້ງານ</option>
+                        <option value="pending" <?= isset($status) && $status === 'pending' ? 'selected' : '' ?>>ລໍຖ້າອະນຸມັດ</option>
+                        <option value="inactive" <?= isset($status) && $status === 'inactive' ? 'selected' : '' ?>>ປິດການໃຊ້ງານ</option>
+                    </select>
+                </div>
+                
+                <!-- ສ່ວນເລືອກແຂວງ (ສະແດງເມື່ອບົດບາດເປັນ province_admin) -->
+                <div id="province-section" class="<?= isset($role) && $role === 'province_admin' ? '' : 'hidden' ?>">
+                    <label for="province_id" class="block text-sm font-medium text-gray-700 mb-1">ແຂວງ <span class="text-red-600">*</span></label>
+                    <select id="province_id" name="province_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- ກະລຸນາເລືອກແຂວງ --</option>
+                        <?php foreach ($provinces as $province): ?>
+                            <option value="<?= $province['province_id'] ?>" <?= isset($province_id) && $province_id == $province['province_id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($province['province_name']) ?> (<?= htmlspecialchars($province['province_code']) ?>)
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <?php else: ?>
-                <!-- ສະແດງບົດບາດ (ສໍາລັບ admin) -->
-                <input type="hidden" name="role" value="user">
-                <input type="hidden" name="temple_id" value="<?= $_SESSION['user']['temple_id'] ?>">
                 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">ບົດບາດ</label>
-                    <div class="py-2 px-3 bg-gray-50 rounded-md">ຜູ້ໃຊ້ທົ່ວໄປ</div>
+                <!-- ສ່ວນເລືອກວັດ (ສະແດງເມື່ອບົດບາດເປັນ admin ຫຼື user) -->
+                <div id="temple-section" class="<?= !isset($role) || $role === 'admin' || $role === 'user' ? '' : 'hidden' ?>">
+                    <label for="temple_id" class="block text-sm font-medium text-gray-700 mb-1">ວັດ <span class="text-red-600">*</span></label>
+                    <select id="temple_id" name="temple_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">-- ກະລຸນາເລືອກວັດ --</option>
+                        <?php foreach ($temples as $temple): ?>
+                            <option value="<?= $temple['id'] ?>" <?= isset($temple_id) && $temple_id == $temple['id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($temple['name']) ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">ວັດ</label>
-                    <div class="py-2 px-3 bg-gray-50 rounded-md">
-                        <?php 
-                        if (!empty($temples)) {
-                            echo htmlspecialchars($temples[0]['name']);
-                        } else {
-                            echo 'ບໍ່ມີຂໍ້ມູນ';
-                        }
-                        ?>
-                    </div>
-                </div>
-                <?php endif; ?>
             </div>
             
-            <div class="mt-8 border-t border-gray-200 pt-6 flex justify-end space-x-3">
-                <a href="<?= $base_url ?>users/" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
+            <div class="mt-8">
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">
+                    <i class="fas fa-save mr-1"></i> ບັນທຶກ
+                </button>
+                <a href="<?= $base_url ?>users/" class="ml-2 bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
                     ຍົກເລີກ
                 </a>
-                <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center">
-                    <i class="fas fa-save mr-2"></i> ບັນທຶກຂໍ້ມູນ
-                </button>
             </div>
         </form>
     </div>
 </div>
 
-<?php if ($is_superadmin): ?>
-<!-- JavaScript ສໍາລັບຈັດການຟອມ -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const roleSelector = document.getElementById('role');
-    const templeContainer = document.getElementById('temple-container');
-    const templeSelector = document.getElementById('temple_id');
+    const roleSelect = document.getElementById('role');
+    const templeSection = document.getElementById('temple-section');
+    const provinceSection = document.getElementById('province-section');
+    const templeSelect = document.getElementById('temple_id');
+    const provinceSelect = document.getElementById('province_id');
     
-    // ຟັງການປ່ຽນແປງຂອງບົດບາດ
-    roleSelector.addEventListener('change', function() {
-        if (this.value === 'admin' || this.value === 'user') {
-            templeContainer.classList.remove('hidden');
-            templeSelector.required = true;
+    // ຟັງຊັນອັບເດດຟອມຕາມບົດບາດ
+    function updateFormByRole() {
+        const selectedRole = roleSelect.value;
+        
+        // ຈັດການກັບສ່ວນເລືອກວັດ
+        if (selectedRole === 'admin' || selectedRole === 'user') {
+            templeSection.classList.remove('hidden');
+            templeSelect.required = true;
         } else {
-            templeContainer.classList.add('hidden');
-            templeSelector.required = false;
-            templeSelector.value = '';
+            templeSection.classList.add('hidden');
+            templeSelect.required = false;
+        }
+        
+        // ຈັດການກັບສ່ວນເລືອກແຂວງ
+        if (selectedRole === 'province_admin') {
+            provinceSection.classList.remove('hidden');
+            provinceSelect.required = true;
+        } else {
+            provinceSection.classList.add('hidden');
+            provinceSelect.required = false;
+        }
+    }
+    
+    // ເພີ່ມ event listener ສຳລັບການປ່ຽນບົດບາດ
+    roleSelect.addEventListener('change', updateFormByRole);
+    
+    // ກວດສອບ password matching
+    const passwordInput = document.getElementById('password');
+    const confirmInput = document.getElementById('confirm_password');
+    const userForm = document.getElementById('userForm');
+    
+    userForm.addEventListener('submit', function(event) {
+        if (passwordInput.value !== confirmInput.value) {
+            event.preventDefault();
+            alert('ລະຫັດຜ່ານບໍ່ກົງກັນ');
+            confirmInput.focus();
+        }
+        
+        if (passwordInput.value.length < 6) {
+            event.preventDefault();
+            alert('ລະຫັດຜ່ານຕ້ອງມີຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ');
+            passwordInput.focus();
         }
     });
+    
+    // ເອີ້ນໃຊ້ຟັງຊັນເມື່ອໂຫຼດໜ້າ
+    updateFormByRole();
 });
 </script>
-<?php endif; ?>
 
 <?php
-ob_end_flush();
 require_once '../includes/footer.php';
+ob_end_flush();
 ?>
