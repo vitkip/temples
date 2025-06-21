@@ -8,6 +8,7 @@ if (!isset($_SESSION['user'])) {
     header("Location: {$base_url}auth/login.php");
     exit;
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="lo">
@@ -111,7 +112,7 @@ if (!isset($_SESSION['user'])) {
                 <!-- Admin Section End -->
                 <div class="mt-8">
                     <div class="space-y-1">
-                        <a href="<?= $base_url ?>auth/profile.php" class="sidebar-link <?= isActiveNav($current_path, '/admin/settings.php') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                        <a href="<?= $base_url ?>admin/settings.php" class="sidebar-link <?= isActiveNav($current_path, '/admin/settings.php') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                             <i class="fas fa-cog mr-3 w-5 text-center"></i>
                             <span>ຕັ້ງຄ່າ</span>
                         </a>

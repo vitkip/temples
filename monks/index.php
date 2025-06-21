@@ -361,10 +361,10 @@ if (isset($_SESSION['user'])) {
           <?php endif; ?>
         </div>
         <!-- เพิ่มปุ่มส่งออก Excel -->
-        <a href="<?= $base_url ?>reports/generate_excel_monks.php" target="_blank" 
-           class="text-amber-800 hover:text-amber-900 text-sm flex items-center">
-          <i class="fas fa-file-export mr-1"></i> ສົ່ງອອກ Excel
-        </a>
+      <a href="../reports/generate_excel_monks.php?<?= http_build_query($_GET) ?>" 
+         class="btn btn-secondary">
+        <i class="fas fa-file-excel text-amber-700"></i> ສົ່ງອອກ Excel
+      </a>
       </div>
     </div>
 

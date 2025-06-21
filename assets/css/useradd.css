@@ -1,0 +1,226 @@
+
+  .temple-form-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+  
+  .temple-card {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    border: 1px solid rgba(200, 169, 126, 0.2);
+    overflow: hidden;
+  }
+  
+  .temple-header {
+    padding: 1.5rem;
+    background: linear-gradient(to right, rgba(200, 169, 126, 0.2), rgba(200, 169, 126, 0.05));
+    border-bottom: 1px solid rgba(200, 169, 126, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .temple-title {
+    display: flex;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-secondary);
+  }
+  
+  .temple-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(to bottom right, var(--color-primary), var(--color-primary-dark));
+    color: white;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    box-shadow: 0 3px 6px rgba(163, 132, 85, 0.2);
+  }
+  
+  .temple-body {
+    padding: 2rem;
+  }
+  
+  .temple-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .form-group {
+    margin-bottom: 1.5rem;
+    opacity: 0;
+    animation: fadeInUp 0.3s ease-out forwards;
+  }
+  
+  .form-label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--color-secondary);
+  }
+  
+  .required-star {
+    color: var(--color-danger);
+    margin-left: 0.25rem;
+  }
+  
+  .form-input,
+  .form-select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid rgba(212, 167, 98, 0.2);
+    border-radius: 0.75rem;
+    transition: all 0.2s;
+    background-color: white;
+  }
+  
+  .form-input:focus,
+  .form-select:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(212, 167, 98, 0.15);
+    outline: none;
+  }
+  
+  .form-hint {
+    font-size: 0.875rem;
+    color: #8d7766;
+    margin-top: 0.5rem;
+  }
+  
+  .form-error {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    background-color: rgba(214, 143, 132, 0.1);
+    border-left: 5px solid var(--color-danger);
+  }
+  
+  .form-error-title {
+    color: #a45a4d;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .form-error-list {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+    color: #8a4b42;
+  }
+  
+  .form-footer {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid rgba(212, 167, 98, 0.15);
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    transition: all 0.3s;
+    cursor: pointer;
+    border: none;
+    gap: 0.5rem;
+  }
+  
+  .btn-primary {
+    background: linear-gradient(to bottom, var(--color-primary), var(--color-primary-dark));
+    color: white;
+    box-shadow: 0 4px 10px rgba(163, 132, 85, 0.2);
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(163, 132, 85, 0.3);
+  }
+  
+  .btn-secondary {
+    background-color: #f1e8db;
+    color: var(--color-secondary);
+  }
+  
+  .btn-secondary:hover {
+    background-color: #e5d9c8;
+    transform: translateY(-2px);
+  }
+  
+  .password-wrapper {
+    position: relative;
+  }
+  
+  .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #8d7766;
+    background: none;
+    border: none;
+    padding: 0.25rem;
+  }
+  
+  /* Animations */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(212, 167, 98, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 10px rgba(212, 167, 98, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(212, 167, 98, 0);
+    }
+  }
+  
+  /* สไตล์สำหรับ mobile */
+  @media (max-width: 768px) {
+    .temple-form-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .temple-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    
+    .temple-body {
+      padding: 1.5rem 1rem;
+    }
+    
+    .form-footer {
+      flex-direction: column;
+    }
+    
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+

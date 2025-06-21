@@ -655,7 +655,7 @@ try {
             </div>
 
             <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-                <p>&copy; <?= date('Y') ?> <?= htmlspecialchars($site_name) ?>. ສະຫງວນລິຂະສິດ.</p>
+                <?= htmlspecialchars($settings['footer_text'] ?? '© ' . date('Y') . ' ລະບົບຈັດການຂໍ້ມູນວັດ . ສະຫງວນລິຂະສິດ.') ?>
             </div>
         </div>
     </footer>
