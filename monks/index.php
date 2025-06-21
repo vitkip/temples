@@ -912,3 +912,7 @@ function reloadTable() {
         });
 }
 </script>
+<?php
+ob_end_flush();
+require_once '../includes/footer.php';
+?>
