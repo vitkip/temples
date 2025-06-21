@@ -24,7 +24,7 @@ $query = "SELECT m.*, t.name as temple_name, t.province_id, p.province_name
           LEFT JOIN provinces p ON t.province_id = p.province_id
           WHERE 1=1";
 
-// ກຳນົດການເຂົ້າເຖິງຂໍ້ມູນຕາມບົດບາດ
+// ກຳນົດການເຂົ້າເຖິງຂໍໍາູນຕາມບົດບາດ
 if ($user_role === 'admin') {
     // admin ສາມາດເບິ່ງພະສົງໃນວັດຂອງຕົນເອງເທົ່ານັ້ນ
     $query .= " AND m.temple_id = ?";
@@ -134,6 +134,15 @@ if ($user_role === 'superadmin') {
 
 // ກວດສອບສິດໃນການເພີ່ມ/ແກ້ໄຂພະສົງ
 $can_edit = ($user_role === 'superadmin' || $user_role === 'admin' || $user_role === 'province_admin');
+$can_export = false;
+if (isset($_SESSION['user'])) {
+    $user_role = $_SESSION['user']['role'] ?? '';
+    
+    // Superadmin, province_admin และ admin (วัด) สามารถส่งออกได้
+    if ($user_role === 'superadmin' || $user_role === 'province_admin' || $user_role === 'admin') {
+        $can_export = true;
+    }
+}
 ?>
 
 <!-- เพิ่ม CSS นี้ในส่วนหัวของไฟล์ หรือในไฟล์ CSS แยก -->
@@ -163,10 +172,18 @@ $can_edit = ($user_role === 'superadmin' || $user_role === 'admin' || $user_role
     </div>
     <div class="flex flex-wrap gap-3">
       <!-- ปุ่มส่งออก PDF -->
-      <a href="<?= $base_url ?>reports/generate_pdf_monks.php" target="_blank" 
+      <?php if ($can_export): ?>
+      <a href="../reports/generate_pdf_monks.php?<?= http_build_query($_GET) ?>" target="_blank" 
          class="btn btn-secondary">
         <i class="fas fa-file-pdf text-amber-700"></i> ສົ່ງອອກ PDF
       </a>
+      
+      <!-- ปุ่มส่งออก Excel -->
+      <a href="../reports/generate_excel_monks.php?<?= http_build_query($_GET) ?>" 
+         class="btn btn-secondary">
+        <i class="fas fa-file-excel text-amber-700"></i> ສົ່ງອອກ Excel
+      </a>
+      <?php endif; ?>
       
       <?php if ($can_edit): ?>
       <!-- ปุ่มเพิ่มพระสงฆ์ใหม่ -->
@@ -289,6 +306,19 @@ $can_edit = ($user_role === 'superadmin' || $user_role === 'admin' || $user_role
     </div>
   </div>
 
+  <!-- ตรวจสอบว่าเราอยู่หน้า superadmin และแสดงตัวเลือกเพิ่มเติม (เพิ่มไว้หลังส่วนฟิลเตอร์แขวง) -->
+  <?php if ($user_role === 'superadmin'): ?>
+  <div class="filter-info bg-yellow-50 p-3 rounded-lg border border-yellow-200 mb-4 mt-2">
+    <div class="flex items-center text-amber-700">
+      <i class="fas fa-info-circle mr-2 text-amber-600"></i>
+      <span class="font-medium">ຄຳແນະນຳສຳລັບ Superadmin:</span>
+    </div>
+    <p class="text-amber-600 text-sm mt-1 ml-6">
+      ທ່ານສາມາດເລືອກແຂວງເພື່ອສົ່ງອອກຂໍ້ມູນໄດ້ຈາກຕົວກອງແຂວງດ້ານເທິງ. ຖ້າບໍ່ເລືອກແຂວງ ລະບົບຈະສົ່ງອອກທຸກຂໍ້ມູນພະສົງທັງໝົດ.
+    </p>
+  </div>
+  <?php endif; ?>
+  
   <!-- ตารางรายการพระสงฆ์ -->
   <div class="data-table">
     <?php if (isset($_SESSION['success'])): ?>

@@ -1,4 +1,8 @@
 <?php
+// ป้องกัน warning/notice ที่อาจปนมากับ JSON response
+error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
+ini_set('display_errors', 0);
+
 $page_title = 'ຈັດການເມືອງ';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
@@ -52,8 +56,14 @@ try {
             FOREIGN KEY (province_id) REFERENCES provinces(province_id) ON DELETE CASCADE
         )
     ");
+    
+    // เพิ่ม column district_id ให้ตาราง temples ถ้ายังไม่มี
+    $pdo->exec("ALTER TABLE temples ADD COLUMN district_id INT NULL");
+    $pdo->exec("ALTER TABLE temples ADD FOREIGN KEY (district_id) REFERENCES districts(district_id) ON DELETE SET NULL");
+    
 } catch (PDOException $e) {
-    // ถ้าตารางมีอยู่แล้วจะไม่ทำอะไร
+    // ถ้าตารางหรือคอลัมน์มีอยู่แล้วจะไม่ทำอะไร
+    // หรือถ้า foreign key มีอยู่แล้ว
 }
 
 // Filter parameters
@@ -90,17 +100,21 @@ if (!empty($province_filter)) {
 
 $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
 
-// ดึงข้อมูลเมือง
+// ดึงข้อมูลเมือง - แก้ไข query
 $query = "
     SELECT 
         d.*,
         p.province_name,
-        COUNT(t.id) as temple_count
+        COALESCE(temple_counts.temple_count, 0) as temple_count
     FROM districts d 
     JOIN provinces p ON d.province_id = p.province_id 
-    LEFT JOIN temples t ON d.district_id = t.district_id
+    LEFT JOIN (
+        SELECT district_id, COUNT(*) as temple_count 
+        FROM temples 
+        WHERE district_id IS NOT NULL 
+        GROUP BY district_id
+    ) temple_counts ON d.district_id = temple_counts.district_id
     $where_clause
-    GROUP BY d.district_id
     ORDER BY p.province_name, d.district_name ASC
 ";
 $stmt = $pdo->prepare($query);
@@ -109,6 +123,10 @@ $districts = $stmt->fetchAll();
 
 // Handle AJAX requests
 if (isset($_POST['action'])) {
+    // ล้าง output buffer เพื่อให้แน่ใจว่าไม่มี output อื่นปนมา
+    ob_clean();
+    
+    // ตั้งค่า header เป็น JSON
     header('Content-Type: application/json');
     
     if ($_POST['action'] === 'add_district') {
@@ -129,7 +147,12 @@ if (isset($_POST['action'])) {
         try {
             $insert_stmt = $pdo->prepare("INSERT INTO districts (district_name, district_code, province_id) VALUES (?, ?, ?)");
             $insert_stmt->execute([$district_name, $district_code, $province_id]);
-            echo json_encode(['success' => true, 'message' => 'ເພີ່ມເມືອງສຳເລັດແລ້ວ']);
+            
+            if ($insert_stmt->rowCount() > 0) {
+                echo json_encode(['success' => true, 'message' => 'ເພີ່ມເມືອງສຳເລັດແລ້ວ']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'ບໍ່ສາມາດເພີ່ມເມືອງໄດ້']);
+            }
         } catch (PDOException $e) {
             echo json_encode(['success' => false, 'message' => 'ເກີດຂໍ້ຜິດພາດ: ' . $e->getMessage()]);
         }
@@ -155,13 +178,12 @@ if (isset($_POST['action'])) {
         $district_id = (int)$_POST['district_id'];
         
         try {
-            // ตรวจสอบว่ามีวัดในเมืองนี้หรือไม่
             $check_temples = $pdo->prepare("SELECT COUNT(*) FROM temples WHERE district_id = ?");
             $check_temples->execute([$district_id]);
             $temple_count = $check_temples->fetchColumn();
             
             if ($temple_count > 0) {
-                echo json_encode(['success' => false, 'message' => "ບໍ່ສາມາດລຶບເມືອງນີ້ໄດ້ ເພາະວ່າມີວັດ $temple_count ວັດຢູ່ໃນເມືອງນີ້"]);
+                echo json_encode(['success' => false, 'message' => "ບໍ່ສາມາດລຶບເມືອງນີ້ໄດ້ ເພາະວ່າມີວັດ $temple_count ວັດຢູໃນເມືອງນີ້"]);
                 exit;
             }
             
@@ -173,6 +195,10 @@ if (isset($_POST['action'])) {
         }
         exit;
     }
+
+    // ถ้าไม่มี action ที่รองรับ
+    echo json_encode(['success' => false, 'message' => 'ຄຳສັ່ງບໍ່ຖືກຕ້ອງ']);
+    exit;
 }
 ?>
 
@@ -332,7 +358,7 @@ if (isset($_POST['action'])) {
                                     <i class="fas fa-trash"></i>
                                 </button>
                                 <?php else: ?>
-                                <span class="text-gray-400" title="ບໍ່ສາມາດລຶບໄດ້ ມີວັດຢູ່ໃນເມືອງ">
+                                <span class="text-gray-400" title="ບໍ່ສາມາດລຶບໄດ້ ມີວັດຢູໃນເມືອງ">
                                     <i class="fas fa-trash"></i>
                                 </span>
                                 <?php endif; ?>
@@ -448,21 +474,91 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const formData = new FormData(this);
         
+        // แสดง Loading
+        Swal.fire({
+            title: 'ກຳລັງປະມວນຜົນ...',
+            text: 'ກະລຸນາລໍຖ້າ',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
         fetch('', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            } else {
-                alert(data.message);
+        .then(response => {
+            // ตรวจสอบสถานะ response
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            
+            // ลองอ่านข้อมูล response เป็น text ก่อน
+            return response.text();
+        })
+        .then(text => {
+            // ลองแปลง text เป็น JSON
+            try {
+                const data = JSON.parse(text);
+                
+                // ถ้าแปลงสำเร็จและข้อมูลถูกต้อง
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ສຳເລັດ!',
+                        text: data.message,
+                        showConfirmButton: false,
+                        timer: 1500
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'ເກີດຂໍ້ຜິດພາດ!',
+                        text: data.message || 'ເກີດຂໍ້ຜິດພາດທີ່ບໍ່ຮູ້ສາເຫດ'
+                    });
+                }
+            } catch (e) {
+                // ถ้าแปลงไม่สำเร็จ แสดง error และข้อมูล response ดิบ
+                console.error('Error parsing JSON:', e);
+                console.log('Raw response:', text);
+                
+                // ตรวจสอบว่ามีคำว่า "success" ในข้อความหรือไม่ (กรณีที่ JSON ไม่สมบูรณ์แต่บันทึกสำเร็จ)
+                if (text.includes('"success":true')) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'ສຳເລັດ!',
+                        html: 'ການບັນທຶກຂໍ້ມູນສຳເລັດແລ້ວ<br><small class="text-gray-500">ແຕ່ມີຂໍ້ຜິດພາດບາງຢ່າງກັບຂໍ້ມູນທີ່ສົ່ງກັບມາ</small>',
+                        showConfirmButton: true
+                    }).then(() => {
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'ບໍ່ແນ່ໃຈວ່າບັນທຶກສຳເລັດຫຼືບໍ່',
+                        html: 'ລະບົບບໍ່ສາມາດຢືນຢັນໄດ້ວ່າການບັນທຶກສຳເລັດຫຼືບໍ່<br>ກົດ "ໂຫຼດຂໍ້ມູນໃໝ່" ເພື່ອກວດສອບຂໍ້ມູນ',
+                        confirmButtonText: 'ໂຫຼດຂໍ້ມູນໃໝ່',
+                        showCancelButton: true,
+                        cancelButtonText: 'ປິດ'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            location.reload();
+                        }
+                    });
+                }
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            alert('ເກີດຂໍ້ຜິດພາດໃນການສົ່ງຂໍ້ມູນ');
+            console.error('Fetch Error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'ເກີດຂໍ້ຜິດພາດ!',
+                text: `ເກີດຂໍ້ຜິດພາດໃນການສົ່ງຂໍ້ມູນ: ${error.message}`
+            });
         });
     });
     
@@ -472,28 +568,55 @@ document.addEventListener('DOMContentLoaded', function() {
             const districtId = this.dataset.id;
             const districtName = this.dataset.name;
             
-            if (confirm(`ທ່ານຕ້ອງການລຶບເມືອງ "${districtName}" ແທ້ບໍ່?`)) {
-                const formData = new FormData();
-                formData.append('action', 'delete_district');
-                formData.append('district_id', districtId);
-                
-                fetch('', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        location.reload();
-                    } else {
-                        alert(data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນ');
-                });
-            }
+            Swal.fire({
+                title: 'ຢືນຢັນການລຶບ?',
+                text: `ທ່ານຕ້ອງການລຶບເມືອງ "${districtName}" ແທ້ບໍ່?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'ລຶບ',
+                cancelButtonText: 'ຍົກເລີກ'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formData = new FormData();
+                    formData.append('action', 'delete_district');
+                    formData.append('district_id', districtId);
+                    
+                    fetch('', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'ສຳເລັດ!',
+                                text: data.message,
+                                showConfirmButton: false,
+                                timer: 1500
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'ເກີດຂໍ້ຜິດພາດ!',
+                                text: data.message
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'ເກີດຂໍ້ຜິດພາດ!',
+                            text: 'ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນ'
+                        });
+                    });
+                }
+            });
         });
     });
 });
