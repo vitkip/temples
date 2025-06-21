@@ -468,7 +468,7 @@ $page_title = 'ປ່ຽນລະຫັດຜ່ານຜ່ານ SMS';
                                 </a>
                                 
                                 <div class="pt-4 border-t border-gray-200">
-                                    <a href="<?= $base_url ?>auth/login.php" class="link-primary">
+                                    <a href="<?= $base_url ?>auth/" class="link-primary">
                                         <i class="fas fa-arrow-left"></i> 
                                         ກັບໄປຫາໜ້າເຂົ້າສູ່ລະບົບ
                                     </a>

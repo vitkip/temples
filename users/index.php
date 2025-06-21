@@ -239,6 +239,30 @@ $title = "ການຈັດການຜູ້ໃຊ້";
 <!-- เพิ่ม CSS เฉพาะสำหรับหน้านี้ -->
  <style src="<?= $base_url ?>assets/css/users.css"></style>
  
+ <style>
+.opacity-0 {
+    opacity: 0;
+}
+
+.fixed {
+    transition: opacity 0.2s ease;
+}
+
+#delete-confirm-modal .bg-white {
+    animation: fadeInUp 0.3s ease forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
 
 
 
@@ -945,66 +969,100 @@ $title = "ການຈັດການຜູ້ໃຊ້";
     
     // ຟັງຊັນຢືນຢັນການລຶບຜູ້ໃຊ້
     function confirmDelete(userId, userName) {
-        // สร้าง modal ยืนยันการลบแบบสวยงาม
+        // ตรวจสอบว่ามี Modal อยู่แล้วหรือไม่
+        let existingModal = document.getElementById('delete-confirm-modal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // สร้าง Modal ใหม่
         const confirmModal = document.createElement('div');
-        confirmModal.className = 'fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50';
+        confirmModal.id = 'delete-confirm-modal';
+        confirmModal.className = 'fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50';
         confirmModal.innerHTML = `
-            <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4 card animate__animated animate__fadeInUp animate__faster">
-            <div class="text-center mb-4">
-                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
-                <svg class="h-10 w-10 text-danger" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
+            <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4">
+                <div class="text-center mb-4">
+                    <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                        <svg class="h-10 w-10 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900">ຢືນຢັນການລຶບ</h3>
+                    <p class="mt-2 text-gray-600">ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຜູໃຊ້ "${userName}"?</p>
                 </div>
-                <h3 class="text-lg font-medium text-dark">ຢືນຢັນການລຶບຂໍ້ມູນ</h3>
-                <p class="text-muted mt-2">ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຜູໃຊ້ "${userName}"?</p>
-            </div>
-            <div class="flex justify-end space-x-3">
-                <button id="cancel-delete" class="px-4 py-2 bg-light text-dark rounded-md hover:bg-light/80 transition">
-                ຍົກເລີກ
-                </button>
-                <button id="confirm-delete" class="px-4 py-2 bg-danger text-white rounded-md hover:bg-danger/80 transition">
-                <svg class="inline-block h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg> ລຶບຂໍ້ມູນ
-                </button>
-            </div>
+                <div class="flex justify-end space-x-3">
+                    <button id="cancel-delete-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">
+                        ຍົກເລີກ
+                    </button>
+                    <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
+                        <svg class="inline-block h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg> ລຶບຂໍ້ມູນ
+                    </button>
+                </div>
             </div>
         `;
         
         document.body.appendChild(confirmModal);
         document.body.classList.add('overflow-hidden');
         
-        // จัดการปุ่มยกเลิก
-        confirmModal.querySelector('#cancel-delete').addEventListener('click', () => {
-            confirmModal.querySelector('.card').classList.add('animate__fadeOutDown');
-            setTimeout(() => {
-                document.body.removeChild(confirmModal);
-                document.body.classList.remove('overflow-hidden');
-            }, 200);
+        // สร้าง form เพื่อส่งข้อมูลแทนการใช้ window.location
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = '<?= $base_url ?>users/delete.php';
+        form.style.display = 'none';
+        
+        const idField = document.createElement('input');
+        idField.type = 'hidden';
+        idField.name = 'id';
+        idField.value = userId;
+        form.appendChild(idField);
+        
+        document.body.appendChild(form);
+        
+        // เพิ่ม event listeners
+        document.getElementById('cancel-delete-btn').addEventListener('click', () => {
+            closeDeleteModal(confirmModal);
         });
         
-        // จัดการปุ่มยืนยันลบ
-        confirmModal.querySelector('#confirm-delete').addEventListener('click', () => {
-            // เพิ่ม loading state
-            const confirmBtn = confirmModal.querySelector('#confirm-delete');
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            // เปลี่ยนข้อความปุ่มและปิดการใช้งาน
+            const confirmBtn = document.getElementById('confirm-delete-btn');
             confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> ກຳລັງລຶບ...';
             confirmBtn.disabled = true;
             
-            // Redirect to delete page
-            window.location.href = '<?= $base_url ?>users/delete.php?id=' + userId;
+            // ส่ง form แทนการใช้ window.location
+            form.submit();
         });
         
-        // Close modal when clicking outside
+        // ปิด modal เมื่อคลิกพื้นหลัง
         confirmModal.addEventListener('click', (e) => {
             if (e.target === confirmModal) {
-                confirmModal.querySelector('.card').classList.add('animate__fadeOutDown');
-                setTimeout(() => {
-                    document.body.removeChild(confirmModal);
-                    document.body.classList.remove('overflow-hidden');
-                }, 200);
+                closeDeleteModal(confirmModal);
             }
         });
+        
+        // เพิ่ม keyboard support
+        document.addEventListener('keydown', function escHandler(e) {
+            if (e.key === 'Escape') {
+                document.removeEventListener('keydown', escHandler);
+                closeDeleteModal(confirmModal);
+            }
+        });
+        
+        // ฟังก์ชันปิด modal
+        function closeDeleteModal(modal) {
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                document.body.removeChild(modal);
+                document.body.classList.remove('overflow-hidden');
+                
+                // ลบ form ที่สร้างด้วย
+                if (document.body.contains(form)) {
+                    document.body.removeChild(form);
+                }
+            }, 200);
+        }
     }
     
     // เพิ่มฟังก์ชันสำหรับการจัดการ responsive table

@@ -210,10 +210,41 @@ $can_delete_temple = ($user_role === 'superadmin');
             
             <?php
             // นับจำนวนวัดที่ active
-            $active_temples = 0;
-            foreach ($temples as $temple) {
-                if ($temple['status'] === 'active') $active_temples++;
+            $active_count_query = "
+                SELECT COUNT(*) 
+                FROM temples t 
+                LEFT JOIN provinces p ON t.province_id = p.province_id 
+                WHERE t.status = 'active'
+            ";
+
+            // เพิ่มเงื่อนไขตามสิทธิ์ผู้ใช้
+            if ($user_role === 'admin') {
+                $active_count_query .= " AND t.id = ?";
+                $active_params = [$user_temple_id];
+            } elseif ($user_role === 'province_admin') {
+                $active_count_query .= " AND t.province_id IN (SELECT province_id FROM user_province_access WHERE user_id = ?)";
+                $active_params = [$user_id];
+            } else {
+                $active_params = [];
             }
+
+            // เพิ่มเงื่อนไขการค้นหา
+            if (!empty($search)) {
+                $active_count_query .= " AND (t.name LIKE ? OR t.address LIKE ? OR t.abbot_name LIKE ?)";
+                $active_params[] = "%{$search}%";
+                $active_params[] = "%{$search}%";
+                $active_params[] = "%{$search}%";
+            }
+
+            // เพิ่มเงื่อนไขแขวง
+            if (!empty($province)) {
+                $active_count_query .= " AND p.province_name = ?";
+                $active_params[] = $province;
+            }
+
+            $active_count_stmt = $pdo->prepare($active_count_query);
+            $active_count_stmt->execute($active_params);
+            $active_temples = $active_count_stmt->fetchColumn();
             ?>
             <div class="card p-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white">
                 <div class="flex items-center justify-between">

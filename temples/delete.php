@@ -25,7 +25,13 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $temple_id = (int)$_GET['id'];
 
 // Get temple data to confirm it exists and display details
-$stmt = $pdo->prepare("SELECT * FROM temples WHERE id = ?");
+$stmt = $pdo->prepare("
+    SELECT t.*, d.district_name, p.province_name 
+    FROM temples t
+    LEFT JOIN districts d ON t.district_id = d.district_id
+    LEFT JOIN provinces p ON t.province_id = p.province_id
+    WHERE t.id = ?
+");
 $stmt->execute([$temple_id]);
 $temple = $stmt->fetch();
 
@@ -45,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     
     try {
-        // Check for related records first (monks, events)
+        // Check for related records first (monks, events, users)
         $monk_check = $pdo->prepare("SELECT COUNT(*) FROM monks WHERE temple_id = ?");
         $monk_check->execute([$temple_id]);
         $has_monks = $monk_check->fetchColumn() > 0;
@@ -54,17 +60,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $event_check->execute([$temple_id]);
         $has_events = $event_check->fetchColumn() > 0;
         
+        // เพิ่มการตรวจสอบตาราง users
+        $user_check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE temple_id = ?");
+        $user_check->execute([$temple_id]);
+        $has_users = $user_check->fetchColumn() > 0;
+        
         // ดึงข้อมูลไฟล์รูปภาพก่อนลบ
         $photo_stmt = $pdo->prepare("SELECT photo, logo FROM temples WHERE id = ?");
         $photo_stmt->execute([$temple_id]);
         $temple_files = $photo_stmt->fetch();
         
         // If there are related records, use soft delete (update status)
-        if ($has_monks || $has_events) {
+        if ($has_monks || $has_events || $has_users) {
             $stmt = $pdo->prepare("UPDATE temples SET status = 'inactive' WHERE id = ?");
             $stmt->execute([$temple_id]);
-            $_SESSION['success'] = "ອັບເດດສະຖານະວັດເປັນ 'ປິດໃຊ້ງານ' ແລ້ວ ເນື່ອງຈາກມີຂໍ້ມູນພະສົງ ຫຼື ກິດຈະກຳທີ່ກ່ຽວຂ້ອງ";
-            // ในกรณี soft delete ไม่ต้องลบไฟล์รูปภาพ
+            
+            // แสดงข้อความแจ้งเตือนที่ชัดเจนว่ามีผู้ใช้ที่เกี่ยวข้องกับวัดนี้
+            $_SESSION['warning'] = "ອັບເດດສະຖານະວັດເປັນ 'ປິດໃຊ້ງານ' ແລ້ວ ເນື່ອງຈາກມີຂໍ້ມູນທີ່ກ່ຽວຂໍ່ນ";
+            
+            if ($has_users) {
+                $_SESSION['warning'] .= " - ມີຜູ່ໃຊ້ຖືກເຊື່ອມຕໍ່ກັບວັດນີ້";
+            }
+            
+            if ($has_monks) {
+                $_SESSION['warning'] .= " - ມີຂໍ້ມູນພະສົງ";
+            }
+            
+            if ($has_events) {
+                $_SESSION['warning'] .= " - ມີຂໍ້ມູນກິດຈະກຳ";
+            }
         } else {
             // Hard delete - ลบไฟล์รูปภาพก่อนลบ
             
@@ -81,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Hard delete from database
             $stmt = $pdo->prepare("DELETE FROM temples WHERE id = ?");
             $stmt->execute([$temple_id]);
-            $_SESSION['success'] = "ລຶບຂໍ້ມູນວັດແລະຮູບພາບທີ່ກ່ຽວຂ້ອງສຳເລັດແລ້ວ";
+            $_SESSION['success'] = "ລຶບຂໍ້ມູນວັດແລະຮູບພາບທີ່ກ່ຽວຂໍ່ສຳເລັດແລ້ວ";
         }
         
         header('Location: ' . $base_url . 'temples/');
@@ -133,7 +157,12 @@ require_once '../includes/header.php';
                     
                     <div>
                         <h3 class="text-sm text-gray-500">ເຂດ/ເມືອງ, ແຂວງ</h3>
-                        <p class="text-gray-800"><?= htmlspecialchars($temple['district'] . ', ' . $temple['province']) ?></p>
+                        <p class="text-gray-800">
+                            <?php 
+                                // ใช้ district_name และ province_name ที่ JOIN มาจาก SQL
+                                echo htmlspecialchars(($temple['district_name'] ?? 'ບໍ່ລະບຸ') . ', ' . ($temple['province_name'] ?? 'ບໍ່ລະບຸ'));
+                            ?>
+                        </p>
                     </div>
                     
                     <div>
@@ -152,6 +181,58 @@ require_once '../includes/header.php';
                         </p>
                     </div>
                 </div>
+            </div>
+            
+            <!-- เพิ่มส่วนแสดงข้อมูลที่เกี่ยวข้องก่อนปุ่มยืนยันการลบ -->
+            <div class="mt-6 border-t border-gray-200 pt-6">
+                <h3 class="text-lg font-medium text-gray-800 mb-2">ຂໍ້ມູນທີ່ເຊື່ອມໂຍງກັບວັດນີ້:</h3>
+                
+                <?php
+                // ตรวจสอบข้อมูลที่เกี่ยวข้อง
+                $monk_count = $pdo->prepare("SELECT COUNT(*) FROM monks WHERE temple_id = ?");
+                $monk_count->execute([$temple_id]);
+                $monks = $monk_count->fetchColumn();
+                
+                $event_count = $pdo->prepare("SELECT COUNT(*) FROM events WHERE temple_id = ?");
+                $event_count->execute([$temple_id]);
+                $events = $event_count->fetchColumn();
+                
+                $user_count = $pdo->prepare("SELECT COUNT(*) FROM users WHERE temple_id = ?");
+                $user_count->execute([$temple_id]);
+                $users = $user_count->fetchColumn();
+                
+                $has_relations = ($monks > 0 || $events > 0 || $users > 0);
+                ?>
+                
+                <div class="flex flex-col space-y-2 text-sm mb-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-user-friends w-5 text-gray-500"></i>
+                        <span>ຜູ້ໃຊ້ລະບົບ: <strong><?= $users ?></strong> ຄົນ</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-pray w-5 text-gray-500"></i>
+                        <span>ພະສົງ: <strong><?= $monks ?></strong> ລາຍການ</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fas fa-calendar-alt w-5 text-gray-500"></i>
+                        <span>ກິດຈະກຳ: <strong><?= $events ?></strong> ລາຍການ</span>
+                    </div>
+                </div>
+                
+                <?php if ($has_relations): ?>
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-exclamation-triangle text-yellow-400"></i>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">
+                                <strong>ຄຳເຕືອນ:</strong> ວັດນີ້ມີຂໍ້ມູນທີ່ເຊື່ອມໂຍງຢູ່ ການດຳເນີນການຈະເປັນການປິດການໃຊ້ງານແທນການລຶບຂໍ້ມູນ
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
             
             <form action="<?= $base_url ?>temples/delete.php?id=<?= $temple_id ?>" method="post" class="mt-6 border-t border-gray-200 pt-6">

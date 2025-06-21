@@ -5,8 +5,6 @@ ob_start();
 $page_title = 'ແກ້ໄຂຂໍ້ມູນຜູ້ໃຊ້';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
-require_once '../includes/header.php';
-
 
 // ກວດສອບວ່າຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບແລ້ວຫຼືບໍ່
 if (!isset($_SESSION['user'])) {
@@ -151,7 +149,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = isset($_POST['status']) ? $_POST['status'] : $user['status'];
     $change_password = isset($_POST['change_password']) && $_POST['change_password'] == '1';
     
-    // ຮັບຂໍ້ມູນແຂວງ (ສຳລັບ province_admin)
+    // ຮັບຂໍ້ມູນແຂວง (ສຳລັບ province_admin)
     $selected_provinces = $_POST['provinces'] ?? [];
     
     $errors = [];
@@ -294,117 +292,291 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $page_title = 'ແກ້ໄຂຂໍ້ມູນຜູ້ໃຊ້';
 require_once '../includes/header.php';
+
+// รับค่าสีตามบทบาทผู้ใช้
+$role_colors = [
+    'superadmin' => 'amber',
+    'province_admin' => 'blue',
+    'admin' => 'green',
+    'user' => 'indigo'
+];
+
+$role_color = $role_colors[$user['role']] ?? 'amber';
+
+// กำหนดไอคอนตามบทบาท
+$role_icons = [
+    'superadmin' => '<i class="fas fa-crown"></i>',
+    'province_admin' => '<i class="fas fa-map-marked-alt"></i>', 
+    'admin' => '<i class="fas fa-gopuram"></i>',
+    'user' => '<i class="fas fa-user"></i>'
+];
+
+// สถานะแปลเป็นภาษาลาว
+$status_labels = [
+    'active' => 'ໃຊ້ງານ',
+    'inactive' => 'ປິດໃຊ້ງານ',
+    'pending' => 'ລໍຖ້າອະນຸມັດ'
+];
+
+// บทบาทแปลเป็นภาษาลาว
+$role_labels = [
+    'superadmin' => 'ຜູ້ດູແລລະບົບສູງສຸດ',
+    'province_admin' => 'ຜູ້ດູແລລະດັບແຂວງ',
+    'admin' => 'ຜູ້ດູແລວັດ',
+    'user' => 'ຜູ້ໃຊ້ທົ່ວໄປ'
+];
+
+// เพิ่ม CSS พิเศษ
+echo '<link rel="stylesheet" href="' . $base_url . 'assets/css/monk-style.css">';
+echo '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">';
 ?>
 
-<div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold"><?= $page_title ?></h1>
-        <div>
-            <a href="<?= $base_url ?>users/view.php?id=<?= $user_id ?>" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition mr-2">
-                <i class="fas fa-eye mr-1"></i> ເບິ່ງລາຍລະອຽດ
-            </a>
-            <a href="<?= $base_url ?>users/" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition">
-                <i class="fas fa-arrow-left mr-1"></i> ກັບຄືນ
-            </a>
+<div class="page-container bg-temple-pattern">
+    <!-- Header Section -->
+    <div class="header-section mb-8 animate__animated animate__fadeInDown">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div class="flex items-center">
+                <div class="category-icon bg-<?= $role_color ?>-600">
+                    <?= $role_icons[$user['role']] ?? '<i class="fas fa-user-edit"></i>' ?>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">
+                    <?= $page_title ?>: 
+                    <span class="text-<?= $role_color ?>-600"><?= htmlspecialchars($user['name']) ?></span>
+                </h1>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <a href="<?= $base_url ?>users/view.php?id=<?= $user_id ?>" class="btn btn-back">
+                    <i class="fas fa-eye"></i>
+                    <span>ເບິ່ງລາຍລະອຽດ</span>
+                </a>
+                <a href="<?= $base_url ?>users/" class="btn btn-back">
+                    <i class="fas fa-arrow-left"></i>
+                    <span>ກັບຄືນ</span>
+                </a>
+            </div>
         </div>
     </div>
     
     <?php if (!empty($errors)): ?>
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <strong class="font-bold">ເກີດຂໍ້ຜິດພາດ!</strong>
-            <ul class="mt-2 list-disc pl-5">
-                <?php foreach ($errors as $error): ?>
-                    <li><?= htmlspecialchars($error) ?></li>
-                <?php endforeach; ?>
-            </ul>
+    <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded-md shadow-md animate__animated animate__fadeIn" role="alert">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <i class="fas fa-exclamation-circle text-red-500 text-xl"></i>
+            </div>
+            <div class="ml-3">
+                <h3 class="font-medium">ກະລຸນາແກ້ໄຂຂໍ້ຜິດພາດຕໍ່ໄປນີ້:</h3>
+                <ul class="mt-2 list-disc pl-5">
+                    <?php foreach ($errors as $error): ?>
+                        <li><?= htmlspecialchars($error) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
         </div>
+    </div>
     <?php endif; ?>
-    
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <form method="POST" action="" id="userForm">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">ຊື່ຜູ້ໃຊ້ <span class="text-red-600">*</span></label>
-                    <input type="text" id="username" name="username" value="<?= htmlspecialchars($user['username']) ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+
+    <!-- ແບບຟອມແກ້ໄຂ - info-card style -->
+    <div class="info-card animate__animated animate__fadeIn">
+        <div class="info-card-header">
+            <h2 class="info-card-title">
+                <div class="icon-circle <?= $role_color ?>">
+                    <i class="fas fa-user-edit"></i>
                 </div>
-                
-                <div>
-                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">ຊື່-ນາມສະກຸນ <span class="text-red-600">*</span></label>
-                    <input type="text" id="name" name="name" value="<?= htmlspecialchars($user['name']) ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">ອີເມວ</label>
-                    <input type="email" id="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                
-                <div>
-                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">ເບີໂທລະສັບ</label>
-                    <input type="text" id="phone" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                
-                <div class="md:col-span-2">
-                    <div class="flex items-center mb-2">
-                        <input type="checkbox" id="change_password" name="change_password" value="1" class="mr-2">
-                        <label for="change_password" class="text-sm font-medium text-gray-700">ປ່ຽນລະຫັດຜ່ານ</label>
-                    </div>
-                </div>
-                
-                <div id="password_fields" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 hidden">
+                ຂໍ້ມູນຜູ້ໃຊ້
+            </h2>
+        </div>
+        <div class="info-card-body">
+            <form method="POST" action="" id="userForm">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- ຂໍ້ມູນພື້ນຖານ -->
                     <div>
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">ລະຫັດຜ່ານໃໝ່ <span class="text-red-600">*</span></label>
-                        <input type="password" id="password" name="password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <p class="text-sm text-gray-500 mt-1">ຕ້ອງມີຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ</p>
+                        <div class="mb-4">
+                            <label for="username" class="info-label">ຊື່ຜູ້ໃຊ້ <span class="text-red-600">*</span></label>
+                            <input type="text" id="username" name="username" value="<?= htmlspecialchars($user['username']) ?>" 
+                                class="w-full px-4 py-2.5 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all" required>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="name" class="info-label">ຊື່-ນາມສະກຸນ <span class="text-red-600">*</span></label>
+                            <input type="text" id="name" name="name" value="<?= htmlspecialchars($user['name']) ?>" 
+                                class="w-full px-4 py-2.5 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all" required>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="email" class="info-label">ອີເມວ</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-amber-500">
+                                    <i class="fas fa-envelope"></i>
+                                </div>
+                                <input type="email" id="email" name="email" value="<?= htmlspecialchars($user['email'] ?? '') ?>" 
+                                    class="w-full pl-10 pr-4 py-2.5 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="phone" class="info-label">ເບີໂທລະສັບ</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-amber-500">
+                                    <i class="fas fa-phone"></i>
+                                </div>
+                                <input type="text" id="phone" name="phone" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" 
+                                    class="w-full pl-10 pr-4 py-2.5 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all">
+                            </div>
+                        </div>
                     </div>
-                    
+
+                    <!-- ຂໍ້ມູນສິດການໃຊ້ງານ -->
                     <div>
-                        <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">ຢືນຢັນລະຫັດຜ່ານໃໝ່ <span class="text-red-600">*</span></label>
-                        <input type="password" id="confirm_password" name="confirm_password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-                </div>
-                
-                <?php if (($is_superadmin && $user_id != $current_user_id) || ($is_admin && $user_id != $current_user_id && $user['role'] !== 'superadmin' && $user['role'] !== 'province_admin')): ?>
-                <div>
-                    <label for="role" class="block text-sm font-medium text-gray-700 mb-1">ບົດບາດ <span class="text-red-600">*</span></label>
-                    <select id="role" name="role" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <?php if ($is_superadmin): ?>
-                            <option value="superadmin" <?= $user['role'] === 'superadmin' ? 'selected' : '' ?>>ຜູ້ດູແລລະບົບສູງສຸດ (Superadmin)</option>
-                            <option value="province_admin" <?= $user['role'] === 'province_admin' ? 'selected' : '' ?>>ຜູ້ດູແລລະດັບແຂວງ (Province Admin)</option>
+                        <?php if (($is_superadmin && $user_id != $current_user_id) || ($is_admin && $user_id != $current_user_id && $user['role'] !== 'superadmin' && $user['role'] !== 'province_admin')): ?>
+                        <div class="mb-4">
+                            <label for="role" class="info-label">ບົດບາດ <span class="text-red-600">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-amber-500">
+                                    <i class="fas fa-user-tag"></i>
+                                </div>
+                                <select id="role" name="role" 
+                                    class="w-full pl-10 pr-10 py-2.5 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent appearance-none transition-all" required>
+                                    <?php if ($is_superadmin): ?>
+                                        <option value="superadmin" <?= $user['role'] === 'superadmin' ? 'selected' : '' ?>>ຜູ້ດູແລລະບົບສູງສຸດ (Superadmin)</option>
+                                        <option value="province_admin" <?= $user['role'] === 'province_admin' ? 'selected' : '' ?>>ຜູ້ດູແລລະດັບແຂວງ (Province Admin)</option>
+                                    <?php endif; ?>
+                                    <option value="admin" <?= $user['role'] === 'admin' ? 'selected' : '' ?>>ຜູ້ດູແລວັດ (Temple Admin)</option>
+                                    <option value="user" <?= $user['role'] === 'user' ? 'selected' : '' ?>>ຜູ້ໃຊ້ທົ່ວໄປ (User)</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="status" class="info-label">ສະຖານະ <span class="text-red-600">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-amber-500">
+                                    <i class="fas fa-toggle-on"></i>
+                                </div>
+                                <select id="status" name="status" 
+                                    class="w-full pl-10 pr-10 py-2.5 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent appearance-none transition-all" required>
+                                    <option value="active" <?= $user['status'] === 'active' ? 'selected' : '' ?>>ໃຊ້ງານ</option>
+                                    <option value="pending" <?= $user['status'] === 'pending' ? 'selected' : '' ?>>ລໍຖ້າອະນຸມັດ</option>
+                                    <option value="inactive" <?= $user['status'] === 'inactive' ? 'selected' : '' ?>>ປິດການໃຊ້ງານ</option>
+                                </select>
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                                    <i class="fas fa-chevron-down"></i>
+                                </div>
+                            </div>
+                        </div>
                         <?php endif; ?>
-                        <option value="admin" <?= $user['role'] === 'admin' ? 'selected' : '' ?>>ຜູ້ດູແລວັດ (Temple Admin)</option>
-                        <option value="user" <?= $user['role'] === 'user' ? 'selected' : '' ?>>ຜູ້ໃຊ້ທົ່ວໄປ (User)</option>
-                    </select>
+
+                        <!-- สถานะปัจจุบัน (แสดงเฉพาะกรณีไม่มีสิทธิ์แก้ไข) -->
+                        <?php if (!($is_superadmin && $user_id != $current_user_id) && !($is_admin && $user_id != $current_user_id && $user['role'] !== 'superadmin' && $user['role'] !== 'province_admin')): ?>
+                        <div class="mb-4">
+                            <span class="info-label">ບົດບາດປັດຈຸບັນ</span>
+                            <div class="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center mr-2 text-white bg-<?= $role_color ?>-500">
+                                        <?= $role_icons[$user['role']] ?? '<i class="fas fa-user"></i>' ?>
+                                    </div>
+                                    <span class="font-medium"><?= $role_labels[$user['role']] ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <span class="info-label">ສະຖານະປັດຈຸບັນ</span>
+                            <div class="p-2.5 bg-gray-50 rounded-md border border-gray-200">
+                                <?php
+                                switch ($user['status']) {
+                                    case 'active':
+                                        echo '<span class="status-badge status-active"><i class="fas fa-circle text-xs mr-1"></i>' . $status_labels[$user['status']] . '</span>';
+                                        break;
+                                    case 'pending':
+                                        echo '<span class="status-badge bg-yellow-100 text-yellow-800 border border-yellow-200"><i class="fas fa-clock text-xs mr-1"></i>' . $status_labels[$user['status']] . '</span>';
+                                        break;
+                                    case 'inactive':
+                                        echo '<span class="status-badge bg-red-100 text-red-800 border border-red-200"><i class="fas fa-ban text-xs mr-1"></i>' . $status_labels[$user['status']] . '</span>';
+                                        break;
+                                }
+                                ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
+                        <!-- เปลี่ยนรหัสผ่าน -->
+                        <div class="p-4 bg-amber-50 rounded-lg border border-amber-200 mb-4">
+                            <div class="flex items-center mb-3">
+                                <input type="checkbox" id="change_password" name="change_password" value="1" 
+                                    class="w-5 h-5 text-amber-600 rounded border-amber-300 focus:ring-amber-500 focus:ring-2">
+                                <label for="change_password" class="ml-2 text-sm font-medium text-gray-700 flex items-center">
+                                    <i class="fas fa-key text-amber-500 mr-2"></i> ປ່ຽນລະຫັດຜ່ານ
+                                </label>
+                            </div>
+                            
+                            <div id="password_fields" class="grid grid-cols-1 gap-4 hidden pt-2 border-t border-amber-200">
+                                <div>
+                                    <label for="password" class="info-label">ລະຫັດຜ່ານໃໝ່ <span class="text-red-600">*</span></label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-amber-500">
+                                            <i class="fas fa-lock"></i>
+                                        </div>
+                                        <input type="password" id="password" name="password" 
+                                            class="w-full pl-10 pr-10 py-2.5 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all">
+                                        <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 password-toggle">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">ຕ້ອງມີຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ</p>
+                                </div>
+                                
+                                <div>
+                                    <label for="confirm_password" class="info-label">ຢືນຢັນລະຫັດຜ່ານໃໝ່ <span class="text-red-600">*</span></label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-amber-500">
+                                            <i class="fas fa-lock"></i>
+                                        </div>
+                                        <input type="password" id="confirm_password" name="confirm_password" 
+                                            class="w-full pl-10 pr-10 py-2.5 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all">
+                                        <button type="button" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 password-toggle">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div>
-                    <label for="status" class="block text-sm font-medium text-gray-700 mb-1">ສະຖານະ <span class="text-red-600">*</span></label>
-                    <select id="status" name="status" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="active" <?= $user['status'] === 'active' ? 'selected' : '' ?>>ໃຊ້ງານ</option>
-                        <option value="pending" <?= $user['status'] === 'pending' ? 'selected' : '' ?>>ລໍຖ້າອະນຸມັດ</option>
-                        <option value="inactive" <?= $user['status'] === 'inactive' ? 'selected' : '' ?>>ປິດການໃຊ້ງານ</option>
-                    </select>
-                </div>
-                <?php endif; ?>
-                
+
                 <!-- ສ່ວນເລືອກແຂວງ (ສຳລັບ province_admin) -->
                 <?php if ($is_superadmin && (isset($role) && $role === 'province_admin' || $user['role'] === 'province_admin')): ?>
-                <div id="province-section" class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">ແຂວງທີ່ຮັບຜິດຊອບ <span class="text-red-600">*</span></label>
+                <div id="province-section" class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200 animate__animated animate__fadeInUp">
+                    <h3 class="font-medium text-blue-800 mb-3 flex items-center">
+                        <i class="fas fa-globe-asia text-blue-600 mr-2"></i>
+                        ແຂວງທີ່ຮັບຜິດຊອບ <span class="text-red-600 ml-1">*</span>
+                    </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                         <?php foreach ($provinces as $province): ?>
-                            <div class="flex items-center">
+                            <div class="flex items-center p-2 hover:bg-blue-100 rounded-md transition-colors">
                                 <input type="checkbox" 
                                        id="province-<?= $province['province_id'] ?>" 
                                        name="provinces[]" 
                                        value="<?= $province['province_id'] ?>" 
                                        <?= in_array($province['province_id'], $assigned_provinces) ? 'checked' : '' ?>
-                                       class="mr-2">
-                                <label for="province-<?= $province['province_id'] ?>" class="text-sm text-gray-700">
-                                    <?= htmlspecialchars($province['province_name']) ?> (<?= htmlspecialchars($province['province_code']) ?>)
+                                       class="w-4 h-4 text-blue-600 border-blue-300 rounded focus:ring-blue-500">
+                                <label for="province-<?= $province['province_id'] ?>" class="ml-2 text-sm text-gray-700 flex items-center w-full cursor-pointer">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-2 text-blue-600 text-xs font-medium">
+                                        <?= substr($province['province_code'], 0, 2) ?>
+                                    </div>
+                                    <span><?= htmlspecialchars($province['province_name']) ?></span>
                                 </label>
                             </div>
                         <?php endforeach; ?>
                     </div>
+                    <?php if (empty($provinces)): ?>
+                        <div class="text-center py-4 text-gray-500">
+                            <i class="fas fa-info-circle text-blue-300 text-xl mb-2"></i>
+                            <p>ບໍ່ພົບຂໍ້ມູນແຂວງ</p>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
                 
@@ -412,90 +584,166 @@ require_once '../includes/header.php';
                 <?php if (($is_superadmin || $is_province_admin || ($is_admin && $user_id != $current_user_id)) && 
                            ($user['role'] === 'admin' || $user['role'] === 'user' || 
                             (isset($role) && ($role === 'admin' || $role === 'user')))): ?>
-                <div id="temple-section" class="md:col-span-2">
-                    <label for="temple_id" class="block text-sm font-medium text-gray-700 mb-1">ວັດ <span class="text-red-600">*</span></label>
-                    <select id="temple_id" name="temple_id" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">-- ກະລຸນາເລືອກວັດ --</option>
-                        <?php foreach ($temples as $temple): ?>
-                            <option value="<?= $temple['id'] ?>" <?= $user['temple_id'] == $temple['id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($temple['name']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
+                <div id="temple-section" class="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200 animate__animated animate__fadeInUp">
+                    <h3 class="font-medium text-amber-800 mb-3 flex items-center">
+                        <i class="fas fa-gopuram text-amber-600 mr-2"></i>
+                        ເລືອກວັດ <span class="text-red-600 ml-1">*</span>
+                    </h3>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-amber-500">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <select id="temple_id" name="temple_id" 
+                            class="w-full pl-10 pr-10 py-3 border border-amber-200 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all">
+                            <option value="">-- ກະລຸນາເລືອກວັດ --</option>
+                            <?php foreach ($temples as $temple): ?>
+                                <option value="<?= $temple['id'] ?>" <?= $user['temple_id'] == $temple['id'] ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($temple['name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-400">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                    <?php if (empty($temples)): ?>
+                        <div class="text-center py-2 text-gray-500 text-sm mt-2">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            ບໍ່ພົບຂໍ້ມູນວັດທີ່ສາມາດເລືອກໄດ້
+                        </div>
+                    <?php endif; ?>
                 </div>
                 <?php endif; ?>
-            </div>
-            
-            <div class="mt-8">
-                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition">
-                    <i class="fas fa-save mr-1"></i> ບັນທຶກການປ່ຽນແປງ
-                </button>
-                <a href="<?= $base_url ?>users/view.php?id=<?= $user_id ?>" class="ml-2 bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition">
-                    ຍົກເລີກ
-                </a>
-            </div>
-        </form>
+
+                <!-- ປຸ່ມການດຳເນີນການ -->
+                <div class="mt-8 flex flex-wrap gap-3 animate__animated animate__fadeInUp">
+                    <button type="submit" class="btn btn-edit group">
+                        <i class="fas fa-save mr-1 group-hover:animate-bounce"></i>
+                        <span>ບັນທຶກການປ່ຽນແປງ</span>
+                    </button>
+                    <a href="<?= $base_url ?>users/view.php?id=<?= $user_id ?>" class="btn btn-back">
+                        <i class="fas fa-times mr-1"></i>
+                        <span>ຍົກເລີກ</span>
+                    </a>
+
+                    <!-- แสดงข้อความช่วยเหลือ -->
+                    <div class="ml-auto flex items-center text-gray-500 text-sm">
+                        <i class="fas fa-info-circle mr-1 text-amber-500"></i>
+                        <span>ຊ່ອງທີ່ມີ <span class="text-red-600">*</span> ແມ່ນຈຳເປັນຕ້ອງປ້ອນ</span>
+                    </div>
+                </div>
+            </form>
+        </div>
     </div>
+
+    <!-- แสดงข้อมูล History การเปลี่ยนแปลง (ถ้ามี) -->
+    <?php if ($is_superadmin && isset($change_history) && !empty($change_history)): ?>
+    <div class="info-card mt-6 animate__animated animate__fadeIn animate__delay-1s">
+        <div class="info-card-header">
+            <h2 class="info-card-title">
+                <div class="icon-circle blue">
+                    <i class="fas fa-history"></i>
+                </div>
+                ປະຫວັດການປ່ຽນແປງ
+            </h2>
+        </div>
+        <div class="info-card-body overflow-x-auto">
+            <table class="min-w-full divide-y divide-amber-100">
+                <thead>
+                    <tr class="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3">ວັນທີ</th>
+                        <th class="px-6 py-3">ຜູ້ດຳເນີນການ</th>
+                        <th class="px-6 py-3">ການປ່ຽນແປງ</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-amber-100">
+                    <tr class="text-gray-500 text-center">
+                        <td colspan="3" class="py-4">ບໍ່ພົບຂໍ້ມູນ</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // script ปัจจุบันจากไฟล์เดิม
     const roleSelect = document.getElementById('role');
     const templeSection = document.getElementById('temple-section');
     const provinceSection = document.getElementById('province-section');
     const changePasswordCheckbox = document.getElementById('change_password');
     const passwordFields = document.getElementById('password_fields');
     
-    // ແສດງຫຼືຊ່ອນຊ່ອງປ້ອນລະຫັດຜ່ານ
+    // แสดง/ซ่อนช่องรหัสผ่าน
     if (changePasswordCheckbox) {
         changePasswordCheckbox.addEventListener('change', function() {
             if (this.checked) {
                 passwordFields.classList.remove('hidden');
+                passwordFields.classList.add('animate__animated', 'animate__fadeIn');
                 document.getElementById('password').required = true;
                 document.getElementById('confirm_password').required = true;
             } else {
-                passwordFields.classList.add('hidden');
-                document.getElementById('password').required = false;
-                document.getElementById('confirm_password').required = false;
+                passwordFields.classList.add('animate__fadeOut');
+                setTimeout(() => {
+                    passwordFields.classList.add('hidden');
+                    passwordFields.classList.remove('animate__fadeOut');
+                    document.getElementById('password').required = false;
+                    document.getElementById('confirm_password').required = false;
+                }, 300);
             }
         });
     }
     
-    // ຟັງຊັນອັບເດດຟອມຕາມບົດບາດ
+    // ฟังก์ชันอัพเดตฟอร์มตามบทบาท
     function updateFormByRole() {
         if (!roleSelect) return;
         
         const selectedRole = roleSelect.value;
         
-        // ຈັດການກັບສ່ວນເລືອກວັດ
+        // จัดการส่วนเลือกวัด
         if (templeSection) {
             if (selectedRole === 'admin' || selectedRole === 'user') {
-                templeSection.classList.remove('hidden');
+                if (templeSection.classList.contains('hidden')) {
+                    templeSection.classList.remove('hidden');
+                    templeSection.classList.add('animate__animated', 'animate__fadeIn');
+                }
                 document.getElementById('temple_id').required = true;
             } else {
-                templeSection.classList.add('hidden');
-                document.getElementById('temple_id').required = false;
+                templeSection.classList.add('animate__fadeOut');
+                setTimeout(() => {
+                    templeSection.classList.add('hidden');
+                    templeSection.classList.remove('animate__fadeOut');
+                    document.getElementById('temple_id').required = false;
+                }, 300);
             }
         }
         
-        // ຈັດການກັບສ່ວນເລືອກແຂວງ
+        // จัดการส่วนเลือกแขวง
         if (provinceSection) {
             if (selectedRole === 'province_admin') {
-                provinceSection.classList.remove('hidden');
+                if (provinceSection.classList.contains('hidden')) {
+                    provinceSection.classList.remove('hidden');
+                    provinceSection.classList.add('animate__animated', 'animate__fadeIn');
+                }
             } else {
-                provinceSection.classList.add('hidden');
+                provinceSection.classList.add('animate__fadeOut');
+                setTimeout(() => {
+                    provinceSection.classList.add('hidden');
+                    provinceSection.classList.remove('animate__fadeOut');
+                }, 300);
             }
         }
     }
     
-    // ເພີ່ມ event listener ສຳລັບການປ່ຽນບົດບາດ
+    // เพิ่ม event listener สำหรับการเปลี่ยนบทบาท
     if (roleSelect) {
         roleSelect.addEventListener('change', updateFormByRole);
     }
     
-    // ກວດສອບລະຫັດຜ່ານ
+    // ตรวจสอบรหัสผ่าน
     const userForm = document.getElementById('userForm');
-    
     if (userForm) {
         userForm.addEventListener('submit', function(event) {
             if (changePasswordCheckbox && changePasswordCheckbox.checked) {
@@ -504,14 +752,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (passwordInput.value !== confirmInput.value) {
                     event.preventDefault();
-                    alert('ລະຫັດຜ່ານບໍ່ກົງກັນ');
+                    showAlert('ລະຫັດຜ່ານບໍ່ກົງກັນ', 'error');
                     confirmInput.focus();
                     return;
                 }
                 
                 if (passwordInput.value.length < 6) {
                     event.preventDefault();
-                    alert('ລະຫັດຜ່ານຕ້ອງມີຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ');
+                    showAlert('ລະຫັດຜ່ານຕ້ອງມີຢ່າງໜ້ອຍ 6 ຕົວອັກສອນ', 'error');
                     passwordInput.focus();
                     return;
                 }
@@ -519,7 +767,77 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // ເອີ້ນໃຊ້ຟັງຊັນເມື່ອໂຫຼດໜ້າ
+    // สลับการแสดงรหัสผ่าน
+    const passwordToggles = document.querySelectorAll('.password-toggle');
+    passwordToggles.forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const input = this.parentElement.querySelector('input');
+            const icon = this.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+    });
+    
+    // แสดงการแจ้งเตือนแบบสวยงาม
+    function showAlert(message, type = 'info') {
+        // สร้าง element สำหรับแสดงการแจ้งเตือน
+        const alertEl = document.createElement('div');
+        alertEl.className = `fixed top-4 right-4 px-4 py-3 rounded-lg shadow-lg z-50 animate__animated animate__fadeInDown max-w-md`;
+        
+        // กำหนดสีตามประเภท
+        switch(type) {
+            case 'error':
+                alertEl.classList.add('bg-red-100', 'border-l-4', 'border-red-500', 'text-red-700');
+                break;
+            case 'success':
+                alertEl.classList.add('bg-green-100', 'border-l-4', 'border-green-500', 'text-green-700');
+                break;
+            default:
+                alertEl.classList.add('bg-blue-100', 'border-l-4', 'border-blue-500', 'text-blue-700');
+        }
+        
+        // สร้างเนื้อหา
+        alertEl.innerHTML = `
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <i class="fas fa-${type === 'error' ? 'exclamation-circle' : type === 'success' ? 'check-circle' : 'info-circle'} text-${type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue'}-500 text-lg"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="font-medium">${message}</p>
+                </div>
+                <button class="ml-auto text-${type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue'}-500 hover:text-${type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue'}-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+        
+        // เพิ่มลงในหน้าเว็บ
+        document.body.appendChild(alertEl);
+        
+        // เพิ่ม event listener สำหรับปุ่มปิด
+        alertEl.querySelector('button').addEventListener('click', () => {
+            alertEl.classList.replace('animate__fadeInDown', 'animate__fadeOutUp');
+            setTimeout(() => alertEl.remove(), 500);
+        });
+        
+        // ลบการแจ้งเตือนหลังจาก 5 วินาที
+        setTimeout(() => {
+            if (document.body.contains(alertEl)) {
+                alertEl.classList.replace('animate__fadeInDown', 'animate__fadeOutUp');
+                setTimeout(() => alertEl.remove(), 500);
+            }
+        }, 5000);
+    }
+    
+    // เรียกใช้ฟังก์ชันเมื่อโหลดหน้าเสร็จ
     updateFormByRole();
 });
 </script>
