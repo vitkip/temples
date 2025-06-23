@@ -177,11 +177,31 @@ $can_delete_temple = ($user_role === 'superadmin');
                     <?php endif; ?>
                 </p>
             </div>
-            <?php if ($can_add_temple): ?>
-            <a href="<?= $base_url ?>temples/add.php" class="btn-primary flex items-center gap-2">
-                <i class="fas fa-plus"></i> ເພີ່ມວັດໃໝ່
-            </a>
-            <?php endif; ?>
+            <div class="flex space-x-2">
+                <?php if ($can_add_temple): ?>
+                <a href="<?= $base_url ?>temples/add.php" class="btn-primary flex items-center gap-2">
+                    <i class="fas fa-plus"></i> ເພີ່ມວັດໃໝ່
+                </a>
+                <?php endif; ?>
+                
+                <!-- เพิ่มปุ่มส่งออก -->
+                <div class="relative">
+                    <button type="button" id="exportBtn" class="btn-primary  flex items-center gap-2">
+                        <i class="fas fa-download"></i> ສົ່ງອອກ
+                    </button>
+                    <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md overflow-hidden z-10 border border-gray-200">
+                        <div class="py-1">
+                            <a href="<?= $base_url ?>reports/temples_pdf.php?<?= http_build_query($_GET) ?>" class="block px-4 py-3 text-sm hover:bg-gray-100 flex items-center">
+                                <i class="far fa-file-pdf text-red-500 mr-2 w-5"></i> ສົ່ງອອກເປັນ PDF
+                            </a>
+                            <hr class="border-gray-100">
+                            <a href="<?= $base_url ?>reports/temples_excel.php?<?= http_build_query($_GET) ?>" class="block px-4 py-3 text-sm hover:bg-gray-100 flex items-center">
+                                <i class="far fa-file-excel text-green-600 mr-2 w-5"></i> ສົ່ງອອກເປັນ Excel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- แสดงข้อมูลสถิติ -->
@@ -762,6 +782,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 container.removeChild(notification);
             }, 300);
         }, 3000);
+    }
+
+    // เพิ่มการทำงานของปุ่มส่งออก
+    const exportBtn = document.getElementById('exportBtn');
+    const exportMenu = document.getElementById('exportMenu');
+
+    if (exportBtn && exportMenu) {
+        exportBtn.addEventListener('click', function() {
+            exportMenu.classList.toggle('hidden');
+        });
+        
+        // ซ่อนเมนูเมื่อคลิกที่อื่น
+        document.addEventListener('click', function(event) {
+            if (!exportBtn.contains(event.target) && !exportMenu.contains(event.target)) {
+                exportMenu.classList.add('hidden');
+            }
+        });
     }
 });
 

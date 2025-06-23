@@ -40,12 +40,12 @@ if (!empty($search)) {
 }
 
 if (!empty($province)) {
-    $where_clauses[] = "province = ?";
+    $where_clauses[] = "t.province_id = ?";
     $params[] = $province;
 }
 
 if (!empty($district)) {
-    $where_clauses[] = "district = ?";
+    $where_clauses[] = "t.district_id = ?";
     $params[] = $district;
 }
 
@@ -66,7 +66,14 @@ $where_clause = !empty($where_clauses) ? 'WHERE ' . implode(' AND ', $where_clau
 
 // ดึงข้อมูลวัดทั้งหมด
 try {
-    $sql = "SELECT * FROM temples $where_clause ORDER BY $order_by";
+    $sql = "SELECT t.*, 
+            p.province_name as province, 
+            d.district_name as district 
+            FROM temples t 
+            LEFT JOIN provinces p ON t.province_id = p.province_id 
+            LEFT JOIN districts d ON t.district_id = d.district_id 
+            $where_clause 
+            ORDER BY $order_by";
     $stmt = $pdo->prepare($sql);
     foreach ($params as $index => $param) {
         $stmt->bindValue($index + 1, $param);
@@ -78,29 +85,34 @@ try {
     $total_temples = count($temples);
     
     // ดึงรายชื่อจังหวัดทั้งหมด
-    $province_stmt = $pdo->query("SELECT DISTINCT province FROM temples WHERE status = 'active' ORDER BY province");
-    $provinces = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
+    $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces WHERE status = 'active' ORDER BY province_name");
+    $provinces = $province_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // ดึงรายชื่ออำเภอตามจังหวัดที่เลือก
     $districts = [];
     if (!empty($province)) {
-        $district_stmt = $pdo->prepare("SELECT DISTINCT district FROM temples WHERE province = ? AND status = 'active' ORDER BY district");
+        $district_stmt = $pdo->prepare("SELECT district_id, district_name FROM districts WHERE province_id = ? AND status = 'active' ORDER BY district_name");
         $district_stmt->execute([$province]);
-        $districts = $district_stmt->fetchAll(PDO::FETCH_COLUMN);
+        $districts = $district_stmt->fetchAll();
     }
     
     // คำขอ API สำหรับข้อมูล districts
-    if (isset($_GET['get_districts']) && !empty($_GET['province'])) {
-        $get_province = $_GET['province'];
-        $api_district_stmt = $pdo->prepare("SELECT DISTINCT district FROM temples WHERE province = ? AND status = 'active' ORDER BY district");
-        $api_district_stmt->execute([$get_province]);
-        $api_districts = $api_district_stmt->fetchAll(PDO::FETCH_COLUMN);
+    if (isset($_GET['get_districts']) && !empty($_GET['province_id'])) {
+        $province_id = (int)$_GET['province_id'];
+        $api_district_stmt = $pdo->prepare("
+            SELECT district_id, district_name 
+            FROM districts 
+            WHERE province_id = ? 
+            ORDER BY district_name
+        ");
+        $api_district_stmt->execute([$province_id]);
+        $api_districts = $api_district_stmt->fetchAll(PDO::FETCH_ASSOC);
         header('Content-Type: application/json');
-        echo json_encode($api_districts);
+        echo json_encode(['districts' => $api_districts]);
         exit;
     }
 } catch (PDOException $e) {
-    $error_message = "เกิดข้อผิดพลาด: " . $e->getMessage();
+    $error_message = "ເກີດຂໍ້ຜິດພາດ: " . $e->getMessage();
 }
 ?>
 
@@ -120,286 +132,30 @@ try {
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#D4A762',
+            'primary-dark': '#B08542',
+            secondary: '#9B7C59',
+            accent: '#E9CDA8',
+            light: '#F9F5F0',
+            lightest: '#FFFCF7',
+          },
+          boxShadow: {
+            'temple': '0 8px 30px rgba(176, 133, 66, 0.15)'
+          }
+        }
+      }
+    }
+    </script>
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
+    <link rel="stylesheet" href="<?= $base_url ?>assets/css/all-temples.css">
     
-    <style>
-        body {
-            font-family: 'Noto Sans Lao', sans-serif;
-            -webkit-tap-highlight-color: transparent; /* ป้องกันการไฮไลต์สีฟ้าเมื่อแตะบนมือถือ */
-            padding-bottom: env(safe-area-inset-bottom, 0); /* รองรับ iPhone X และรุ่นใหม่กว่า */
-        }
-        
-        /* Hover effect for temple cards */
-        .temple-card {
-            transition: all 0.3s ease;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .temple-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(176, 133, 66, 0.2);
-        }
-        
-        .temple-card .card-body {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .temple-card .card-footer {
-            margin-top: auto;
-        }
-        
-        /* Hero section */
-        .hero-section {
-            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('<?= $base_url ?>assets/images/temple-bg.jpg');
-            background-size: cover;
-            background-position: center;
-            position: relative;
-            height: 300px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-align: center;
-        }
-        
-        .hero-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to right, rgba(176, 133, 66, 0.8) 0%, rgba(212, 167, 98, 0.7) 100%);
-        }
-        
-        /* Filters section on mobile */
-        .filter-drawer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            z-index: 50;
-            padding: 1.25rem 1rem;
-            box-shadow: 0 -4px 12px -1px rgba(0, 0, 0, 0.15);
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-top-left-radius: 16px;
-            border-top-right-radius: 16px;
-            max-height: 85vh;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch; /* สำหรับการเลื่อนเรียบบน iOS */
-            padding-bottom: env(safe-area-inset-bottom, 1rem);
-        }
-        
-        .filter-drawer.open {
-            transform: translateY(0);
-        }
-        
-        .backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.6);
-            z-index: 40;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            -webkit-backdrop-filter: blur(2px); /* เพิ่ม blur effect บน Safari */
-            backdrop-filter: blur(2px);
-        }
-        
-        .backdrop.open {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        
-        .drawer-handle {
-            width: 40px;
-            height: 5px;
-            background: #d1d5db;
-            border-radius: 9999px;
-            margin: 0 auto 16px;
-        }
-        
-        /* ปุ่ม Floating Action Button */
-        .fab {
-            position: fixed;
-            bottom: 1.5rem;
-            right: 1.5rem;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: #D4A762;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            transition: all 0.3s ease;
-            z-index: 30;
-            border: none;
-            padding-bottom: env(safe-area-inset-bottom, 0);
-        }
-        
-        .fab:active {
-            transform: scale(0.95);
-            background: #B08542;
-        }
-        
-        /* Mobile navigation bar */
-        .mobile-navbar {
-            display: flex;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-            z-index: 100;
-            height: 3.5rem;
-        }
-        
-        .mobile-nav-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            color: #666;
-            padding: 0.25rem;
-        }
-        
-        .mobile-nav-item.active {
-            color: #B08542;
-        }
-        
-        .mobile-nav-item i {
-            font-size: 1.2rem;
-            margin-bottom: 0.25rem;
-        }
-        
-        /* Add padding to bottom to account for mobile navbar */
-        .has-mobile-nav {
-            padding-bottom: 4rem;
-        }
-        
-        /* Mobile scroll container */
-        .mobile-scroll-container {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            padding-bottom: 1rem;
-            margin: 0 -1rem;
-            padding-left: 1rem;
-            padding-right: 1rem;
-            scroll-snap-type: x mandatory;
-        }
-        
-        .mobile-scroll-item {
-            scroll-snap-align: start;
-            flex-shrink: 0;
-            width: 85%;
-            margin-right: 0.75rem;
-        }
-
-        /* Media queries สำหรับอุปกรณ์มือถือ */
-        @media (max-width: 640px) {
-            /* ลดขนาดของ Hero Section บนมือถือ */
-            .hero-section {
-                height: 180px;
-                padding: 0 1rem;
-                text-align: center;
-            }
-            
-            /* ลดขนาดของข้อความใน Hero Section */
-            .hero-section h1 {
-                font-size: 1.75rem;
-                margin-bottom: 0.5rem;
-                line-height: 1.2;
-            }
-            
-            .hero-section p {
-                font-size: 1rem;
-            }
-            
-            /* ปรับการแสดงผลของการ์ดวัด */
-            .temple-card .h-48 {
-                height: 160px; /* ลดความสูงของรูปภาพ */
-            }
-            
-            /* เพิ่ม padding ให้กับ container หลัก */
-            .max-w-7xl {
-                padding-left: 1rem !important;
-                padding-right: 1rem !important;
-            }
-            
-            /* ปรับ padding ของ footer ให้น้อยลง */
-            footer {
-                padding-top: 2rem;
-                padding-bottom: 5rem; /* เพิ่มพื้นที่สำหรับ bottom nav */
-            }
-            
-            /* ปรับปรุงขนาดของ touch targets */
-            select, input, button {
-                min-height: 44px;
-            }
-            
-            /* เพิ่ม margin สำหรับ temple grid */
-            .grid {
-                margin-bottom: 4rem;
-            }
-            
-            /* ปรับขนาด filter button */
-            #filterBtn {
-                min-width: 120px;
-                padding: 0.75rem 1rem;
-            }
-            
-            .temple-card {
-                margin-bottom: 1rem;
-            }
-            
-            /* ซ่อน nav item text ในกรณีหน้าจอเล็กมาก */
-            @media (max-width: 350px) {
-                .mobile-nav-item span {
-                    display: none;
-                }
-            }
-        }
-        
-        /* ปรับปรุงเมนูนำทางบนมือถือ */
-        @media (max-width: 768px) {
-            .temple-card {
-                will-change: transform; /* เพิ่มประสิทธิภาพ animation */
-            }
-            
-            .nav-container {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                scrollbar-width: none;
-                -ms-overflow-style: none;
-            }
-            
-            .nav-container::-webkit-scrollbar {
-                display: none;
-            }
-        }
-        
-        /* Improvements for iOS devices */
-        @supports (-webkit-touch-callout: none) {
-            .filter-drawer, .mobile-navbar {
-                padding-bottom: env(safe-area-inset-bottom, 1rem);
-            }
-        }
-    </style>
 </head>
 <body class="bg-gray-50 has-mobile-nav">
     <!-- Mobile navigation (visible only on small screens) -->
@@ -438,11 +194,25 @@ try {
                         <img class="h-8 w-auto" src="<?= $base_url ?>assets/images/logo.png" alt="<?= htmlspecialchars($site_name) ?>">
                         <span class="ml-3 text-xl font-semibold text-gray-800"><?= htmlspecialchars($site_name) ?></span>
                     </div>
+                    <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                        <a href="<?= $base_url ?>" class="text-gray-900 hover:text-amber-600 inline-flex items-center px-1 pt-1 text-sm font-medium">
+                            ໜ້າຫຼັກ
+                        </a>
+                        <a href="<?= $base_url ?>all-temples.php" class="border-b-2 border-amber-500 text-amber-600 inline-flex items-center px-1 pt-1 text-sm font-medium">
+                            ວັດທັງໝົດ
+                        </a>
+                        <a href="<?= $base_url ?>events/" class="text-gray-900 hover:text-amber-600 inline-flex items-center px-1 pt-1 text-sm font-medium">
+                            ກິດຈະກໍາ
+                        </a>
+                        <a href="<?= $base_url ?>about.php" class="text-gray-900 hover:text-amber-600 inline-flex items-center px-1 pt-1 text-sm font-medium">
+                            ກ່ຽວກັບໂຄງການ
+                        </a>
+                    </div>
                 </div>
                 <div class="flex items-center">
                     <?php if ($logged_in): ?>
                         <a href="<?= $base_url ?>dashboard.php" class="text-amber-700 hover:text-amber-800 px-3 py-2 rounded-md text-sm font-medium">
-                            <i class="fas fa-tachometer-alt mr-1"></i> ໜ້າຄວບຄຸມ
+                            <i class="fas fa-tachometer-alt mr-1"></i> ແຜງຄວບຄຸມ
                         </a>
                         <a href="<?= $base_url ?>auth/logout.php" class="ml-4 btn-primary">
                             <i class="fas fa-sign-out-alt mr-1"></i> ອອກຈາກລະບົບ
@@ -460,12 +230,12 @@ try {
         </div>
     </nav>
 
-    <!-- Hero Section - ใช้รูปแบบเดียวกับ index.php -->
+    <!-- Hero Section -->
     <section class="hero-section py-16 md:py-32 relative">
         <div class="hero-overlay"></div>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div class="text-center md:text-left md:max-w-2xl">
-                <h1 class="text-2xl md:text-5xl font-bold text-white leading-tight">
+                <h1 class="text-3xl md:text-5xl font-bold text-white leading-tight">
                     ວັດທັງໝົດໃນລະບົບ
                 </h1>
                 <p class="mt-4 text-base md:text-lg text-gray-100">
@@ -473,7 +243,7 @@ try {
                 </p>
                 <div class="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
                     <a href="#search-filters" class="w-full sm:w-auto btn-primary text-center">
-                        <i class="fas fa-search mr-1"></i> ຄົ້ນຫາແລະຕົວກອງ
+                        <i class="fas fa-search mr-1"></i> ຄົ້ນຫາວັດ
                     </a>
                     <a href="<?= $base_url ?>" class="w-full sm:w-auto px-6 py-3 border border-transparent rounded-lg text-base font-medium text-white bg-gray-800 bg-opacity-60 hover:bg-opacity-70 text-center">
                         <i class="fas fa-arrow-left mr-1"></i> ກັບຄືນໜ້າຫຼັກ
@@ -484,7 +254,7 @@ try {
     </section>
 
     <!-- Main Container -->
-    <div id="search-filters" class="page-container py-8 md:py-12">
+    <div id="search-filters" class="page-container py-8 md:py-12 bg-temple-pattern">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <!-- Filter & Search Section -->
             <div class="card p-4 md:p-6 mb-8">
@@ -501,22 +271,22 @@ try {
                 </div>
                 
                 <!-- Desktop Filters (hidden on mobile) -->
-                <form method="GET" class="hidden sm:block">
+                <form method="GET" class="hidden sm:block" id="searchForm">
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label for="search" class="block text-sm text-gray-700 mb-1">ຄົ້ນຫາ</label>
                             <input type="text" name="search" id="search" value="<?= htmlspecialchars($search) ?>" 
                                 placeholder="ຄົ້ນຫາຊື່ວັດ, ລາຍລະອຽດ..." 
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                class="w-full search-input">
                         </div>
                         
                         <div>
                             <label for="province" class="block text-sm text-gray-700 mb-1">ແຂວງ</label>
-                            <select name="province" id="province" class="w-full px-4 py-2 border border-gray-300 rounded-lg" onchange="this.form.submit()">
+                            <select name="province" id="province" class="w-full search-input">
                                 <option value="">-- ທັງໝົດ --</option>
                                 <?php foreach ($provinces as $p): ?>
-                                    <option value="<?= htmlspecialchars($p) ?>" <?= $province === $p ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($p) ?>
+                                    <option value="<?= $p['province_id'] ?>" <?= $province == $p['province_id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($p['province_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -524,11 +294,11 @@ try {
                         
                         <div>
                             <label for="district" class="block text-sm text-gray-700 mb-1">ເມືອງ</label>
-                            <select name="district" id="district" class="w-full px-4 py-2 border border-gray-300 rounded-lg" <?= empty($province) ? 'disabled' : '' ?>>
+                            <select name="district" id="district" class="w-full search-input" <?= empty($province) ? 'disabled' : '' ?>>
                                 <option value="">-- ທັງໝົດ --</option>
                                 <?php foreach ($districts as $d): ?>
-                                    <option value="<?= htmlspecialchars($d) ?>" <?= $district === $d ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($d) ?>
+                                    <option value="<?= $d['district_id'] ?>" <?= $district == $d['district_id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($d['district_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -537,7 +307,7 @@ try {
                         <div>
                             <label for="sort" class="block text-sm text-gray-700 mb-1">ຮຽງຕາມ</label>
                             <div class="flex space-x-2">
-                                <select name="sort" id="sort" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                                <select name="sort" id="sort" class="w-full search-input">
                                     <option value="name_asc" <?= $sort === 'name_asc' ? 'selected' : '' ?>>ຊື່ (A-Z)</option>
                                     <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : '' ?>>ຊື່ (Z-A)</option>
                                     <option value="date_desc" <?= $sort === 'date_desc' ? 'selected' : '' ?>>ຂໍ້ມູນໃໝ່ກ່ອນ</option>
@@ -556,46 +326,46 @@ try {
             
             <!-- Active Filters (if any) -->
             <?php if (!empty($search) || !empty($province) || !empty($district)): ?>
-            <div class="bg-amber-50 rounded-lg p-4 mb-6">
+            <div class="bg-amber-50 rounded-lg p-4 mb-6 border border-amber-200 animate-fadeIn">
                 <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-sm font-medium text-amber-800">ຕົວກອງທີ່ໃຊ້:</span>
+                    <span class="text-sm font-medium text-amber-800">ຕົວກອງທີ່ໃຊ່:</span>
                     
                     <?php if (!empty($search)): ?>
-                    <div class="bg-white rounded-full px-3 py-1 text-sm flex items-center">
-                        <span class="mr-2">ຄົ້ນຫາ: <?= htmlspecialchars($search) ?></span>
-                        <a href="?<?= http_build_query(array_merge($_GET, ['search' => ''])) ?>" class="text-gray-500 hover:text-gray-700">
-                            <i class="fas fa-times"></i>
+                    <div class="filter-badge">
+                        <span>ຄົ້ນຫາ: <?= htmlspecialchars($search) ?></span>
+                        <a href="?<?= http_build_query(array_merge($_GET, ['search' => ''])) ?>" class="badge-close">
+                            <i class="fas fa-times text-xs"></i>
                         </a>
                     </div>
                     <?php endif; ?>
                     
                     <?php if (!empty($province)): ?>
-                    <div class="bg-white rounded-full px-3 py-1 text-sm flex items-center">
-                        <span class="mr-2">ແຂວງ: <?= htmlspecialchars($province) ?></span>
-                        <a href="?<?= http_build_query(array_merge($_GET, ['province' => '', 'district' => ''])) ?>" class="text-gray-500 hover:text-gray-700">
-                            <i class="fas fa-times"></i>
+                    <div class="filter-badge">
+                        <span>ແຂວງ: <?= htmlspecialchars($province) ?></span>
+                        <a href="?<?= http_build_query(array_merge($_GET, ['province' => '', 'district' => ''])) ?>" class="badge-close">
+                            <i class="fas fa-times text-xs"></i>
                         </a>
                     </div>
                     <?php endif; ?>
                     
                     <?php if (!empty($district)): ?>
-                    <div class="bg-white rounded-full px-3 py-1 text-sm flex items-center">
-                        <span class="mr-2">ເມືອງ: <?= htmlspecialchars($district) ?></span>
-                        <a href="?<?= http_build_query(array_merge($_GET, ['district' => ''])) ?>" class="text-gray-500 hover:text-gray-700">
-                            <i class="fas fa-times"></i>
+                    <div class="filter-badge">
+                        <span>ເມືອງ: <?= htmlspecialchars($district) ?></span>
+                        <a href="?<?= http_build_query(array_merge($_GET, ['district' => ''])) ?>" class="badge-close">
+                            <i class="fas fa-times text-xs"></i>
                         </a>
                     </div>
                     <?php endif; ?>
                     
-                    <a href="<?= $base_url ?>all-temples.php" class="text-amber-600 text-sm hover:underline ml-2">
-                        ລ້າງຕົວກອງທັງໝົດ
+                    <a href="<?= $base_url ?>all-temples.php" class="text-amber-600 text-sm hover:underline ml-auto">
+                        <i class="fas fa-times-circle mr-1"></i> ລ້າງຕົວກອງທັງໝົດ
                     </a>
                 </div>
             </div>
             <?php endif; ?>
             
             <!-- Results Count -->
-            <div class="header-section mb-6 p-4 md:p-6">
+            <div class="header-section mb-6">
                 <h2 class="text-2xl font-bold text-gray-800 flex items-center">
                     <div class="category-icon">
                         <i class="fas fa-place-of-worship"></i>
@@ -615,15 +385,15 @@ try {
                 </p>
             </div>
 
-            <!-- Temple Grid - แสดงผลแบบ scroll ในมือถือ เหมือนใน index.php -->
+            <!-- Temple Grid - Mobile Scrollable View -->
             <?php if (count($temples) > 0): ?>
                 <!-- Mobile scrollable grid (visible only on small screens) -->
                 <div class="mobile-scroll-container sm:hidden">
-                    <div class="flex">
+                    <div class="flex" id="mobileTempleList">
                         <?php foreach($temples as $temple): ?>
                         <div class="mobile-scroll-item">
-                            <div class="card overflow-hidden h-full temple-card">
-                                <div class="h-36 overflow-hidden">
+                            <div class="temple-card">
+                                <div class="temple-img-container h-36">
                                     <?php if(!empty($temple['photo'])): ?>
                                         <img src="<?= $base_url . htmlspecialchars($temple['photo']) ?>" 
                                             alt="<?= htmlspecialchars($temple['name']) ?>" 
@@ -637,36 +407,37 @@ try {
                                     
                                     <!-- Province Badge -->
                                     <?php if(!empty($temple['province'])): ?>
-                                    <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                                    <div class="location-badge">
+                                        <i class="fas fa-map-marker-alt mr-1"></i>
                                         <?= htmlspecialchars($temple['province']) ?>
-                                    </span>
+                                    </div>
                                     <?php endif; ?>
                                 </div>
                                 <div class="p-3 card-body">
                                     <h3 class="text-base font-semibold text-gray-900 mb-1 line-clamp-2"><?= htmlspecialchars($temple['name']) ?></h3>
                                     
-                                    <div class="flex items-center text-xs text-gray-500 mb-1">
+                                    <div class="flex items-center text-xs text-gray-500 mb-2">
                                         <i class="fas fa-map-marker-alt mr-1 text-amber-600 flex-shrink-0"></i>
-                                        <span class="truncate"><?= htmlspecialchars($temple['district'] ? $temple['district'] . ', ' : '') . htmlspecialchars($temple['province'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?></span>
+                                        <span class="truncate"><?= htmlspecialchars(isset($temple['district']) && $temple['district'] ? $temple['district'] . ', ' : '') . htmlspecialchars($temple['province'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?></span>
                                     </div>
                                     
                                     <?php if(!empty($temple['abbot_name'])): ?>
-                                    <div class="flex items-center text-xs text-gray-500 mb-1">
+                                    <div class="flex items-center text-xs text-gray-500 mb-2">
                                         <i class="fas fa-user mr-1 text-amber-600 flex-shrink-0"></i>
                                         <span class="truncate"><?= htmlspecialchars($temple['abbot_name']) ?></span>
                                     </div>
                                     <?php endif; ?>
                                     
                                     <?php if(!empty($temple['phone'])): ?>
-                                    <div class="flex items-center text-xs text-gray-500 mb-1">
+                                    <div class="flex items-center text-xs text-gray-500 mb-2">
                                         <i class="fas fa-phone mr-1 text-amber-600 flex-shrink-0"></i>
                                         <span><?= htmlspecialchars($temple['phone']) ?></span>
                                     </div>
                                     <?php endif; ?>
                                     
-                                    <div class="card-footer mt-2">
-                                        <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" 
-                                        class="btn-primary w-full flex items-center justify-center text-xs py-2">
+                                    <div class="card-footer mt-auto">
+                                        <a href="<?= $base_url ?>temples/view-detail.php?id=<?= $temple['id'] ?>" 
+                                           class="btn-primary w-full flex items-center justify-center text-sm py-2">
                                             <i class="fas fa-info-circle mr-1"></i> ເບິ່ງລາຍລະອຽດ
                                         </a>
                                     </div>
@@ -677,11 +448,11 @@ try {
                     </div>
                 </div>
 
-                <!-- Desktop grid layout (hidden on mobile) -->
-                <div class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Desktop temple grid (hidden on mobile) -->
+                <div class="hidden sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="desktopTempleList">
                     <?php foreach($temples as $temple): ?>
-                    <div class="card overflow-hidden temple-card">
-                        <div class="h-48 overflow-hidden relative">
+                    <div class="temple-card">
+                        <div class="temple-img-container h-48 relative">
                             <?php if(!empty($temple['photo'])): ?>
                                 <img src="<?= $base_url . htmlspecialchars($temple['photo']) ?>" 
                                     alt="<?= htmlspecialchars($temple['name']) ?>" 
@@ -695,9 +466,10 @@ try {
                             
                             <!-- Province Badge -->
                             <?php if(!empty($temple['province'])): ?>
-                            <span class="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
+                            <div class="location-badge">
+                                <i class="fas fa-map-marker-alt mr-1"></i>
                                 <?= htmlspecialchars($temple['province']) ?>
-                            </span>
+                            </div>
                             <?php endif; ?>
                         </div>
                         
@@ -706,7 +478,7 @@ try {
                             
                             <div class="flex items-center text-sm text-gray-500 mb-2">
                                 <i class="fas fa-map-marker-alt mr-2 text-amber-600 flex-shrink-0"></i>
-                                <span class="truncate"><?= htmlspecialchars($temple['district'] ? $temple['district'] . ', ' : '') . htmlspecialchars($temple['province'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?></span>
+                                <span class="truncate"><?= htmlspecialchars(isset($temple['district']) && $temple['district'] ? $temple['district'] . ', ' : '') . htmlspecialchars($temple['province'] ?? 'ບໍ່ມີຂໍ້ມູນ') ?></span>
                             </div>
                             
                             <?php if(!empty($temple['abbot_name'])): ?>
@@ -723,9 +495,9 @@ try {
                             </div>
                             <?php endif; ?>
                             
-                            <div class="card-footer">
+                            <div class="card-footer mt-auto">
                                 <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" 
-                                class="btn-primary w-full flex items-center justify-center">
+                                   class="btn-primary w-full flex items-center justify-center">
                                     <i class="fas fa-info-circle mr-2"></i> ເບິ່ງລາຍລະອຽດ
                                 </a>
                             </div>
@@ -733,14 +505,34 @@ try {
                     </div>
                     <?php endforeach; ?>
                 </div>
+                
+                <!-- Loading skeletons template (hidden by default) -->
+                <div id="templeSkeleton" class="hidden">
+                    <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <?php for($i = 0; $i < 8; $i++): ?>
+                        <div class="skeleton-temple-card">
+                            <div class="skeleton-image skeleton"></div>
+                            <div class="skeleton-content">
+                                <div class="skeleton-line title skeleton"></div>
+                                <div class="skeleton-line medium skeleton"></div>
+                                <div class="skeleton-line short skeleton"></div>
+                                <div class="skeleton-btn skeleton"></div>
+                            </div>
+                        </div>
+                        <?php endfor; ?>
+                    </div>
+                </div>
+                
             <?php else: ?>
                 <!-- No temples found -->
                 <div class="card p-8 text-center">
                     <div class="mb-4">
-                        <i class="fas fa-place-of-worship text-amber-300 text-5xl"></i>
+                        <div class="w-20 h-20 rounded-full bg-amber-100 mx-auto flex items-center justify-center">
+                            <i class="fas fa-place-of-worship text-amber-400 text-3xl"></i>
+                        </div>
                     </div>
                     <h3 class="text-xl font-semibold text-gray-800 mb-2">ບໍ່ພົບຂໍ້ມູນວັດ</h3>
-                    <p class="text-gray-600 mb-6">ບໍ່ພົບຂໍ້ມູນວັດທີ່ກົງກັບເງື່ອນໄຂການຄົ້ນຫາຂອງທ່ານ</p>
+                    <p class="text-gray-600 mb-6">ບໍ໚ພົບຂໍ້ມູນວັດທີ່ກົງກັບເງື່ອນໄຂການຄົ້ນຫາຂອງທ່ານ</p>
                     <a href="<?= $base_url ?>all-temples.php" class="btn-primary inline-flex items-center">
                         <i class="fas fa-redo mr-2"></i> ເບິ່ງວັດທັງໝົດ
                     </a>
@@ -759,29 +551,29 @@ try {
             </button>
         </h3>
         
-        <form method="GET" class="space-y-4">
+        <form method="GET" class="space-y-4" id="mobileSearchForm">
             <div>
-                <label for="mobile-search" class="block text-sm text-gray-700 mb-1">ຄົ້ນຫາ</label>
+                <label for="mobile-search" class="block text-sm font-medium text-gray-700 mb-1">ຄົ້ນຫາ</label>
                 <input type="text" name="search" id="mobile-search" value="<?= htmlspecialchars($search) ?>" 
                        placeholder="ຄົ້ນຫາຊື່ວັດ, ລາຍລະອຽດ..." 
-                       class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                       class="w-full search-input">
             </div>
             
             <div>
-                <label for="mobile-province" class="block text-sm text-gray-700 mb-1">ແຂວງ</label>
-                <select name="province" id="mobile-province" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <label for="mobile-province" class="block text-sm font-medium text-gray-700 mb-1">ແຂວງ</label>
+                <select name="province" id="mobile-province" class="w-full search-input">
                     <option value="">-- ທັງໝົດ --</option>
                     <?php foreach ($provinces as $p): ?>
-                        <option value="<?= htmlspecialchars($p) ?>" <?= $province === $p ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($p) ?>
+                        <option value="<?= $p['province_id'] ?>" <?= $province == $p['province_id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($p['province_name']) ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
             </div>
             
             <div>
-                <label for="mobile-district" class="block text-sm text-gray-700 mb-1">ເມືອງ</label>
-                <select name="district" id="mobile-district" class="w-full px-4 py-2 border border-gray-300 rounded-lg" <?= empty($province) ? 'disabled' : '' ?>>
+                <label for="mobile-district" class="block text-sm font-medium text-gray-700 mb-1">ເມືອງ</label>
+                <select name="district" id="mobile-district" class="w-full search-input" <?= empty($province) ? 'disabled' : '' ?>>
                     <option value="">-- ທັງໝົດ --</option>
                     <?php foreach ($districts as $d): ?>
                         <option value="<?= htmlspecialchars($d) ?>" <?= $district === $d ? 'selected' : '' ?>>
@@ -792,8 +584,8 @@ try {
             </div>
             
             <div>
-                <label for="mobile-sort" class="block text-sm text-gray-700 mb-1">ຮຽງຕາມ</label>
-                <select name="sort" id="mobile-sort" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                <label for="mobile-sort" class="block text-sm font-medium text-gray-700 mb-1">ຮຽງຕາມ</label>
+                <select name="sort" id="mobile-sort" class="w-full search-input">
                     <option value="name_asc" <?= $sort === 'name_asc' ? 'selected' : '' ?>>ຊື່ (A-Z)</option>
                     <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : '' ?>>ຊື່ (Z-A)</option>
                     <option value="date_desc" <?= $sort === 'date_desc' ? 'selected' : '' ?>>ຂໍ້ມູນໃໝ່ກ່ອນ</option>
@@ -821,6 +613,11 @@ try {
     
     <!-- Backdrop for mobile filters -->
     <div id="backdrop" class="backdrop"></div>
+
+    <!-- Back to top button -->
+    <button id="backToTop" class="hidden fixed bottom-20 right-5 z-30 p-3 bg-amber-600 text-white rounded-full shadow-lg hover:bg-amber-700 focus:outline-none">
+        <i class="fas fa-arrow-up"></i>
+    </button>
 
     <!-- Footer -->
     <footer class="bg-gray-800 pt-10 pb-16 sm:pb-10">
@@ -983,22 +780,46 @@ try {
                     return;
                 }
                 
-                // Fetch districts via AJAX
-                fetch(`${window.location.origin}${window.location.pathname}?get_districts=1&province=${encodeURIComponent(selectedProvince)}`)
-                    .then(response => response.json())
-                    .then(districts => {
+                // แก้ไขการเรียก API
+                fetch(`${window.location.origin}/temples/api/get-districts.php?province_id=${encodeURIComponent(selectedProvince)}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response failed');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
                         districtElem.innerHTML = '<option value="">-- ທັງໝົດ --</option>';
                         
-                        districts.forEach(district => {
-                            const option = document.createElement('option');
-                            option.value = district;
-                            option.textContent = district;
-                            districtElem.appendChild(option);
-                        });
-                        
-                        districtElem.disabled = false;
+                        if (data.districts) {
+                            data.districts.forEach(district => {
+                                const option = document.createElement('option');
+                                option.value = district.district_id;
+                                option.textContent = district.district_name;
+                                districtElem.appendChild(option);
+                            });
+                            
+                            districtElem.disabled = false;
+                        }
                     })
-                    .catch(error => console.error('Error fetching districts:', error));
+                    .catch(error => {
+                        console.error('Error fetching districts:', error);
+                        // ใช้ API แบบ inline เป็นแผนสำรอง
+                        fetch(`${window.location.pathname}?get_districts=1&province_id=${encodeURIComponent(selectedProvince)}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                districtElem.innerHTML = '<option value="">-- ທັງໝົດ --</option>';
+                                if (data.districts) {
+                                    data.districts.forEach(district => {
+                                        const option = document.createElement('option');
+                                        option.value = district.district_id; 
+                                        option.textContent = district.district_name;
+                                        districtElem.appendChild(option);
+                                    });
+                                    districtElem.disabled = false;
+                                }
+                            });
+                    });
             });
         }
         

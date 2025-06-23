@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // ສົ່ງອີເມວແຈ້ງເຕືອນຜູ້ດູແລລະບົບ (ໃນໂຄດຕົວຈິງຄວນເພີ່ມສ່ວນນີ້)
             
             $_SESSION['success'] = "ລົງທະບຽນສໍາເລັດແລ້ວ ກະລຸນາລໍຖ້າການອະນຸມັດຈາກຜູ່ດູແລລະບົບ";
-            header('Location: ' . $base_url . 'auth/login.php');
+            header('Location: ' . $base_url . 'auth/');
             exit;
             
         } catch (PDOException $e) {

@@ -252,18 +252,30 @@ if (isset($_SESSION['user'])) {
         </div>
         <?php endif; ?>
         
-        <!-- ตัวกรองสถานะ -->
+        <!-- ตัวกรองประเภทพระสงฆ์ -->
         <div>
-          <label for="status" class="form-label">
-            <i class="fas fa-toggle-on text-amber-700 mr-1"></i> ສະຖານະ
+          <label for="prefix" class="form-label">
+            <i class="fas fa-user-circle text-amber-700 mr-1"></i> ສະຖານະ
           </label>
-          <select name="status" id="status" class="form-select">
-            <option value="all" <?= isset($_GET['status']) && $_GET['status'] === 'all' ? 'selected' : '' ?>>ທັງໝົດ</option>
-            <option value="active" <?= (!isset($_GET['status']) || $_GET['status'] === 'active') ? 'selected' : '' ?>>ບວດຢູ່</option>
+          <select name="prefix" id="prefix" class="form-select">
+            <option value="">-- ສະຖານະ --</option>
             <option value="inactive" <?= isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'selected' : '' ?>>ສິກແລ້ວ</option>
+            <option value="active" <?= isset($_GET['status']) && $_GET['status'] === 'active' ? 'selected' : '' ?>>ຍັງບວດຢູ່</option>
           </select>
         </div>
-
+ <!-- ตัวกรองประเภทพระสงฆ์ -->
+        <div>
+          <label for="prefix" class="form-label">
+            <i class="fas fa-user-circle text-amber-700 mr-1"></i> ປະເພດ
+          </label>
+          <select name="prefix" id="prefix" class="form-select">
+            <option value="">-- ທັງໝົດ --</option>
+            <option value="ພຣະ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ພຣະ' ? 'selected' : '' ?>>ພຣະ</option>
+            <option value="ຄຸນແມ່ຂາວ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ຄຸນແມ່ຂາວ' ? 'selected' : '' ?>>ຄຸນແມ່ຂາວ</option>
+            <option value="ສ.ນ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສ.ນ' ? 'selected' : '' ?>>ສ.ນ</option>
+            <option value="ສັງກະລີ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສັງກະລີ' ? 'selected' : '' ?>>ສັງກະລີ</option>
+          </select>
+        </div>
         <!-- ตัวกรองแขวงเกิด -->
         <div>
             <label for="birth_province" class="form-label">

@@ -1,0 +1,486 @@
+   body {
+            font-family: 'Noto Sans Lao', sans-serif;
+            -webkit-tap-highlight-color: transparent; 
+            padding-bottom: env(safe-area-inset-bottom, 0);
+            background-color: var(--color-lightest);
+        }
+        
+        /* Temple cards */
+        .temple-card {
+            transition: all 0.3s ease;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(200, 169, 126, 0.2);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        
+        .temple-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .temple-card .card-body {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+        }
+        
+        .temple-card .card-footer {
+            margin-top: auto;
+        }
+        
+        /* Hero section */
+        .hero-section {
+            background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('<?= $base_url ?>assets/images/temple-bg.jpg');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            animation: fadeIn 1s ease-out;
+        }
+        
+        .hero-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(176, 133, 66, 0.8) 0%, rgba(212, 167, 98, 0.7) 100%);
+        }
+        
+        /* Mobile filter drawer */
+        .filter-drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            z-index: 50;
+            padding: 1.25rem 1rem;
+            box-shadow: 0 -4px 12px -1px rgba(0, 0, 0, 0.15);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-top-left-radius: 16px;
+            border-top-right-radius: 16px;
+            max-height: 85vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: env(safe-area-inset-bottom, 1rem);
+        }
+        
+        .filter-drawer.open {
+            transform: translateY(0);
+        }
+        
+        .backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 40;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            -webkit-backdrop-filter: blur(2px);
+            backdrop-filter: blur(2px);
+        }
+        
+        .backdrop.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .drawer-handle {
+            width: 40px;
+            height: 5px;
+            background: #d1d5db;
+            border-radius: 9999px;
+            margin: 0 auto 16px;
+        }
+        
+        /* Floating Action Button */
+        .fab {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--color-primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+            z-index: 30;
+            border: none;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        
+        .fab:active {
+            transform: scale(0.95);
+            background: var(--color-primary-dark);
+        }
+        
+        /* Mobile navigation bar */
+        .mobile-navbar {
+            display: flex;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+            height: 3.75rem;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        
+        .mobile-nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: #666;
+            padding: 0.25rem;
+            transition: all 0.2s ease;
+        }
+        
+        .mobile-nav-item.active {
+            color: var(--color-primary-dark);
+        }
+        
+        .mobile-nav-item i {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .has-mobile-nav {
+            padding-bottom: 4rem;
+        }
+        
+        /* Mobile scroll container */
+        .mobile-scroll-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 1rem;
+            margin: 0 -1rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            scroll-snap-type: x mandatory;
+        }
+        
+        .mobile-scroll-item {
+            scroll-snap-align: start;
+            flex-shrink: 0;
+            width: 280px;
+            margin-right: 1rem;
+        }
+
+        /* Improved buttons */
+        .btn-primary {
+            background: linear-gradient(to bottom, var(--color-primary), var(--color-primary-dark));
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            box-shadow: 0 4px 10px rgba(176, 133, 66, 0.2);
+            border: none;
+        }
+        
+        .btn-primary:hover, .btn-primary:active {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(176, 133, 66, 0.3);
+        }
+        
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(200, 169, 126, 0.15);
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        /* Filter badges */
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.4em 0.75em 0.4em 1em;
+            background-color: white;
+            border-radius: 9999px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 0.875rem;
+            margin: 0.25rem;
+        }
+        
+        .filter-badge .badge-close {
+            margin-left: 0.5rem;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        
+        .filter-badge .badge-close:hover {
+            background: rgba(0,0,0,0.1);
+        }
+
+        /* Active filter badges */
+        .filter-badge {
+            background: rgba(212, 167, 98, 0.1);
+            color: var(--color-secondary);
+            border: 1px solid rgba(212, 167, 98, 0.2);
+        }
+        
+        /* Search inputs */
+        .search-input {
+            border: 2px solid rgba(212, 167, 98, 0.2);
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+        }
+        
+        .search-input:focus {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(212, 167, 98, 0.15);
+            outline: none;
+        }
+        
+        /* Header section */
+        .header-section {
+            background: linear-gradient(135deg, #F0E5D3, #FFFBF5);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(200, 169, 126, 0.15);
+        }
+        
+        /* Category icons */
+        .category-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+        
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes skeletonPulse {
+            0% { background-position: -200px 0; }
+            100% { background-position: calc(200px + 100%) 0; }
+        }
+        
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200px 100%;
+            animation: skeletonPulse 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        /* Temple image hover effect */
+        .temple-img-container {
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .temple-img-container img {
+            transition: transform 0.5s ease;
+        }
+        
+        .temple-card:hover .temple-img-container img {
+            transform: scale(1.05);
+        }
+        
+        /* Temple location badge */
+        .location-badge {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+
+        /* Media queries for mobile devices */
+        @media (max-width: 640px) {
+            .hero-section {
+                height: 220px;
+                padding: 0 1rem;
+                text-align: center;
+            }
+            
+            .hero-section h1 {
+                font-size: 1.75rem;
+                margin-bottom: 0.5rem;
+                line-height: 1.2;
+            }
+            
+            .hero-section p {
+                font-size: 1rem;
+            }
+            
+            .temple-card .h-48 {
+                height: 160px;
+            }
+            
+            .max-w-7xl {
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+            }
+            
+            footer {
+                padding-top: 2rem;
+                padding-bottom: 5rem;
+            }
+            
+            /* ปรับปรุงขนาดของ touch targets */
+            select, input, button {
+                min-height: 44px;
+            }
+            
+            .grid {
+                margin-bottom: 4rem;
+            }
+            
+            #filterBtn {
+                min-width: 110px;
+                padding: 0.625rem 1rem;
+            }
+            
+            .temple-card {
+                margin-bottom: 1rem;
+            }
+            
+            @media (max-width: 350px) {
+                .mobile-nav-item span {
+                    display: none;
+                }
+            }
+            
+            .header-section {
+                padding: 1rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .temple-card {
+                will-change: transform;
+            }
+            
+            .nav-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            
+            .nav-container::-webkit-scrollbar {
+                display: none;
+            }
+        }
+        
+        /* Improvements for iOS devices */
+        @supports (-webkit-touch-callout: none) {
+            .filter-drawer, .mobile-navbar {
+                padding-bottom: env(safe-area-inset-bottom, 1rem);
+            }
+        }
+        
+        /* Loading Skeleton */
+        .skeleton-temple-card {
+            height: 100%;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(200, 169, 126, 0.15);
+            background-color: white;
+        }
+        
+        .skeleton-image {
+            height: 180px;
+            background-color: #f0f0f0;
+        }
+        
+        .skeleton-content {
+            padding: 1rem;
+        }
+        
+        .skeleton-line {
+            height: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 4px;
+        }
+        
+        .skeleton-line.title {
+            width: 80%;
+            height: 1.25rem;
+        }
+        
+        .skeleton-line.short {
+            width: 60%;
+        }
+        
+        .skeleton-line.medium {
+            width: 70%;
+        }
+        
+        .skeleton-btn {
+            height: 2.5rem;
+            width: 100%;
+            margin-top: 0.5rem;
+            border-radius: 0.5rem;
+        }
+    

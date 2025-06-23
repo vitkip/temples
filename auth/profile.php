@@ -17,21 +17,14 @@ $error_message = '';
 
 // ดึงข้อมูลผู้ใช้จากฐานข้อมูล
 try {
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT u.*, t.name as temple_name FROM users u LEFT JOIN temples t ON u.temple_id = t.id WHERE u.id = ?");
     $stmt->execute([$user_id]);
-    $user = $stmt->fetch();
+    $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if (!$user) {
+    if (!$user_data) {
         $_SESSION['error'] = "ບໍ່ພົບຂໍ້ມູນຜູ້ໃຊ້";
         header("Location: {$base_url}dashboard.php");
         exit;
-    }
-
-    // ถ้าผู้ใช้เป็น admin หรือ superadmin ดึงข้อมูลวัดด้วย
-    if (in_array($user['role'], ['admin', 'superadmin']) && !empty($user['temple_id'])) {
-        $temple_stmt = $pdo->prepare("SELECT name FROM temples WHERE id = ?");
-        $temple_stmt->execute([$user['temple_id']]);
-        $temple = $temple_stmt->fetch();
     }
 
 } catch (PDOException $e) {
@@ -62,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // ตรวจสอบว่าอีเมลซ้ำหรือไม่ (ยกเว้นอีเมลของผู้ใช้เอง)
-    if (!empty($email) && $email !== $user['email']) {
+    if (!empty($email) && $email !== $user_data['email']) {
         $email_check = $pdo->prepare("SELECT COUNT(*) FROM users WHERE email = ? AND id != ?");
         $email_check->execute([$email, $user_id]);
         if ($email_check->fetchColumn() > 0) {
@@ -75,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!empty($current_password) || !empty($new_password) || !empty($confirm_password)) {
         if (empty($current_password)) {
             $errors[] = "ກະລຸນາປ້ອນລະຫັດຜ່ານປັດຈຸບັນ";
-        } elseif (!password_verify($current_password, $user['password'])) {
+        } elseif (!password_verify($current_password, $user_data['password'])) {
             $errors[] = "ລະຫັດຜ່ານປັດຈຸບັນບໍ່ຖືກຕ້ອງ";
         }
 
@@ -99,38 +92,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ถ้าไม่มีข้อผิดพลาด ดำเนินการอัปเดตข้อมูล
     if (empty($errors)) {
         try {
+            $pdo->beginTransaction();
+
+            // อัปเดตข้อมูลพื้นฐาน
+            $update_data = [
+                'name' => $name,
+                'email' => $email,
+                'phone' => $phone,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
             if ($update_password) {
-                $sql = "UPDATE users SET name = ?, email = ?, phone = ?, password = ?, updated_at = NOW() WHERE id = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([
-                    $name,
-                    $email,
-                    $phone,
-                    password_hash($new_password, PASSWORD_DEFAULT),
-                    $user_id
-                ]);
-            } else {
-                $sql = "UPDATE users SET name = ?, email = ?, phone = ?, updated_at = NOW() WHERE id = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([
-                    $name,
-                    $email,
-                    $phone,
-                    $user_id
-                ]);
+                // เข้ารหัสรหัสผ่านใหม่
+                $update_data['password'] = password_hash($new_password, PASSWORD_DEFAULT);
             }
 
-            // อัปเดต session name ด้วย
-            $_SESSION['user']['name'] = $name;
+            // สร้าง SQL สำหรับอัปเดต
+            $set_clauses = [];
+            $params = [];
+            foreach ($update_data as $key => $value) {
+                $set_clauses[] = "$key = ?";
+                $params[] = $value;
+            }
+            $params[] = $user_id;
 
+            $sql = "UPDATE users SET " . implode(', ', $set_clauses) . " WHERE id = ?";
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+
+            // อัปเดต session
+            $_SESSION['user']['name'] = $name;
+            $_SESSION['user']['email'] = $email;
+            $_SESSION['user']['phone'] = $phone;
+
+            $pdo->commit();
             $success_message = "ອັບເດດຂໍ້ມູນສຳເລັດແລ້ວ";
 
             // รีโหลดข้อมูลผู้ใช้
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+            $stmt = $pdo->prepare("SELECT u.*, t.name as temple_name FROM users u LEFT JOIN temples t ON u.temple_id = t.id WHERE u.id = ?");
             $stmt->execute([$user_id]);
-            $user = $stmt->fetch();
+            $user_data = $stmt->fetch(PDO::FETCH_ASSOC);
 
         } catch (PDOException $e) {
+            $pdo->rollBack();
             $error_message = "ເກີດຂໍ້ຜິດພາດ: " . $e->getMessage();
         }
     } else {
@@ -142,130 +146,369 @@ $page_title = 'ຂໍ້ມູນສ່ວນຕົວ';
 require_once '../includes/header.php';
 ?>
 
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-3xl mx-auto">
-        <h1 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-            <div class="category-icon">
-                <i class="fas fa-user"></i>
-            </div>
-            ຂໍ້ມູນສ່ວນຕົວ
-        </h1>
-
-        <?php if (!empty($success_message)): ?>
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <?= $success_message ?>
-        </div>
-        <?php endif; ?>
-
-        <?php if (!empty($error_message)): ?>
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-            <?= $error_message ?>
-        </div>
-        <?php endif; ?>
-
-        <div class="bg-white shadow-md rounded-lg overflow-hidden mb-4">
-            <div class="p-6">
-                <form method="post" action="">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
-                                ຊື່ຜູ້ໃຊ້
-                            </label>
-                            <input type="text" id="username" name="username" value="<?= htmlspecialchars($user['username']) ?>" 
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5" 
-                                   disabled>
-                            <p class="text-xs text-gray-500 mt-1">ບໍ່ສາມາດແກ້ໄຂຊື່ຜູ້ໃຊ້ໄດ້</p>
-                        </div>
-
-                        <div>
-                            <label for="role" class="block text-sm font-medium text-gray-700 mb-1">
-                                ສິດການໃຊ້ງານ
-                            </label>
-                            <input type="text" id="role" name="role" 
-                                   value="<?= htmlspecialchars($user['role'] === 'superadmin' ? 'ຜູ້ດູແລລະບົບ' : ($user['role'] === 'admin' ? 'ຜູ້ດູແລວັດ' : 'ຜູ້ໃຊ້ທົ່ວໄປ')) ?>" 
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5" 
-                                   disabled>
-                        </div>
-
-                        <?php if (isset($temple) && !empty($temple)): ?>
-                        <div class="md:col-span-2">
-                            <label for="temple" class="block text-sm font-medium text-gray-700 mb-1">
-                                ວັດທີ່ຮັບຜິດຊອບ
-                            </label>
-                            <input type="text" id="temple" name="temple" value="<?= htmlspecialchars($temple['name']) ?>" 
-                                   class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5" 
-                                   disabled>
-                        </div>
-                        <?php endif; ?>
-
-                        <div class="md:col-span-2">
-                            <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
-                                ຊື່-ນາມສະກຸນ <span class="text-red-500">*</span>
-                            </label>
-                            <input type="text" id="name" name="name" value="<?= htmlspecialchars($user['name']) ?>" 
-                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5" 
-                                   required>
-                        </div>
-
-                        <div>
-                            <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                                ອີເມວ <span class="text-red-500">*</span>
-                            </label>
-                            <input type="email" id="email" name="email" value="<?= htmlspecialchars($user['email']) ?>" 
-                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5" 
-                                   required>
-                        </div>
-
-                        <div>
-                            <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">
-                                ເບີໂທ
-                            </label>
-                            <input type="text" id="phone" name="phone" value="<?= htmlspecialchars($user['phone']) ?>" 
-                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5">
+<div class="page-container">
+    <div class="container mx-auto px-4 py-6">
+        <div class="max-w-4xl mx-auto">
+            
+            <!-- Header Section -->
+            <div class="profile-header">
+                <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6">
+                    <div class="profile-header-content">
+                        <div class="flex items-center mb-2">
+                            <div class="profile-avatar">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <div class="ml-4">
+                                <h1 class="profile-title">ຂໍ້ມູນສ່ວນຕົວ</h1>
+                                <p class="profile-subtitle">ຈັດການແລະອັບເດດຂໍ້ມູນຜູ້ໃຊ້ຂອງທ່ານ</p>
+                            </div>
                         </div>
                     </div>
-
-                    <h3 class="text-lg font-medium text-gray-900 mt-8 mb-4">ປ່ຽນລະຫັດຜ່ານ <span class="text-sm font-normal text-gray-500">(ຖ້າຕ້ອງການ)</span></h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="md:col-span-2">
-                            <label for="current_password" class="block text-sm font-medium text-gray-700 mb-1">
-                                ລະຫັດຜ່ານປັດຈຸບັນ
-                            </label>
-                            <input type="password" id="current_password" name="current_password" 
-                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5">
-                        </div>
-
-                        <div>
-                            <label for="new_password" class="block text-sm font-medium text-gray-700 mb-1">
-                                ລະຫັດຜ່ານໃໝ່
-                            </label>
-                            <input type="password" id="new_password" name="new_password" 
-                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5">
-                            <p class="text-xs text-gray-500 mt-1">ຢ່າງນ້ອຍ 6 ຕົວອັກສອນ</p>
-                        </div>
-
-                        <div>
-                            <label for="confirm_password" class="block text-sm font-medium text-gray-700 mb-1">
-                                ຢືນຢັນລະຫັດຜ່ານໃໝ່
-                            </label>
-                            <input type="password" id="confirm_password" name="confirm_password" 
-                                   class="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-amber-500 focus:border-amber-500 block w-full p-2.5">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end mt-6 gap-3">
-                        <a href="<?= $base_url ?>dashboard.php" class="py-2 px-4 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                            ຍົກເລີກ
+                    <div class="profile-actions mt-4 lg:mt-0">
+                        <a href="<?= $base_url ?>dashboard.php" class="btn-back">
+                            <i class="fas fa-arrow-left"></i>
+                            <span class="hidden sm:inline">ກັບໄປໜ້າຫຼັກ</span>
                         </a>
-                        <button type="submit" class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500">
-                            ບັນທຶກ
-                        </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Alert Messages -->
+            <?php if (!empty($success_message)): ?>
+            <div class="alert alert-success">
+                <div class="alert-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="alert-content">
+                    <p><?= htmlspecialchars($success_message) ?></p>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($error_message)): ?>
+            <div class="alert alert-error">
+                <div class="alert-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="alert-content">
+                    <p><?= htmlspecialchars($error_message) ?></p>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <!-- Main Content -->
+            <div class="profile-content">
+                <form method="post" action="" id="profileForm">
+                    
+                    <!-- Account Information Card -->
+                    <div class="info-card account-info">
+                        <div class="card-header">
+                            <div class="card-header-icon">
+                                <i class="fas fa-id-card"></i>
+                            </div>
+                            <div class="card-header-content">
+                                <h2 class="card-title">ຂໍ້ມູນບັນຊີ</h2>
+                                <p class="card-subtitle">ຂໍ້ມູນພື້ນຖານຂອງບັນຊີຜູ້ໃຊ້</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group">
+                                    <label for="username" class="form-label">ຊື່ຜູ້ໃຊ້</label>
+                                    <div class="input-group disabled">
+                                        <div class="input-icon">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <input type="text" id="username" value="<?= htmlspecialchars($user_data['username']) ?>" 
+                                               class="form-control" disabled>
+                                        <div class="input-badge">
+                                            <i class="fas fa-lock"></i>
+                                        </div>
+                                    </div>
+                                    <p class="form-help">ບໍ່ສາມາດແກ້ໄຂຊື່ຜູ້ໃຊ້ໄດ້</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="role" class="form-label">ສິດການໃຊ້ງານ</label>
+                                    <div class="input-group disabled">
+                                        <div class="input-icon">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <input type="text" id="role" 
+                                               value="<?= htmlspecialchars($user_data['role'] === 'superadmin' ? 'ຜູ້ດູແລລະບົບ' : ($user_data['role'] === 'admin' ? 'ຜູ້ດູແລວັດ' : 'ຜູ້ໃຊ້ທົ່ວໄປ')) ?>" 
+                                               class="form-control" disabled>
+                                        <div class="status-badge <?= $user_data['role'] === 'superadmin' ? 'badge-admin' : 'badge-user' ?>">
+                                            <?= htmlspecialchars($user_data['role']) ?>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <?php if (!empty($user_data['temple_name'])): ?>
+                                <div class="form-group md:col-span-2">
+                                    <label for="temple" class="form-label">ວັດທີ່ຮັບຜິດຊອບ</label>
+                                    <div class="input-group disabled">
+                                        <div class="input-icon">
+                                            <i class="fas fa-place-of-worship"></i>
+                                        </div>
+                                        <input type="text" id="temple" value="<?= htmlspecialchars($user_data['temple_name']) ?>" 
+                                               class="form-control" disabled>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+
+                                <div class="form-group md:col-span-2">
+                                    <div class="info-banner">
+                                        <div class="info-banner-icon">
+                                            <i class="fas fa-calendar-alt"></i>
+                                        </div>
+                                        <div class="info-banner-content">
+                                            <p><strong>ເຂົ້າສູ່ລະບົບຄັ້ງທຳອິດ:</strong> <?= date('d/m/Y H:i', strtotime($user_data['created_at'])) ?></p>
+                                            <p><strong>ອັບເດດຫຼ້າສຸດ:</strong> <?= date('d/m/Y H:i', strtotime($user_data['updated_at'])) ?></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Information Card -->
+                    <div class="info-card personal-info">
+                        <div class="card-header">
+                            <div class="card-header-icon">
+                                <i class="fas fa-user-edit"></i>
+                            </div>
+                            <div class="card-header-content">
+                                <h2 class="card-title">ຂໍ້ມູນສ່ວນຕົວ</h2>
+                                <p class="card-subtitle">ສາມາດແກ້ໄຂແລະອັບເດດໄດ້</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group md:col-span-2">
+                                    <label for="name" class="form-label required">ຊື່-ນາມສະກຸນ</label>
+                                    <div class="input-group">
+                                        <div class="input-icon">
+                                            <i class="fas fa-user-tag"></i>
+                                        </div>
+                                        <input type="text" id="name" name="name" value="<?= htmlspecialchars($user_data['name']) ?>" 
+                                               class="form-control" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="email" class="form-label required">ອີເມວ</label>
+                                    <div class="input-group">
+                                        <div class="input-icon">
+                                            <i class="fas fa-envelope"></i>
+                                        </div>
+                                        <input type="email" id="email" name="email" value="<?= htmlspecialchars($user_data['email']) ?>" 
+                                               class="form-control" required>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="phone" class="form-label">ເບີໂທ</label>
+                                    <div class="input-group">
+                                        <div class="input-icon">
+                                            <i class="fas fa-phone"></i>
+                                        </div>
+                                        <input type="text" id="phone" name="phone" value="<?= htmlspecialchars($user_data['phone']) ?>" 
+                                               class="form-control">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Password Change Card -->
+                    <div class="info-card password-change">
+                        <div class="card-header">
+                            <div class="card-header-icon">
+                                <i class="fas fa-key"></i>
+                            </div>
+                            <div class="card-header-content">
+                                <h2 class="card-title">ປ່ຽນລະຫັດຜ່ານ</h2>
+                                <p class="card-subtitle">ປ່ອຍຫວ່າງໄວ້ຖ້າບໍ່ຕ້ອງການປ່ຽນ</p>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="form-group md:col-span-2">
+                                    <label for="current_password" class="form-label">ລະຫັດຜ່ານປັດຈຸບັນ</label>
+                                    <div class="input-group">
+                                        <div class="input-icon">
+                                            <i class="fas fa-lock"></i>
+                                        </div>
+                                        <input type="password" id="current_password" name="current_password" 
+                                               class="form-control" autocomplete="current-password">
+                                        <button type="button" class="password-toggle" data-target="current_password">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="new_password" class="form-label">ລະຫັດຜ່ານໃໝ່</label>
+                                    <div class="input-group">
+                                        <div class="input-icon">
+                                            <i class="fas fa-lock-open"></i>
+                                        </div>
+                                        <input type="password" id="new_password" name="new_password" 
+                                               class="form-control" autocomplete="new-password">
+                                        <button type="button" class="password-toggle" data-target="new_password">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                    <p class="form-help">ຢ່າງນ້ອຍ 6 ຕົວອັກສອນ</p>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="confirm_password" class="form-label">ຢືນຢັນລະຫັດຜ່ານໃໝ່</label>
+                                    <div class="input-group">
+                                        <div class="input-icon">
+                                            <i class="fas fa-check-circle"></i>
+                                        </div>
+                                        <input type="password" id="confirm_password" name="confirm_password" 
+                                               class="form-control" autocomplete="new-password">
+                                        <button type="button" class="password-toggle" data-target="confirm_password">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <a href="<?= $base_url ?>dashboard.php" class="btn btn-secondary flex-1 sm:flex-none">
+                                <i class="fas fa-times"></i>
+                                <span>ຍົກເລີກ</span>
+                            </a>
+                            <button type="submit" class="btn btn-primary flex-1">
+                                <i class="fas fa-save"></i>
+                                <span>ບັນທຶກຂໍ້ມູນ</span>
+                            </button>
+                        </div>
+                    </div>
+
                 </form>
             </div>
+
         </div>
     </div>
 </div>
+
+<!-- Custom CSS -->
+ <link rel="stylesheet" href="<?= $base_url ?>assets/css/profile.css">
+
+
+<!-- JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Password Toggle Functionality
+    document.querySelectorAll('.password-toggle').forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const input = document.getElementById(targetId);
+            const icon = this.querySelector('i');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye';
+            }
+        });
+    });
+    
+    // Form Validation
+    const form = document.getElementById('profileForm');
+    const newPasswordInput = document.getElementById('new_password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const currentPasswordInput = document.getElementById('current_password');
+    
+    // Real-time password validation
+    function validatePasswords() {
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        if (newPassword && confirmPassword) {
+            if (newPassword !== confirmPassword) {
+                confirmPasswordInput.setCustomValidity('ລະຫັດຜ່ານບໍ່ຕົງກັນ');
+            } else {
+                confirmPasswordInput.setCustomValidity('');
+            }
+        }
+        
+        if (newPassword && newPassword.length < 6) {
+            newPasswordInput.setCustomValidity('ລະຫັດຜ່ານຕ້ອງມີຢ່າງນ້ອຍ 6 ຕົວອັກສອນ');
+        } else {
+            newPasswordInput.setCustomValidity('');
+        }
+    }
+    
+    newPasswordInput.addEventListener('input', validatePasswords);
+    confirmPasswordInput.addEventListener('input', validatePasswords);
+    
+    // Check if password change is required
+    function checkPasswordRequirement() {
+        const newPassword = newPasswordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        const currentPassword = currentPasswordInput.value;
+        
+        if (newPassword || confirmPassword) {
+            currentPasswordInput.required = true;
+            newPasswordInput.required = true;
+            confirmPasswordInput.required = true;
+        } else {
+            currentPasswordInput.required = false;
+            newPasswordInput.required = false;
+            confirmPasswordInput.required = false;
+        }
+    }
+    
+    [newPasswordInput, confirmPasswordInput, currentPasswordInput].forEach(input => {
+        input.addEventListener('input', checkPasswordRequirement);
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        // Disable submit button and show loading
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>ກຳລັງບັນທຶກ...</span>';
+        
+        // Re-enable after 3 seconds (in case of errors)
+        setTimeout(() => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> <span>ບັນທຶກຂໍ້ມູນ</span>';
+        }, 3000);
+    });
+    
+    // Auto-hide alerts after 5 seconds
+    setTimeout(() => {
+        document.querySelectorAll('.alert').forEach(alert => {
+            alert.style.transition = 'all 0.5s ease';
+            alert.style.opacity = '0';
+            alert.style.transform = 'translateY(-20px)';
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 500);
+        });
+    }, 5000);
+    
+    // Smooth scroll to error messages
+    const errorAlert = document.querySelector('.alert-error');
+    if (errorAlert) {
+        errorAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+});
+</script>
 
 <?php require_once '../includes/footer.php'; ?>

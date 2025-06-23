@@ -219,7 +219,7 @@ try {
                         <a href="<?= $base_url ?>auth/register.php" class="btn-primary inline-flex items-center justify-center px-6 py-3">
                             <i class="fas fa-user-plus mr-2"></i> ເລີ່ມໃຊ້ງານ
                         </a>
-                        <a href="<?= $base_url ?>temples/" class="px-6 py-3 border-2 border-white text-white hover:bg-white hover:text-amber-700 rounded-lg font-medium transition inline-flex items-center justify-center">
+                        <a href="<?= $base_url ?>all-temples.php" class="px-6 py-3 border-2 border-white text-white hover:bg-white hover:text-amber-700 rounded-lg font-medium transition inline-flex items-center justify-center">
                             <i class="fas fa-search mr-2"></i> ຄົ້ນຫາວັດ
                         </a>
                     <?php else: ?>
