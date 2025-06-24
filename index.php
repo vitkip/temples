@@ -148,9 +148,9 @@ try {
             <i class="fas fa-place-of-worship"></i>
             <span>ວັດ</span>
         </a>
-        <a href="<?= $base_url ?>events/" class="mobile-nav-item">
-            <i class="fas fa-calendar-alt"></i>
-            <span>ກິດຈະກໍາ</span>
+      <a href="<?= $base_url ?>auth/register.php" class="mobile-nav-item">
+            <i class="fas fa-user-plus"></i>
+            <span>ລົງທະບຽນ</span>
         </a>
         <?php if ($logged_in): ?>
         <a href="<?= $base_url ?>dashboard.php" class="mobile-nav-item">
@@ -181,9 +181,7 @@ try {
                     <a href="<?= $base_url ?>all-temples.php" class="text-gray-600 hover:text-amber-600 px-3 py-2 rounded-md text-sm font-medium transition">
                         <i class="fas fa-place-of-worship mr-1"></i> ວັດ
                     </a>
-                    <a href="<?= $base_url ?>events/" class="text-gray-600 hover:text-amber-600 px-3 py-2 rounded-md text-sm font-medium transition">
-                        <i class="fas fa-calendar-alt mr-1"></i> ກິດຈະກໍາ
-                    </a>
+                    
                     <?php if ($logged_in): ?>
                         <a href="<?= $base_url ?>dashboard.php" class="text-amber-700 hover:text-amber-800 px-3 py-2 rounded-md text-sm font-medium">
                             <i class="fas fa-tachometer-alt mr-1"></i> Dashboard
@@ -628,8 +626,8 @@ try {
                 <div>
                     <h3 class="text-lg font-semibold mb-4">ລິ້ງຄ໌ດ່ວນ</h3>
                     <ul class="space-y-2">
-                        <li><a href="<?= $base_url ?>temples/" class="text-gray-300 hover:text-amber-400 transition">ລາຍຊື່ວັດ</a></li>
-                        <li><a href="<?= $base_url ?>events/" class="text-gray-300 hover:text-amber-400 transition">ກິດຈະກໍາ</a></li>
+                        <li><a href="<?= $base_url ?>all-temples.php" class="text-gray-300 hover:text-amber-400 transition">ລາຍຊື່ວັດ</a></li>
+                        <li><a href="<?= $base_url ?>./auth/register.php" class="text-gray-300 hover:text-amber-400 transition">ລົງທະບຽນໃຊ້ງານ</a></li>
                         <li><a href="<?= $base_url ?>about.php" class="text-gray-300 hover:text-amber-400 transition">ກ່ຽວກັບລະບົບ</a></li>
                         <li><a href="<?= $base_url ?>contact.php" class="text-gray-300 hover:text-amber-400 transition">ຕິດຕໍ່ພວກເຮົາ</a></li>
                     </ul>

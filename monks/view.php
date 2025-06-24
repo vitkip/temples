@@ -180,7 +180,13 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
                 <?php endif; ?>
               </p>
             </div>
-            
+            <div>
+              <span class="info-label">ລະຫັດບັດປະຊາຊົນ</span>
+              <p class="info-value flex items-center">
+                <i class="fas fa-id-card text-amber-500 mr-2"></i>
+                 <?= htmlspecialchars($monk['id_card'] ?? '-') ?>
+              </p>
+            </div>
             <div>
               <span class="info-label">ວັນທີປັບປຸງຂໍ້ມູນລ່າສຸດ</span>
               <p class="info-value flex items-center">

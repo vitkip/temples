@@ -168,9 +168,9 @@ try {
             <i class="fas fa-place-of-worship"></i>
             <span>ວັດ</span>
         </a>
-        <a href="<?= $base_url ?>events/" class="mobile-nav-item">
-            <i class="fas fa-calendar-alt"></i>
-            <span>ກິດຈະກໍາ</span>
+        <a href="<?= $base_url ?>auth/register.php" class="mobile-nav-item">
+            <i class="fas fa-user-plus"></i>
+            <span>ລົງທະບຽນ</span>
         </a>
         <?php if ($logged_in): ?>
         <a href="<?= $base_url ?>dashboard.php" class="mobile-nav-item">
@@ -178,7 +178,7 @@ try {
             <span>ແຜງຄວບຄຸມ</span>
         </a>
         <?php else: ?>
-        <a href="<?= $base_url ?>auth/login.php" class="mobile-nav-item">
+        <a href="<?= $base_url ?>auth/" class="mobile-nav-item">
             <i class="fas fa-sign-in-alt"></i>
             <span>ເຂົ້າລະບົບ</span>
         </a>
@@ -201,8 +201,8 @@ try {
                         <a href="<?= $base_url ?>all-temples.php" class="border-b-2 border-amber-500 text-amber-600 inline-flex items-center px-1 pt-1 text-sm font-medium">
                             ວັດທັງໝົດ
                         </a>
-                        <a href="<?= $base_url ?>events/" class="text-gray-900 hover:text-amber-600 inline-flex items-center px-1 pt-1 text-sm font-medium">
-                            ກິດຈະກໍາ
+                        <a href="<?= $base_url ?>auth/register.php" class="text-gray-900 hover:text-amber-600 inline-flex items-center px-1 pt-1 text-sm font-medium">
+                            ລົງທະບຽນ
                         </a>
                         <a href="<?= $base_url ?>about.php" class="text-gray-900 hover:text-amber-600 inline-flex items-center px-1 pt-1 text-sm font-medium">
                             ກ່ຽວກັບໂຄງການ

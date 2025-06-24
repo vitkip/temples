@@ -1,22 +1,19 @@
 <?php
-// filepath: c:\xampp\htdocs\temples\monks\index.php
-ob_start(); // เพิ่ม output buffering เพื่อป้องกัน headers already sent
+ob_start();
 
 $page_title = 'ຈັດການພະສົງ';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
 require_once '../includes/header.php';
 
-// ກວດສອບການຕັ້ງຄ່າຕົວກອງ temple_id
 $temple_filter = isset($_GET['temple_id']) ? (int)$_GET['temple_id'] : null;
 $province_filter = isset($_GET['province_id']) ? (int)$_GET['province_id'] : null;
+$district_filter = isset($_GET['district_id']) ? (int)$_GET['district_id'] : null;
 
-// ກວດສອບສິດທິຜູ້ໃຊ້
 $user_role = $_SESSION['user']['role'];
 $user_temple_id = $_SESSION['user']['temple_id'] ?? null;
 $user_id = $_SESSION['user']['id'];
 
-// ກຽມຄິວລີຕາມຕົວກອງ ແລະ ສິດທິຂອງຜູ່ໃຊ້
 $params = [];
 $query = "SELECT m.*, t.name as temple_name, t.province_id, p.province_name 
           FROM monks m 
@@ -24,68 +21,85 @@ $query = "SELECT m.*, t.name as temple_name, t.province_id, p.province_name
           LEFT JOIN provinces p ON t.province_id = p.province_id
           WHERE 1=1";
 
-// ກຳນົດການເຂົ້າເຖິງຂໍໍາູນຕາມບົດບາດ
+// Role-based filtering
 if ($user_role === 'admin') {
-    // admin ສາມາດເບິ່ງພະສົງໃນວັດຂອງຕົນເອງເທົ່ານັ້ນ
     $query .= " AND m.temple_id = ?";
     $params[] = $user_temple_id;
 } elseif ($user_role === 'province_admin') {
-    // province_admin ສາມາດເບິ່ງພະສົງໃນແຂວງທີ່ຮັບຜິດຊອບເທົ່ານັ້ນ
     $query .= " AND t.province_id IN (SELECT province_id FROM user_province_access WHERE user_id = ?)";
-
     $params[] = $user_id;
 }
-// superadmin ສາມາດເບິ່ງທັງໝົດ (ບໍ່ມີເງື່ອນໄຂເພີ່ມ)
 
-// ນໍາໃຊ້ຕົວກອງແຂວງ ຖ້າມີການລະບຸ
+// Filters
 if ($province_filter) {
     $query .= " AND t.province_id = ?";
     $params[] = $province_filter;
 }
 
-// ນໍາໃຊ້ຕົວກອງວັດ ຖ້າມີການລະບຸ
 if ($temple_filter) {
     $query .= " AND m.temple_id = ?";
     $params[] = $temple_filter;
 }
 
-// ນໍາໃຊ້ການຄົ້ນຫາຖ້າມີການລະບຸ
-if (isset($_GET['search']) && !empty($_GET['search'])) {
+if (!empty($_GET['search'])) {
     $search = '%' . $_GET['search'] . '%';
-    $query .= " AND (m.name LIKE ? OR m.lay_name LIKE ?)"; // แก้ไขจาก buddhist_name เป็น lay_name
+    $query .= " AND (m.name LIKE ? OR m.lay_name LIKE ?)";
     $params[] = $search;
     $params[] = $search;
 }
 
-// ນໍາໃຊ້ຕົວກອງສະຖານະຖ້າມີການລະບຸ
 $status_filter = isset($_GET['status']) ? $_GET['status'] : 'all';
 if ($status_filter !== 'all') {
     $query .= " AND m.status = ?";
     $params[] = $status_filter;
 }
 
-// ຕົວກອງແຂວງເກີດ
 if (!empty($_GET['birth_province'])) {
     $query .= " AND m.birth_province LIKE ?";
     $params[] = "%" . $_GET['birth_province'] . "%";
 }
 
-// ຈັດລຽງຕາມພັນສາ (ຫຼຸດລົງ) ແລະ ຊື່
+if (!empty($_GET['pansa'])) {
+    switch ($_GET['pansa']) {
+        case '0-5':
+            $query .= " AND m.pansa BETWEEN 0 AND 5";
+            break;
+        case '6-10':
+            $query .= " AND m.pansa BETWEEN 6 AND 10";
+            break;
+        case '11-20':
+            $query .= " AND m.pansa BETWEEN 11 AND 20";
+            break;
+        case '21+':
+            $query .= " AND m.pansa > 20";
+            break;
+    }
+}
+
+if ($district_filter) {
+    $query .= " AND t.district_id = ?";
+    $params[] = $district_filter;
+}
+
 $query .= " ORDER BY m.pansa DESC, m.name ASC";
 
-// ປະຕິບັດຄິວລີ
+// Debug (optional)
+if (isset($_GET['debug']) && $_GET['debug'] == 1 && $user_role === 'superadmin') {
+    echo "<pre>Query: $query\nParams: ";
+    print_r($params);
+    echo "</pre>";
+}
+
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $monks = $stmt->fetchAll();
 
-// ດຶງຂໍ້ມູນແຂວງສຳລັບ dropdown ຕົວກອງ (ຖ້າຜູໃຊເປັນ superadmin)
+// Province dropdown
 $provinces = [];
 if ($user_role === 'superadmin') {
-    // superadmin ເບິ່ງແຂວງທັງໝົດ
     $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
     $provinces = $province_stmt->fetchAll();
 } elseif ($user_role === 'province_admin') {
-    // province_admin ເບິ່ງສະເພາະແຂວງທີ່ຮັບຜິດຊອບ
     $province_stmt = $pdo->prepare("
         SELECT p.province_id, p.province_name 
         FROM provinces p 
@@ -97,10 +111,9 @@ if ($user_role === 'superadmin') {
     $provinces = $province_stmt->fetchAll();
 }
 
-// ດຶງຂໍ້ມູນວັດສຳລັບ dropdown ຕົວກອງ
+// Temple dropdown
 $temples = [];
 if ($user_role === 'superadmin') {
-    // superadmin ເບິ່ງວັດທັງໝົດ
     $temple_sql = "SELECT t.id, t.name, p.province_name 
                    FROM temples t 
                    LEFT JOIN provinces p ON t.province_id = p.province_id 
@@ -109,7 +122,6 @@ if ($user_role === 'superadmin') {
     $temple_stmt = $pdo->query($temple_sql);
     $temples = $temple_stmt->fetchAll();
 } elseif ($user_role === 'admin') {
-    // admin ເບິ່ງສະເພາະວັດຂອງຕົນເອງ
     $temple_stmt = $pdo->prepare("
         SELECT t.id, t.name, p.province_name 
         FROM temples t 
@@ -119,7 +131,6 @@ if ($user_role === 'superadmin') {
     $temple_stmt->execute([$user_temple_id]);
     $temples = $temple_stmt->fetchAll();
 } elseif ($user_role === 'province_admin') {
-    // province_admin ເບິ່ງວັດໃນແຂວງທີ່ຮັບຜິດຊອບ
     $temple_stmt = $pdo->prepare("
         SELECT t.id, t.name, p.province_name 
         FROM temples t
@@ -132,17 +143,10 @@ if ($user_role === 'superadmin') {
     $temples = $temple_stmt->fetchAll();
 }
 
-// ກວດສອບສິດໃນການເພີ່ມ/ແກ້ໄຂພະສົງ
-$can_edit = ($user_role === 'superadmin' || $user_role === 'admin' || $user_role === 'province_admin');
-$can_export = false;
-if (isset($_SESSION['user'])) {
-    $user_role = $_SESSION['user']['role'] ?? '';
-    
-    // Superadmin, province_admin และ admin (วัด) สามารถส่งออกได้
-    if ($user_role === 'superadmin' || $user_role === 'province_admin' || $user_role === 'admin') {
-        $can_export = true;
-    }
-}
+// Permissions
+$can_edit = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
+$can_export = $can_edit;
+
 ?>
 
 <!-- เพิ่ม CSS นี้ในส่วนหัวของไฟล์ หรือในไฟล์ CSS แยก -->
@@ -203,48 +207,57 @@ if (isset($_SESSION['user'])) {
       </h2>
     </div>
     <div class="p-6">
-      <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-6 form-grid">
+      <form method="GET" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 form-grid">
         <!-- ค้นหา -->
-        <div>
+        <div class="xl:col-span-2">
           <label for="search" class="form-label">
             <i class="fas fa-search text-amber-700 mr-1"></i> ຄົ້ນຫາ
           </label>
           <input type="text" name="search" id="search" 
-                 value="<?= isset($_GET['search']) ? htmlspecialchars($_GET['search']) : '' ?>" 
-                 placeholder="ພິມຊື່ພະສົງ..." 
-                 class="form-input">
+                 value="<?= htmlspecialchars($_GET['search'] ?? '') ?>" 
+                 class="form-select" placeholder="ຄົ້ນຫາຊື່ພະ, ຊື່ແຜ່ນດິນ...">
         </div>
 
-        <!-- ตัวกรองแขวง (เฉพาะ superadmin และ province_admin) -->
-        <?php if (!empty($provinces)): ?>
+        <?php if ($user_role === 'superadmin'): ?>
+        <!-- แสดงตัวกรองแขวงเฉพาะ superadmin -->
         <div>
           <label for="province_id" class="form-label">
-            <i class="fas fa-map-marked-alt text-amber-700 mr-1"></i> ແຂວງ
+            <i class="fas fa-map-marker-alt text-amber-700 mr-1"></i> ແຂວງ
           </label>
-          <select name="province_id" id="province_id" class="form-select">
-            <option value="">-- ທັງໝົດ --</option>
-            <?php foreach($provinces as $province): ?>
+            <select name="province_id" id="province_id" class="form-select province-select" onchange="loadDistricts(this.value)">
+            <option value="">-- ທຸກແຂວງ --</option>
+            <?php foreach ($provinces as $province): ?>
             <option value="<?= $province['province_id'] ?>" <?= isset($_GET['province_id']) && $_GET['province_id'] == $province['province_id'] ? 'selected' : '' ?>>
               <?= htmlspecialchars($province['province_name']) ?>
             </option>
             <?php endforeach; ?>
           </select>
         </div>
+         <!-- เพิ่มส่วนเลือกเมือง -->
+        <div id="district-container" style="<?= isset($_GET['province_id']) && !empty($_GET['province_id']) ? '' : 'display:none;' ?>">
+          <label for="district_id" class="form-label">
+            <i class="fas fa-map text-amber-700 mr-1"></i> ເມືອງ
+          </label>
+          <select name="district_id" id="district_id" class="form-select district-select" onchange="loadTemplesByDistrict(this.value)">
+            <option value="">-- ທຸກເມືອງ --</option>
+            <!-- จะเติมด้วย JavaScript -->
+          </select>
+        </div>
         <?php endif; ?>
-        
-        <!-- ตัวกรองวัด -->
-        <?php if (!empty($temples)): ?>
+     
+        <?php if ($user_role === 'superadmin' || $user_role === 'province_admin'): ?>
+        <!-- วัด สำหรับ superadmin และ province_admin -->
         <div>
           <label for="temple_id" class="form-label">
             <i class="fas fa-place-of-worship text-amber-700 mr-1"></i> ວັດ
           </label>
-          <select name="temple_id" id="temple_id" class="form-select">
-            <option value="">-- ທັງໝົດ --</option>
-            <?php foreach($temples as $temple): ?>
+          <select name="temple_id" id="temple_id" class="form-select temple-select">
+            <option value="">-- ທຸກວັດ --</option>
+            <?php foreach ($temples as $temple): ?>
             <option value="<?= $temple['id'] ?>" <?= isset($_GET['temple_id']) && $_GET['temple_id'] == $temple['id'] ? 'selected' : '' ?>>
               <?= htmlspecialchars($temple['name']) ?>
-              <?php if (!empty($temple['province_name'])): ?>
-                (<?= htmlspecialchars($temple['province_name']) ?>)
+              <?php if ($user_role === 'superadmin'): ?>
+              <small>(<?= htmlspecialchars($temple['province_name']) ?>)</small>
               <?php endif; ?>
             </option>
             <?php endforeach; ?>
@@ -252,67 +265,76 @@ if (isset($_SESSION['user'])) {
         </div>
         <?php endif; ?>
         
-        <!-- ตัวกรองประเภทพระสงฆ์ -->
+        <!-- ສະຖານະ (ทุกบทบาทใช้ได้) -->
         <div>
-          <label for="prefix" class="form-label">
-            <i class="fas fa-user-circle text-amber-700 mr-1"></i> ສະຖານະ
+          <label for="status" class="form-label">
+            <i class="fas fa-info-circle text-amber-700 mr-1"></i> ສະຖານະ
           </label>
-          <select name="prefix" id="prefix" class="form-select">
-            <option value="">-- ສະຖານະ --</option>
-            <option value="inactive" <?= isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'selected' : '' ?>>ສິກແລ້ວ</option>
+          <select name="status" id="status" class="form-select">
+            <option value="">-- ທຸກສະຖານະ --</option>
             <option value="active" <?= isset($_GET['status']) && $_GET['status'] === 'active' ? 'selected' : '' ?>>ຍັງບວດຢູ່</option>
+            <option value="inactive" <?= isset($_GET['status']) && $_GET['status'] === 'inactive' ? 'selected' : '' ?>>ສິກແລ້ວ</option>
           </select>
         </div>
- <!-- ตัวกรองประเภทพระสงฆ์ -->
+
+        <!-- ປະເພດ (ทุกบทบาทใช้ได้) -->
         <div>
           <label for="prefix" class="form-label">
             <i class="fas fa-user-circle text-amber-700 mr-1"></i> ປະເພດ
           </label>
           <select name="prefix" id="prefix" class="form-select">
-            <option value="">-- ທັງໝົດ --</option>
+            <option value="">-- ທຸກປະເພດ --</option>
             <option value="ພຣະ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ພຣະ' ? 'selected' : '' ?>>ພຣະ</option>
             <option value="ຄຸນແມ່ຂາວ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ຄຸນແມ່ຂາວ' ? 'selected' : '' ?>>ຄຸນແມ່ຂາວ</option>
             <option value="ສ.ນ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສ.ນ' ? 'selected' : '' ?>>ສ.ນ</option>
             <option value="ສັງກະລີ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສັງກະລີ' ? 'selected' : '' ?>>ສັງກະລີ</option>
           </select>
         </div>
-        <!-- ตัวกรองแขวงเกิด -->
+
+        <!-- ແຂວງເກີດ (ทุกบทบาทใช้ได้) -->
         <div>
-            <label for="birth_province" class="form-label">
-                <i class="fas fa-baby text-amber-700 mr-1"></i> ແຂວງເກີດ
-            </label>
-            <select name="birth_province" id="birth_province" class="form-select">
-              <option value="">-- ທັງໝົດ --</option>
-              <option value="ນະຄອນຫຼວງວຽງຈັນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ນະຄອນຫຼວງວຽງຈັນ' ? 'selected' : '' ?>>ນະຄອນຫຼວງວຽງຈັນ</option>
-              <option value="ຫຼວງພະບາງ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຫຼວງພະບາງ' ? 'selected' : '' ?>>ຫຼວງພະບາງ</option>
-              <option value="ຈຳປາສັກ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຈຳປາສັກ' ? 'selected' : '' ?>>ຈຳປາສັກ</option>
-              <option value="ສະຫວັນນະເຂດ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ສະຫວັນນະເຂດ' ? 'selected' : '' ?>>ສະຫວັນນະເຂດ</option>
-              <option value="ຊຽງຂວາງ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຊຽງຂວາງ' ? 'selected' : '' ?>>ຊຽງຂວາງ</option>
-              <option value="ຫົວພັນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຫົວພັນ' ? 'selected' : '' ?>>ຫົວພັນ</option>
-              <option value="ອຸດົມໄຊ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ອຸດົມໄຊ' ? 'selected' : '' ?>>ອຸດົມໄຊ</option>
-              <option value="ບໍ່ແກ້ວ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ບໍ່ແກ້ວ' ? 'selected' : '' ?>>ບໍ່ແກ້ວ</option>
-              <option value="ຫຼວງນ້ຳທາ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຫຼວງນ້ຳທາ' ? 'selected' : '' ?>>ຫຼວງນ້ຳທາ</option>
-              <option value="ຜົ້ງສາລີ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຜົ້ງສາລີ' ? 'selected' : '' ?>>ຜົ້ງສາລີ</option>
-              <option value="ໄຊຍະບູລີ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ໄຊຍະບູລີ' ? 'selected' : '' ?>>ໄຊຍະບູລີ</option>
-              <option value="ບໍລິຄຳໄຊ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ບໍລິຄຳໄຊ' ? 'selected' : '' ?>>ບໍລິຄຳໄຊ</option>
-              <option value="ຄຳມ່ວນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ຄຳມ່ວນ' ? 'selected' : '' ?>>ຄຳມ່ວນ</option>
-              <option value="ສາລະວັນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ສາລະວັນ' ? 'selected' : '' ?>>ສາລະວັນ</option>
-              <option value="ເຊກອງ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ເຊກອງ' ? 'selected' : '' ?>>ເຊກອງ</option>
-              <option value="ອັດຕະປື" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ອັດຕະປື' ? 'selected' : '' ?>>ອັດຕະປື</option>
-              <option value="ໄຊສົມບູນ" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === 'ໄຊສົມບູນ' ? 'selected' : '' ?>>ໄຊສົມບູນ</option>
-            </select>
+          <label for="birth_province" class="form-label">
+            <i class="fas fa-child text-amber-700 mr-1"></i> ແຂວງເກີດ
+          </label>
+          <select name="birth_province" id="birth_province" class="form-select">
+            <option value="">-- ທຸກແຂວງ --</option>
+            <?php 
+            $birthProvinces = [
+              'ວຽງຈັນ', 'ຫຼວງພະບາງ', 'ສະຫວັນນະເຂດ', 'ຈໍາປາສັກ', 'ອຸດົມໄຊ', 'ບໍ່ແກ້ວ',
+              'ສາລະວັນ', 'ເຊກອງ', 'ອັດຕະປື', 'ຜົ້ງສາລີ', 'ຫົວພັນ', 'ຄໍາມ່ວນ', 'ບໍລິຄໍາໄຊ',
+              'ຫຼວງນ້ຳທາ', 'ໄຊຍະບູລີ', 'ໄຊສົມບູນ', 'ຊຽງຂວາງ'
+            ];
+            foreach ($birthProvinces as $province): 
+            ?>
+            <option value="<?= $province ?>" <?= isset($_GET['birth_province']) && $_GET['birth_province'] === $province ? 'selected' : '' ?>>
+              <?= $province ?>
+            </option>
+            <?php endforeach; ?>
+          </select>
         </div>
-        
-        <!-- ปุ่มส่งค้นหา -->
-        <div class="md:col-span-5 flex justify-end">
-          <div class="flex space-x-2 btn-group">
-            <button type="submit" class="btn btn-primary">
-              <i class="fas fa-search mr-2"></i> ຄົ້ນຫາ
-            </button>
-            <a href="<?= $base_url ?>monks/" class="btn btn-secondary flex items-center justify-center" title="ລ້າງຕົວກອງທັງໝົດ">
-              <i class="fas fa-sync-alt"></i>
-            </a>
-          </div>
+
+        <!-- ຈໍານວນພັນສາ -->
+        <div>
+          <label for="pansa" class="form-label">
+            <i class="fas fa-calendar-alt text-amber-700 mr-1"></i> ພັນສາ
+          </label>
+          <select name="pansa" id="pansa" class="form-select">
+            <option value="">-- ທຸກພັນສາ --</option>
+            <option value="0-5" <?= isset($_GET['pansa']) && $_GET['pansa'] === '0-5' ? 'selected' : '' ?>>0-5 ພັນສາ</option>
+            <option value="6-10" <?= isset($_GET['pansa']) && $_GET['pansa'] === '6-10' ? 'selected' : '' ?>>6-10 ພັນສາ</option>
+            <option value="11-20" <?= isset($_GET['pansa']) && $_GET['pansa'] === '11-20' ? 'selected' : '' ?>>11-20 ພັນສາ</option>
+            <option value="21+" <?= isset($_GET['pansa']) && $_GET['pansa'] === '21+' ? 'selected' : '' ?>>21+ ພັນສາ</option>
+          </select>
+        </div>
+
+        <!-- ປຸ່ມການກະທຳ -->
+        <div class="flex items-end gap-2 lg:col-span-1 xl:col-span-2">
+          <button type="submit" class="btn btn-primary flex-1">
+            <i class="fas fa-search"></i> ຄົ້ນຫາ
+          </button>
+          <a href="<?= $base_url ?>monks/" class="btn btn-secondary">
+            <i class="fas fa-redo"></i>
+          </a>
         </div>
       </form>
     </div>
@@ -326,7 +348,7 @@ if (isset($_SESSION['user'])) {
       <span class="font-medium">ຄຳແນະນຳສຳລັບ Superadmin:</span>
     </div>
     <p class="text-amber-600 text-sm mt-1 ml-6">
-      ທ່ານສາມາດເລືອກແຂວງເພື່ອສົ່ງອອກຂໍ້ມູນໄດ້ຈາກຕົວກອງແຂວງດ້ານເທິງ. ຖ້າບໍ່ເລືອກແຂວງ ລະບົບຈະສົ່ງອອກທຸກຂໍ້ມູນພະສົງທັງໝົດ.
+      ທ່ານສາມາດເລືອກແຂວງເພື່ອສົ່ງອອກຂໍ້ມູນໄດ້ຈາກຕົວກອງແຂວງດ້ານເທິງ. ຖ້າບໍ່ເລືອກແຂວງ ລະບົບຈະສົ່ງອອກທຸກຂໍໍາູນພະສົງທັງໝົດ.
     </p>
   </div>
   <?php endif; ?>
@@ -649,40 +671,6 @@ if (isset($_SESSION['user'])) {
   </div>
 </div>
 
-<!-- เพิ่ม animation และปรับแต่ง CSS -->
-<style>
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.2s ease-out;
-}
-
-.bg-gradient-to-r {
-  background-size: 200% 200%;
-  animation: gradientAnimation 5s ease infinite;
-}
-
-@keyframes gradientAnimation {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-.shadow-lg {
-  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.05), 0 8px 10px -6px rgba(59, 130, 246, 0.01);
-}
-
-.shadow-2xl {
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-.backdrop-blur-sm {
-  backdrop-filter: blur(4px);
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -912,19 +900,316 @@ function reloadTable() {
     table.style.opacity = '0.6';
     
     // ดึงข้อมูลใหม่
-    fetch('<?= $base_url ?>monks/get_monks_data.php?status=all')
-        .then(response => response.json())
-        .then(data => {
-            // อัพเดตตารางด้วยข้อมูลใหม่...
-            table.style.opacity = '1';
-        })
+        fetch('<?= $base_url ?>monks/get_monks_data.php?status=all')
+            .then(response => response.json())
+            .then(data => {
+                // อัพเดตตารางด้วยข้อมูลใหม่...
+                table.style.opacity = '1';
+            })
         .catch(error => {
             console.error('Error:', error);
             table.style.opacity = '1';
         });
 }
+
+// เพิ่มฟังก์ชันสำหรับแสดง loading state
+function showLoadingState(selectElement, message = 'ກຳລັງໂຫຼດຂໍ້ມູນ...') {
+  selectElement.innerHTML = `<option value="" class="loading-indicator">${message}</option>`;
+  selectElement.disabled = true;
+}
+
+// ใช้ฟังก์ชันนี้แทนการเขียนโค้ดซ้ำๆ
+function loadDistricts(provinceId) {
+  const districtContainer = document.getElementById('district-container');
+  const districtSelect = document.getElementById('district_id');
+  const templeSelect = document.getElementById('temple_id');
+  
+  // ซ่อน district dropdown และรีเซ็ต
+  if (!provinceId) {
+    districtContainer.style.display = 'none';
+    districtSelect.innerHTML = '<option value="">-- ທຸກເມືອງ --</option>';
+    
+    // โหลดวัดทั้งหมดในแขวงทั้งหมด
+    loadAllTemples();
+    return;
+  }
+  
+  // แสดง dropdown เมืองและเพิ่ม loading state
+  districtContainer.style.display = 'block';
+  showLoadingState(districtSelect);
+  
+  // ส่ง request ไปยัง API
+  fetch(`<?= $base_url ?>api/get-districts.php?province_id=${provinceId}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // เพิ่มตัวเลือกเริ่มต้น
+        districtSelect.innerHTML = '<option value="">-- ທຸກເມືອງ --</option>';
+        
+        // เพิ่มรายการเมือง
+        data.districts.forEach(district => {
+          const option = document.createElement('option');
+          option.value = district.district_id;
+          option.textContent = district.district_name;
+          
+          // ตรวจสอบค่าที่เลือกไว้ก่อนหน้า (ถ้ามี)
+          if ('<?= isset($_GET['district_id']) ? $_GET['district_id'] : '' ?>' == district.district_id) {
+            option.selected = true;
+          }
+          
+          districtSelect.appendChild(option);
+        });
+        
+        // เปิดใช้งาน dropdown
+        districtSelect.disabled = false;
+        
+        // โหลดวัดตามแขวงที่เลือก
+        loadTemplesByProvince(provinceId);
+      } else {
+        districtSelect.innerHTML = '<option value="">-- ไม่พบข้อมูล --</option>';
+        console.error('Error loading districts:', data.message);
+      }
+    })
+    .catch(error => {
+      console.error('API Error:', error);
+      districtSelect.innerHTML = '<option value="">-- เกิดข้อผิดพลาด --</option>';
+    });
+}
+
+// ฟังก์ชันโหลดวัดตามเมืองที่เลือก
+function loadTemplesByDistrict(districtId) {
+  const templeSelect = document.getElementById('temple_id');
+  const provinceId = document.getElementById('province_id').value;
+  
+  if (!districtId) {
+    // ถ้าไม่ได้เลือกเมือง ให้โหลดวัดทั้งหมดในแขวง
+    loadTemplesByProvince(provinceId);
+    return;
+  }
+  
+  // แสดงสถานะกำลังโหลด
+  templeSelect.innerHTML = '<option value="" class="loading-indicator">ກຳລັງໂຫຼດຂໍ້ມູນ...</option>';
+  templeSelect.disabled = true;
+  
+  // เพิ่ม debug info
+  console.log(`Loading temples for district ID: ${districtId}`);
+  
+  // ส่ง request ไปยัง API เพื่อดึงวัดตามเมืองที่เลือก
+  fetch(`<?= $base_url ?>api/get-temples.php?district_id=${districtId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Temple data received:', data);
+      
+      if (data.success) {
+        // เพิ่มตัวเลือกเริ่มต้น
+        templeSelect.innerHTML = '<option value="">-- ທຸກວັດ --</option>';
+        
+        // เพิ่มรายการวัด
+        if (data.temples && data.temples.length > 0) {
+          data.temples.forEach(temple => {
+            const option = document.createElement('option');
+            option.value = temple.id;
+            option.textContent = temple.name;
+            
+            templeSelect.appendChild(option);
+          });
+          
+          // เพิ่มตรงนี้: เมื่อเลือกวัด ให้ส่งฟอร์มอัตโนมัติ
+          templeSelect.addEventListener('change', function() {
+            if (this.value) {
+              // แสดงข้อความกำลังโหลด
+              showToast('ກຳລັງໂຫຼດຂໍ້ມູນພະສົງ...', 'info');
+              // ส่งฟอร์มอัตโนมัติ
+              this.closest('form').submit();
+            }
+          });
+          
+        } else {
+          templeSelect.innerHTML += '<option value="" disabled>-- ບໍ່ພົບຂໍ້ມູນວັດໃນເມືອງນີ້ --</option>';
+        }
+      } else {
+        templeSelect.innerHTML = '<option value="">-- ບໍ່ພົບຂໍ້ມູນ --</option>';
+        console.error('API reported error:', data.message);
+        showToast(`ບໍ່ສາມາດໂຫຼດຂໍ້ມູນວັດໄດ້: ${data.message}`, 'error');
+      }
+      
+      templeSelect.disabled = false;
+    })
+    .catch(error => {
+      console.error('API Error:', error);
+      templeSelect.innerHTML = '<option value="">-- ເກີດຂໍ້ຜິດພາດ --</option>';
+      templeSelect.disabled = false;
+      showToast('ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນວັດ', 'error');
+    });
+}
+
+// ฟังก์ชันโหลดวัดตามแขวง
+function loadTemplesByProvince(provinceId) {
+  if (!provinceId) return;
+  
+  const templeSelect = document.getElementById('temple_id');
+  
+  // แสดงสถานะกำลังโหลด
+  templeSelect.innerHTML = '<option value="" class="loading-indicator">ກຳລັງໂຫຼດຂໍ້ມູນ...</option>';
+  templeSelect.disabled = true;
+  
+  // เพิ่ม debug info
+  console.log(`Loading temples for province ID: ${provinceId}`);
+  
+  fetch(`<?= $base_url ?>api/get-temples.php?province_id=${provinceId}`)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Temple data received:', data); // Debug: แสดงข้อมูลที่ได้รับ
+      
+      if (data.success) {
+        templeSelect.innerHTML = '<option value="">-- ທຸກວັດ --</option>';
+        
+        if (data.temples && data.temples.length > 0) {
+          data.temples.forEach(temple => {
+            const option = document.createElement('option');
+            option.value = temple.id;
+            option.textContent = temple.name;
+            
+            if ('<?= isset($_GET['temple_id']) ? $_GET['temple_id'] : '' ?>' == temple.id) {
+              option.selected = true;
+            }
+            
+            templeSelect.appendChild(option);
+          });
+          console.log(`Added ${data.temples.length} temples to dropdown`);
+        } else {
+          console.log('No temples found for this province');
+          templeSelect.innerHTML += '<option value="" disabled>-- ບໍ່ພົບຂໍ້ມູນວັດໃນແຂວງນີ້ --</option>';
+        }
+      } else {
+        templeSelect.innerHTML = '<option value="">-- ບໍ່ພົບຂໍ້ມູນ --</option>';
+        console.error('API reported error:', data.message);
+      }
+      
+      templeSelect.disabled = false;
+    })
+    .catch(error => {
+      console.error('API Error:', error);
+      templeSelect.innerHTML = '<option value="">-- ເກີດຂໍ້ຜິດພາດ --</option>';
+      templeSelect.disabled = false;
+    });
+}
+
+// ฟังก์ชันโหลดวัดทั้งหมด
+function loadAllTemples() {
+  const templeSelect = document.getElementById('temple_id');
+  
+  // ตรวจสอบว่ามีวัดอยู่แล้วหรือไม่
+  if (templeSelect.options.length > 1) return;
+  
+  templeSelect.innerHTML = '<option value="">กำลังโหลด...</option>';
+  templeSelect.disabled = true;
+  
+  fetch(`<?= $base_url ?>api/get-temples.php`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        templeSelect.innerHTML = '<option value="">-- ທຸກວັດ --</option>';
+        
+        data.temples.forEach(temple => {
+          const option = document.createElement('option');
+          option.value = temple.id;
+          option.textContent = temple.name;
+          
+          if ('<?= isset($_GET['temple_id']) ? $_GET['temple_id'] : '' ?>' == temple.id) {
+            option.selected = true;
+          }
+          
+          templeSelect.appendChild(option);
+        });
+      } else {
+        templeSelect.innerHTML = '<option value="">-- ບໍ່ພົບຂໍ້ມູນ --</option>';
+      }
+      
+      templeSelect.disabled = false;
+    })
+    .catch(error => {
+      console.error('API Error:', error);
+      templeSelect.innerHTML = '<option value="">-- ເກີດຂໍ້ຜິດພາດ --</option>';
+      templeSelect.disabled = false;
+    });
+}
+
+// โหลดข้อมูลเริ่มต้นเมื่อหน้าเว็บโหลด
+document.addEventListener('DOMContentLoaded', function() {
+  const provinceId = '<?= isset($_GET['province_id']) ? $_GET['province_id'] : '' ?>';
+  const districtId = '<?= isset($_GET['district_id']) ? $_GET['district_id'] : '' ?>';
+  
+  // เพิ่มเติม: event listener สำหรับ temple_id
+  const templeSelect = document.getElementById('temple_id');
+  if (templeSelect) {
+    templeSelect.addEventListener('change', function() {
+      if (this.value) {
+        showToast('ກຳລັງໂຫຼດຂໍ້ມູນພະສົງ...', 'info');
+        this.closest('form').submit();
+      }
+    });
+  }
+  
+  if (provinceId) {
+    loadDistricts(provinceId);
+    
+    // เพิ่มเงื่อนไขเพื่อรอให้ district โหลดเสร็จก่อน แล้วค่อยเลือก district_id
+    if (districtId) {
+      // ตรวจสอบซ้ำทุก 100ms ว่า district dropdown พร้อมหรือยัง
+      const checkDistrictReady = setInterval(function() {
+        const districtSelect = document.getElementById('district_id');
+        if (districtSelect && !districtSelect.disabled && districtSelect.options.length > 1) {
+          clearInterval(checkDistrictReady);
+          districtSelect.value = districtId;
+          loadTemplesByDistrict(districtId);
+        }
+      }, 100);
+      
+      // ตั้งเวลายกเลิกการตรวจสอบหากเกิน 5 วินาที
+      setTimeout(function() {
+        clearInterval(checkDistrictReady);
+      }, 5000);
+    }
+  }
+});
+
+// สร้าง style element และเพิ่มเข้าไปใน DOM
+const styleTag = document.createElement('style');
+styleTag.innerHTML = `
+  .loading-indicator {
+    position: relative;
+    padding-left: 25px;
+  }
+  .loading-indicator:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 15px;
+    height: 15px;
+    margin-top: -7px;
+    border: 2px solid #D4A762;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: loader-spin 0.6s linear infinite;
+  }
+  @keyframes loader-spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(styleTag);
 </script>
 <?php
 ob_end_flush();
 require_once '../includes/footer.php';
-?>

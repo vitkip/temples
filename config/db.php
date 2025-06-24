@@ -1,26 +1,65 @@
 <?php
-// ตรวจสอบว่ามีการเริ่มต้น session หรือไม่
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+// config/db.php - Production Version
+$environment = $_SERVER['SERVER_NAME'] ?? 'localhost';
+
+if ($environment === 'localhost' || $environment === '127.0.0.1') {
+    // Development Environment
+    $host = 'localhost';
+    $dbname = 'tp-system';
+    $username = 'root';
+    $password = '';
+    $charset = 'utf8mb4';
+    
+    // Enable error reporting for development
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+    
+} else {
+    // Production Environment
+    $host = $_SERVER['DB_HOST'] ?? 'localhost';
+    $dbname = $_SERVER['DB_NAME'] ?? 'temples_production';
+    $username = $_SERVER['DB_USER'] ?? 'temples_user';
+    $password = $_SERVER['DB_PASS'] ?? '';
+    $charset = 'utf8mb4';
+    
+    // Disable error display for production
+    error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
+    ini_set('display_errors', 0);
+    ini_set('log_errors', 1);
+    ini_set('error_log', __DIR__ . '/../logs/error.log');
 }
 
-$host = 'localhost';            // ຊື່ເຄື່ອງລ້ຽງ
-$db   = 'tp-system';            // ຊື່ຖານຂໍ້ມູນ
-$user = 'root';                 // ຊື່ຜູ້ໃຊ້ MySQL
-$pass = '';                     // ລະຫັດຜ່ານ (ຄ່າປົກກະຕິໃນ XAMPP ຄືວ່າງ)
-$charset = 'utf8mb4';           // ຊຸດຕົວອັກສອນ
+$dsn = "mysql:host={$host};dbname={$dbname};charset={$charset}";
 
-$dsn = "mysql:host=$host;dbname=$db;charset=$charset";
 $options = [
-    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION, // ໃຫ້ໂຊ້ຄວາມຜິດພາດ
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,       // ໃຫ້ດຶງຄ່າໄດ້ງ່າຍ
-    PDO::ATTR_EMULATE_PREPARES   => false,                  // ປ້ອງກັນ SQL Injection
+    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES   => false,
+    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES {$charset} COLLATE utf8mb4_unicode_ci"
 ];
 
 try {
-    $pdo = new PDO($dsn, $user, $pass, $options);
-} catch (\PDOException $e) {
-    echo "ການເຊື່ອມຕໍ່ຖານຂໍ້ມູນຜິດພາດ: " . $e->getMessage();
-    exit;
+    $pdo = new PDO($dsn, $username, $password, $options);
+    
+    // Set timezone
+    $pdo->exec("SET time_zone = '+07:00'");
+    
+} catch (PDOException $e) {
+    // Log error instead of displaying it
+    error_log("Database connection failed: " . $e->getMessage());
+    
+    if ($environment === 'localhost') {
+        die("Database connection failed: " . $e->getMessage());
+    } else {
+        die("ລະບົບກໍາລັງປະສົບບັນຫາ ກະລຸນາລອງໃໝ່ໃນພາຍຫຼັງ");
+    }
+}
+
+// Security headers
+if ($environment !== 'localhost') {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('X-XSS-Protection: 1; mode=block');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
 }
 ?>

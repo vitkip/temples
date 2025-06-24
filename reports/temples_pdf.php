@@ -122,7 +122,7 @@ function fetchTempleData($pdo, $where_clause, $params) {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         error_log("Database error in fetchTempleData: " . $e->getMessage());
-        throw new Exception("เกิดข้อผิดพลาดในการดึงข้อมูล");
+        throw new Exception("ເກີດຂໍ້ຜິດພາດໃນການດຶງຂໍ້ມູນ: " . $e->getMessage());
     }
 }
 
@@ -139,7 +139,7 @@ try {
     $temples = fetchTempleData($pdo, $conditions['where_clause'], $conditions['params']);
     
     if (empty($temples)) {
-        throw new Exception("ไม่พบข้อมูลที่ตรงตามเงื่อนไข");
+        throw new Exception("ບໍ່ມີວັດໃນແຂວງທີ່ເລືອກ");
     }
 
 } catch (Exception $e) {
@@ -351,7 +351,7 @@ $pdf = new MYPDF('L', 'mm', 'A4', true, 'UTF-8');
 // ตั้งค่าเอกสาร
 $pdf->SetCreator('Temple Management System v2.0');
 $pdf->SetAuthor($_SESSION['user']['username'] ?? 'System Admin');
-$pdf->SetTitle('รายงานข้อมูลวัด - ' . date('d/m/Y'));
+$pdf->SetTitle('ລາຍງານຂໍ້ມູນວັດ - ' . date('d/m/Y'));
 $pdf->SetSubject('Temple Data Export Report');
 $pdf->SetKeywords('Temple, Report, PDF, Management');
 
@@ -410,7 +410,7 @@ try {
     $pdf->Output($filename, 'D');
 } catch (Exception $e) {
     error_log("PDF Output Error: " . $e->getMessage());
-    die("เกิดข้อผิดพลาดในการสร้างไฟล์ PDF");
+    die("ເກີດຂໍ້ຜິດພາດໃນການສ້າງຟາຍ PDF");
 }
 
 exit;

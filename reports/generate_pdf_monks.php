@@ -177,6 +177,7 @@ if ($status_filter) {
 
 // กำหนด path สำหรับฟอนต์
 $font_path = dirname(__FILE__) . '/../assets/fonts/Phetsarathot.ttf';
+$font_path_bold = dirname(__FILE__) . '/../assets/fonts/Phetsarathotb.ttf';  // ไฟล์แบบ Bold (ถ้ามี)
 
 // ตรวจสอบว่ามีไฟล์ฟอนต์อยู่จริง
 if (!file_exists($font_path)) {
@@ -186,7 +187,7 @@ if (!file_exists($font_path)) {
 // สร้างอ็อบเจ็กต์ PDF
 $pdf = new TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
 
-// เพิ่มฟอนต์และเก็บชื่อฟอนต์ที่ได้
+// เพิ่มฟอนต์ปกติ
 $fontname = TCPDF_FONTS::addTTFfont(
     $font_path,
     'TrueTypeUnicode',
@@ -194,9 +195,14 @@ $fontname = TCPDF_FONTS::addTTFfont(
     96
 );
 
-if (!$fontname) {
-    // ถ้าไม่สามารถเพิ่มฟอนต์ได้ ให้ใช้ฟอนต์ default
-    $fontname = 'dejavusans';
+// เพิ่มฟอนต์ตัวหนาถ้ามีไฟล์
+if (file_exists($font_path_bold)) {
+    $fontname_bold = TCPDF_FONTS::addTTFfont(
+        $font_path_bold,
+        'TrueTypeUnicode',
+        'B',
+        96
+    );
 }
 
 // ตั้งค่าข้อมูลเอกสาร
