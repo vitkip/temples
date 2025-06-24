@@ -1,153 +1,101 @@
 <?php
 ob_start();
+session_start();
 
-$page_title = 'ຈັດການພະສົງ';
+$page_title = 'ຈັດການຂໍ້ມູນພະສົງ';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
 require_once '../includes/header.php';
 
-$temple_filter = isset($_GET['temple_id']) ? (int)$_GET['temple_id'] : null;
-$province_filter = isset($_GET['province_id']) ? (int)$_GET['province_id'] : null;
-$district_filter = isset($_GET['district_id']) ? (int)$_GET['district_id'] : null;
+// ตรวจสอบการเข้าสู่ระบบ
+if (!isset($_SESSION['user'])) {
+    header('Location: ' . $base_url . 'login.php');
+    exit;
+}
 
+// ดึงข้อมูลผู้ใช้จาก session
 $user_role = $_SESSION['user']['role'];
-$user_temple_id = $_SESSION['user']['temple_id'] ?? null;
 $user_id = $_SESSION['user']['id'];
+$user_temple_id = $_SESSION['user']['temple_id'] ?? null;
 
+// รับค่าตัวกรองจาก GET
+$province_filter = isset($_GET['province_id']) && is_numeric($_GET['province_id']) ? (int)$_GET['province_id'] : null;
+$district_filter = isset($_GET['district_id']) && is_numeric($_GET['district_id']) ? (int)$_GET['district_id'] : null;
+$temple_filter = isset($_GET['temple_id']) && is_numeric($_GET['temple_id']) ? (int)$_GET['temple_id'] : null;
+$search_term = isset($_GET['search']) ? trim($_GET['search']) : '';
+$status_filter = isset($_GET['status']) ? $_GET['status'] : '';
+$pansa_filter = isset($_GET['pansa']) ? $_GET['pansa'] : '';
+
+// เริ่มสร้าง query
 $params = [];
-$query = "SELECT m.*, t.name as temple_name, t.province_id, p.province_name 
+$query = "SELECT m.*, t.name as temple_name, p.province_name 
           FROM monks m 
           LEFT JOIN temples t ON m.temple_id = t.id 
           LEFT JOIN provinces p ON t.province_id = p.province_id
           WHERE 1=1";
 
-// Role-based filtering
+// การกรองตามสิทธิ์ผู้ใช้
 if ($user_role === 'admin') {
     $query .= " AND m.temple_id = ?";
     $params[] = $user_temple_id;
 } elseif ($user_role === 'province_admin') {
     $query .= " AND t.province_id IN (SELECT province_id FROM user_province_access WHERE user_id = ?)";
+
     $params[] = $user_id;
 }
 
-// Filters
+// การกรองจากฟอร์ม
 if ($province_filter) {
     $query .= " AND t.province_id = ?";
     $params[] = $province_filter;
 }
-
-if ($temple_filter) {
-    $query .= " AND m.temple_id = ?";
-    $params[] = $temple_filter;
-}
-
-if (!empty($_GET['search'])) {
-    $search = '%' . $_GET['search'] . '%';
-    $query .= " AND (m.name LIKE ? OR m.lay_name LIKE ?)";
-    $params[] = $search;
-    $params[] = $search;
-}
-
-$status_filter = isset($_GET['status']) ? $_GET['status'] : 'all';
-if ($status_filter !== 'all') {
-    $query .= " AND m.status = ?";
-    $params[] = $status_filter;
-}
-
-if (!empty($_GET['birth_province'])) {
-    $query .= " AND m.birth_province LIKE ?";
-    $params[] = "%" . $_GET['birth_province'] . "%";
-}
-
-if (!empty($_GET['pansa'])) {
-    switch ($_GET['pansa']) {
-        case '0-5':
-            $query .= " AND m.pansa BETWEEN 0 AND 5";
-            break;
-        case '6-10':
-            $query .= " AND m.pansa BETWEEN 6 AND 10";
-            break;
-        case '11-20':
-            $query .= " AND m.pansa BETWEEN 11 AND 20";
-            break;
-        case '21+':
-            $query .= " AND m.pansa > 20";
-            break;
-    }
-}
-
 if ($district_filter) {
     $query .= " AND t.district_id = ?";
     $params[] = $district_filter;
 }
-
-$query .= " ORDER BY m.pansa DESC, m.name ASC";
-
-// Debug (optional)
-if (isset($_GET['debug']) && $_GET['debug'] == 1 && $user_role === 'superadmin') {
-    echo "<pre>Query: $query\nParams: ";
-    print_r($params);
-    echo "</pre>";
+if ($temple_filter) {
+    $query .= " AND m.temple_id = ?";
+    $params[] = $temple_filter;
 }
+if ($search_term) {
+    $query .= " AND (m.name LIKE ? OR m.lay_name LIKE ?)";
+    $params[] = "%$search_term%";
+    $params[] = "%$search_term%";
+}
+if ($status_filter) {
+    $query .= " AND m.status = ?";
+    $params[] = $status_filter;
+}
+if ($pansa_filter) {
+    switch ($pansa_filter) {
+        case '0-5': $query .= " AND m.pansa BETWEEN 0 AND 5"; break;
+        case '6-10': $query .= " AND m.pansa BETWEEN 6 AND 10"; break;
+        case '11-20': $query .= " AND m.pansa BETWEEN 11 AND 20"; break;
+        case '21+': $query .= " AND m.pansa > 20"; break;
+    }
+}
+
+$query .= " ORDER BY m.created_at DESC";
 
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
-$monks = $stmt->fetchAll();
+$monks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Province dropdown
+// ดึงข้อมูลสำหรับ dropdown
 $provinces = [];
 if ($user_role === 'superadmin') {
-    $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
-    $provinces = $province_stmt->fetchAll();
+    $provinces = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name")->fetchAll(PDO::FETCH_ASSOC);
 } elseif ($user_role === 'province_admin') {
-    $province_stmt = $pdo->prepare("
-        SELECT p.province_id, p.province_name 
-        FROM provinces p 
-        JOIN user_province_access upa ON p.province_id = upa.province_id 
-        WHERE upa.user_id = ? 
-        ORDER BY p.province_name
-    ");
-    $province_stmt->execute([$user_id]);
-    $provinces = $province_stmt->fetchAll();
+    $stmt = $pdo->prepare("SELECT p.province_id, p.province_name FROM provinces p JOIN user_province_access upa ON p.province_id = upa.province_id WHERE upa.user_id = ? ORDER BY p.province_name");
+    $stmt->execute([$user_id]);
+    $provinces = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
-// Temple dropdown
-$temples = [];
-if ($user_role === 'superadmin') {
-    $temple_sql = "SELECT t.id, t.name, p.province_name 
-                   FROM temples t 
-                   LEFT JOIN provinces p ON t.province_id = p.province_id 
-                   WHERE t.status = 'active' 
-                   ORDER BY p.province_name, t.name";
-    $temple_stmt = $pdo->query($temple_sql);
-    $temples = $temple_stmt->fetchAll();
-} elseif ($user_role === 'admin') {
-    $temple_stmt = $pdo->prepare("
-        SELECT t.id, t.name, p.province_name 
-        FROM temples t 
-        LEFT JOIN provinces p ON t.province_id = p.province_id 
-        WHERE t.id = ?
-    ");
-    $temple_stmt->execute([$user_temple_id]);
-    $temples = $temple_stmt->fetchAll();
-} elseif ($user_role === 'province_admin') {
-    $temple_stmt = $pdo->prepare("
-        SELECT t.id, t.name, p.province_name 
-        FROM temples t
-        JOIN provinces p ON t.province_id = p.province_id
-        JOIN user_province_access upa ON p.province_id = upa.province_id
-        WHERE upa.user_id = ? AND t.status = 'active'
-        ORDER BY p.province_name, t.name
-    ");
-    $temple_stmt->execute([$user_id]);
-    $temples = $temple_stmt->fetchAll();
-}
-
-// Permissions
+$can_add = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
 $can_edit = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
-$can_export = $can_edit;
-
+$can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
 ?>
+
 
 <!-- เพิ่ม CSS นี้ในส่วนหัวของไฟล์ หรือในไฟล์ CSS แยก -->
  <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
