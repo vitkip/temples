@@ -78,7 +78,7 @@ if (isset($_GET['ajax'])) {
         $user_id = (int)$_POST['user_id'];
         $provinces = isset($_POST['provinces']) ? $_POST['provinces'] : [];
         
-        // ກວດສອບວ່າຜູ້ໃຊ້ມີບົດບາດເປັນ province_admin ຫຼືບໍ່
+        // ກວດສອບວ່າຜູໃຊ້ມີບົດບາດເປັນ province_admin ຫຼືບໍ່
         $user_stmt = $pdo->prepare("SELECT id FROM users WHERE id = ? AND role = 'province_admin'");
         $user_stmt->execute([$user_id]);
         if (!$user_stmt->fetch()) {

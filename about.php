@@ -8,6 +8,15 @@ require_once 'config/base_url.php';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <meta name="description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
+    <meta name="keywords" content="ວັດ, ລະບົບຈັດການວັດ, ພຣະສົງ, ພຣະສົງລາວ ກິດຈະກໍາທາງສາສນາ">
+    <meta name="robots" content="index, follow">
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="laotemples - ລະບົບຈັດການຂໍ້ມູນວັດ">
+    <meta property="og:description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
+    <meta property="og:image" content="https://laotemples.com/assets/images/og-image.jpg">
+    <meta property="og:url" content="https://laotemples.com">
+    <link rel="icon" href="<?= $base_url ?>assets/images/favicon.png" type="image/x-icon">
     <title>ຄູ່ມືການໃຊ້ງານ - ລະບົບຈັດການວັດ</title>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">

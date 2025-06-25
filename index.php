@@ -117,6 +117,16 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#B08542">
     <meta name="description" content="<?= htmlspecialchars($site_description) ?>">
+    <meta name="description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
+    <meta name="keywords" content="ວັດ, ລະບົບຈັດການວັດ, ພຣະສົງ, ພຣະສົງລາວ ກິດຈະກໍາທາງສາສນາ">
+    <meta name="robots" content="index, follow">
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="laotemples - ລະບົບຈັດການຂໍ້ມູນວັດ">
+    <meta property="og:description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
+    <meta property="og:image" content="https://laotemples.com/assets/images/og-image.jpg">
+    <meta property="og:url" content="https://laotemples.com">
+    <link rel="icon" href="<?= $base_url ?>assets/images/favicon.png" type="image/x-icon">
+    <title>ລະບົບຈັດການຂໍ້ມູນວັດ - <?= $page_title ?? 'ໜ້າຫຼັກ' ?></title>
     <title><?= htmlspecialchars($site_name) ?></title>
     
     <!-- Preload critical fonts -->

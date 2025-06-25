@@ -1,6 +1,7 @@
 <?php
 // filepath: c:\xampp\htdocs\temples\users\add.php
 ob_start();
+session_start();
 
 $page_title = 'ເພີ່ມຜູ້ໃຊ້ໃໝ່';
 require_once '../config/db.php';

@@ -85,13 +85,13 @@ try {
     $total_temples = count($temples);
     
     // ดึงรายชื่อจังหวัดทั้งหมด
-    $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces WHERE status = 'active' ORDER BY province_name");
+    $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
     $provinces = $province_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     // ดึงรายชื่ออำเภอตามจังหวัดที่เลือก
     $districts = [];
     if (!empty($province)) {
-        $district_stmt = $pdo->prepare("SELECT district_id, district_name FROM districts WHERE province_id = ? AND status = 'active' ORDER BY district_name");
+        $district_stmt = $pdo->prepare("SELECT district_id, district_name FROM districts WHERE province_id = ? ORDER BY district_name");
         $district_stmt->execute([$province]);
         $districts = $district_stmt->fetchAll();
     }
@@ -114,6 +114,80 @@ try {
 } catch (PDOException $e) {
     $error_message = "ເກີດຂໍ້ຜິດພາດ: " . $e->getMessage();
 }
+
+// รับค่าตัวกรองจาก GET แบบละเอียด เหมือนใน monks/index.php
+$province_filter = isset($_GET['province']) && is_numeric($_GET['province']) ? (int)$_GET['province'] : null;
+$district_filter = isset($_GET['district']) && is_numeric($_GET['district']) ? (int)$_GET['district'] : null;
+$search_term = isset($_GET['search']) ? trim($_GET['search']) : '';
+$status_filter = isset($_GET['status']) ? $_GET['status'] : '';
+$sort = isset($_GET['sort']) ? $_GET['sort'] : 'name_asc';
+
+// เริ่มสร้าง query
+$params = [];
+$query = "SELECT t.*, 
+        p.province_name as province, 
+        d.district_name as district 
+        FROM temples t 
+        LEFT JOIN provinces p ON t.province_id = p.province_id 
+        LEFT JOIN districts d ON t.district_id = d.district_id 
+        WHERE t.status = 'active'";
+
+// การกรองจากฟอร์ม
+if (!empty($search_term)) {
+    $query .= " AND (t.name LIKE ? OR t.description LIKE ? OR t.abbot_name LIKE ?)";
+    $search_param = '%' . $search_term . '%';
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+}
+
+if ($province_filter) {
+    $query .= " AND t.province_id = ?";
+    $params[] = $province_filter;
+}
+// ตรวจสอบว่ามีการเลือกอำเภอหรือไม่
+$district_stmt = $pdo->prepare("SELECT district_id, district_name FROM districts WHERE province_id = ? ORDER BY district_name");
+
+if ($district_filter) {
+    $query .= " AND t.district_id = ?";
+    $params[] = $district_filter;
+}
+
+if ($status_filter) {
+    $query .= " AND t.status = ?";
+    $params[] = $status_filter;
+}
+
+// สร้างเงื่อนไขการเรียงลำดับ
+$sort_options = [
+    'name_asc' => 't.name ASC',
+    'name_desc' => 't.name DESC',
+    'date_asc' => 't.created_at ASC',
+    'date_desc' => 't.created_at DESC',
+    'province_asc' => 'p.province_name ASC, t.name ASC',
+    'province_desc' => 'p.province_name DESC, t.name ASC',
+];
+
+$order_by = isset($sort_options[$sort]) ? $sort_options[$sort] : 't.name ASC';
+$query .= " ORDER BY $order_by";
+
+// Execute the query
+$stmt = $pdo->prepare($query);
+$stmt->execute($params);
+$temples = $stmt->fetchAll();
+$total_temples = count($temples);
+
+// ดึงรายชื่อจังหวัดทั้งหมด
+$province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
+$provinces = $province_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// ดึงรายชื่ออำเภอตามจังหวัดที่เลือก
+$districts = [];
+if (!empty($province_filter)) {
+    $district_stmt = $pdo->prepare("SELECT district_id, district_name FROM districts WHERE province_id = ? ORDER BY district_name");
+    $district_stmt->execute([$province_filter]);
+    $districts = $district_stmt->fetchAll();
+}
 ?>
 
 <!DOCTYPE html>
@@ -121,6 +195,15 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+     <meta name="description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
+    <meta name="keywords" content="ວັດ, ລະບົບຈັດການວັດ, ພຣະສົງ, ພຣະສົງລາວ ກິດຈະກໍາທາງສາສນາ">
+    <meta name="robots" content="index, follow">
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="laotemples - ລະບົບຈັດການຂໍ້ມູນວັດ">
+    <meta property="og:description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
+    <meta property="og:image" content="https://laotemples.com/assets/images/og-image.jpg">
+    <meta property="og:url" content="https://laotemples.com">
+    <link rel="icon" href="<?= $base_url ?>assets/images/favicon.png" type="image/x-icon">
     <meta name="theme-color" content="#B08542">
     <title><?= $page_title ?> | <?= htmlspecialchars($site_name) ?></title>
     
@@ -889,16 +972,130 @@ try {
         }, false);
     });
 
-    // เพิ่ม keyframe animation สำหรับปุ่ม drawer
-    const style = document.createElement('style');
-    style.textContent = `
-        @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
+    // เพิ่มฟังก์ชันเหมือนใน monks/index.php
+document.addEventListener('DOMContentLoaded', function() {
+    // ฟังก์ชันสำหรับแสดง loading state
+    function showLoadingState(selectElement, message = 'ກຳລັງໂຫຼດຂໍ້ມູນ...') {
+        selectElement.innerHTML = `<option value="" class="loading-indicator">${message}</option>`;
+        selectElement.disabled = true;
+    }
+
+    // ฟังก์ชันโหลดข้อมูลเมืองตามแขวงที่เลือก
+    function loadDistricts(provinceId) {
+        const districtSelect = document.getElementById('district');
+        const mobileDistrictSelect = document.getElementById('mobile-district');
+        
+        // รีเซ็ต dropdown ถ้าไม่ได้เลือกแขวง
+        if (!provinceId) {
+            if (districtSelect) {
+                districtSelect.innerHTML = '<option value="">-- ທຸກເມືອງ --</option>';
+                districtSelect.disabled = true;
+            }
+            if (mobileDistrictSelect) {
+                mobileDistrictSelect.innerHTML = '<option value="">-- ທຸກເມືອງ --</option>';
+                mobileDistrictSelect.disabled = true;
+            }
+            return;
         }
-    `;
-    document.head.appendChild(style);
+        
+        // แสดง loading state
+        if (districtSelect) {
+            showLoadingState(districtSelect);
+        }
+        if (mobileDistrictSelect) {
+            showLoadingState(mobileDistrictSelect);
+        }
+        
+        // ส่ง request ไปยัง API
+        fetch(`<?= $base_url ?>api/get-districts.php?province_id=${provinceId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const options = '<option value="">-- ທຸກເມືອງ --</option>' + 
+                        data.districts.map(district => 
+                            `<option value="${district.district_id}">${district.district_name}</option>`
+                        ).join('');
+                    
+                    if (districtSelect) {
+                        districtSelect.innerHTML = options;
+                        districtSelect.disabled = false;
+                    }
+                    if (mobileDistrictSelect) {
+                        mobileDistrictSelect.innerHTML = options;
+                        mobileDistrictSelect.disabled = false;
+                    }
+                } else {
+                    console.error('Error loading districts:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('API Error:', error);
+                const errorOption = '<option value="">-- ເກີດຂໍ້ຜິດພາດ --</option>';
+                if (districtSelect) {
+                    districtSelect.innerHTML = errorOption;
+                }
+                if (mobileDistrictSelect) {
+                    mobileDistrictSelect.innerHTML = errorOption;
+                }
+            });
+    }
+
+    // ตั้งค่า event listeners สำหรับ province selects
+    const provinceSelect = document.getElementById('province');
+    const mobileProvinceSelect = document.getElementById('mobile-province');
+    
+    if (provinceSelect) {
+        provinceSelect.addEventListener('change', function() {
+            loadDistricts(this.value);
+        });
+    }
+    
+    if (mobileProvinceSelect) {
+        mobileProvinceSelect.addEventListener('change', function() {
+            loadDistricts(this.value);
+        });
+    }
+    
+    // โหลดข้อมูลเริ่มต้นเมื่อหน้าเว็บโหลด
+    const provinceId = '<?= $province_filter ?>';
+    if (provinceId) {
+        loadDistricts(provinceId);
+    }
+    
+    // เพิ่ม event listener สำหรับ auto-submit เมื่อเปลี่ยนค่าใน dropdown
+    const autoSubmitSelects = document.querySelectorAll('#sort, #mobile-sort');
+    autoSubmitSelects.forEach(select => {
+        select.addEventListener('change', function() {
+            this.closest('form').submit();
+        });
+    });
+});
+
+// สร้าง style element สำหรับ loading indicator
+const styleTag = document.createElement('style');
+styleTag.innerHTML = `
+    .loading-indicator {
+        position: relative;
+        padding-left: 25px;
+    }
+    .loading-indicator:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 15px;
+        height: 15px;
+        margin-top: -7px;
+        border: 2px solid #D4A762;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: loader-spin 0.6s linear infinite;
+    }
+    @keyframes loader-spin {
+        to { transform: rotate(360deg); }
+    }
+`;
+document.head.appendChild(styleTag);
     </script>
 </body>
 </html>
