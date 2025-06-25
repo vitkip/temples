@@ -1,6 +1,7 @@
 <?php
 // filepath: c:\xampp\htdocs\temples\users\edit.php
 ob_start();
+session_start();
 
 $page_title = 'ແກ້ໄຂຂໍ້ມູນຜູ້ໃຊ້';
 require_once '../config/db.php';

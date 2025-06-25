@@ -1,16 +1,14 @@
 <?php
 ob_start();
-
+session_start();
 $page_title = 'ຈັດການຜູ້ໃຊ້ງານ';
 require_once '../config/db.php';
 require_once '../config/base_url.php';
-require_once '../includes/header.php';
-
 
 // ກວດສອບວ່າຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບແລ້ວຫຼືບໍ່
 if (!isset($_SESSION['user'])) {
     $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
-    header('Location: ' . $base_url . 'login.php');
+    header('Location: ' . $base_url . 'auth/');
     exit;
 }
 
@@ -36,10 +34,15 @@ $temple_filter = isset($_GET['temple']) ? (int)$_GET['temple'] : 0;
 $role_filter = isset($_GET['role']) ? $_GET['role'] : '';
 $status_filter = isset($_GET['status']) ? $_GET['status'] : '';
 
+// ກວດສອບວ່າແທັບທີເລືອກແມ່ນ 'all_users' ຫຼື ບໍ່
+if (!isset($_GET['ajax'])) {
+    require_once '../includes/header.php';
+}
 // ເວລາຖືກຮ້ອງຂໍຂໍ້ມູນ AJAX
 if (isset($_GET['ajax'])) {
+    // อย่า require header/footer หรือ echo อะไรตรงนี้
     header('Content-Type: application/json');
-    
+
     if ($_GET['ajax'] === 'manage_provinces' && isset($_GET['user_id']) && $is_superadmin) {
         $user_id = (int)$_GET['user_id'];
         
@@ -110,6 +113,7 @@ if (isset($_GET['ajax'])) {
         }
         exit;
     }
+    exit; // สำคัญ!
 }
 
 // ສ້າງເງື່ອນໄຂ SQL ຕາມແທັບ ແລະ ຕົວກັ່ນຕອງ
@@ -170,11 +174,12 @@ if (!empty($status_filter)) {
 // ສ້າງສ່ວນ WHERE ຂອງ SQL query
 $where_clause = !empty($conditions) ? "WHERE " . implode(" AND ", $conditions) : "";
 
-// ດຶງຂໍ້ມູນຜູ້ໃຊ້
+// ດຶງຂໍ້ມູນຜູໃຊ້
 $sql = "
     SELECT 
         u.*,
         t.name as temple_name,
+        t.province_id,
         p.province_name
     FROM 
         users u
@@ -544,7 +549,7 @@ $title = "ການຈັດການຜູ້ໃຊ້";
                                     </span>
                                 <?php elseif ($user['role'] === 'province_admin'): ?>
                                     <span class="status-badge bg-indigo-100 text-indigo-800 border border-indigo-200">
-                                        <i class="fas fa-map-marker-alt"></i> ຜູ້ດູແລລະດັບແຂວງ
+                                        <i class="fas fa-map-marker-alt"></i> ຜູໍແລລະດັບແຂວງ
                                     </span>
                                 <?php else: ?>
                                     <span class="status-badge bg-gray-100 text-gray-800 border border-gray-200">
@@ -997,7 +1002,7 @@ $title = "ການຈັດການຜູ້ໃຊ້";
                     <button id="confirm-delete-btn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
                         <svg class="inline-block h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                        </svg> ລຶບຂໍ້ມູນ
+                        </svg> ລຶບຂໍໍ້ມູນ
                     </button>
                 </div>
             </div>

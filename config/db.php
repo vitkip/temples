@@ -15,15 +15,15 @@ if ($environment === 'localhost' || $environment === '127.0.0.1') {
     ini_set('display_errors', 1);
     
 } else {
-    // Production Environment
-    $host = $_SERVER['DB_HOST'] ?? 'localhost';
-    $dbname = $_SERVER['DB_NAME'] ?? 'temples_production';
-    $username = $_SERVER['DB_USER'] ?? 'temples_user';
-    $password = $_SERVER['DB_PASS'] ?? '';
+    // Production Environment - ແກ້ໄຂສ່ວນນີ້
+    $host = 'localhost'; // ໃສ່ Host ຂອງ Server ແທ້ (ສ່ວນຫຼາຍແມ່ນ 'localhost')
+    $dbname = 'your_production_db_name'; // ໃສ່ຊື່ຖານຂໍ້ມູນໃນ Server ແທ້
+    $username = 'your_production_db_user'; // ໃສ່ຊື່ຜູ້ໃຊ້ໃນ Server ແທ້
+    $password = 'your_production_db_password'; // ໃສ່ລະຫັດຜ່ານໃນ Server ແທ້
     $charset = 'utf8mb4';
     
     // Disable error display for production
-    error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
+    error_reporting(0); // ປິດການລາຍງານ Error ທັງໝົດ
     ini_set('display_errors', 0);
     ini_set('log_errors', 1);
     ini_set('error_log', __DIR__ . '/../logs/error.log');
