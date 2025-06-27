@@ -44,7 +44,7 @@ function sanitizeInput($input) {
 /**
  * ฟังก์ชันสำหรับตรวจสอบและสร้างเงื่อนไขการค้นหา
  */
-function buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $province, $status) {
+function buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $province, $district, $status) {
     $where_conditions = [];
     $params = [];
 
@@ -75,6 +75,12 @@ function buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $p
         $where_conditions[] = "p.province_name = ?";
         $params[] = $province;
     }
+    
+    // เงื่อนไขเมือง (เพิ่มเข้ามาใหม่)
+    if (!empty($district)) {
+        $where_conditions[] = "t.district_id = ?";
+        $params[] = $district;
+    }
 
     // เงื่อนไขสถานะ
     if (!empty($status)) {
@@ -91,7 +97,7 @@ function buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $p
 /**
  * ฟังก์ชันสำหรับดึงข้อมูลวัด
  */
-function fetchTempleData($pdo, $where_clause, $params) {
+function fetchTempleData($pdo, $where_clause, $params, $province_filter = false) {
     try {
         $query = "
             SELECT 
@@ -105,6 +111,7 @@ function fetchTempleData($pdo, $where_clause, $params) {
                 t.created_at,
                 p.province_name,
                 d.district_name AS district,
+                d.district_id,
                 CASE 
                     WHEN t.status = 'active' THEN 'ເປີດໃຊ້ງານ'
                     WHEN t.status = 'inactive' THEN 'ປິດໃຊ້ງານ'
@@ -114,7 +121,7 @@ function fetchTempleData($pdo, $where_clause, $params) {
             LEFT JOIN provinces p ON t.province_id = p.province_id 
             LEFT JOIN districts d ON t.district_id = d.district_id
             {$where_clause}
-            ORDER BY p.province_name, t.name ASC
+            ORDER BY " . ($province_filter ? "d.district_name, t.name" : "p.province_name, t.name") . " ASC
         ";
 
         $stmt = $pdo->prepare($query);
@@ -129,14 +136,15 @@ function fetchTempleData($pdo, $where_clause, $params) {
 // รับพารามิเตอร์การกรอง
 $search = sanitizeInput($_GET['search'] ?? '');
 $province = sanitizeInput($_GET['province'] ?? '');
+$district = sanitizeInput($_GET['district'] ?? ''); // เพิ่มบรรทัดนี้
 $status = sanitizeInput($_GET['status'] ?? '');
 
 try {
     // สร้างเงื่อนไขการค้นหา
-    $conditions = buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $province, $status);
+    $conditions = buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $province, $district, $status);
     
     // ดึงข้อมูลวัด
-    $temples = fetchTempleData($pdo, $conditions['where_clause'], $conditions['params']);
+    $temples = fetchTempleData($pdo, $conditions['where_clause'], $conditions['params'], !empty($province));
     
     if (empty($temples)) {
         throw new Exception("ບໍ່ມີວັດໃນແຂວງທີ່ເລືອກ");
@@ -295,7 +303,7 @@ class MYPDF extends TCPDF {
         $this->Ln(15);
         
         // Add title with nice formatting
-        $this->SetY($this->GetY() + 5);
+        $this->SetY($this->GetY() - 10);
         $this->SetFont('phetsarathb', 'B', 16);
         $this->SetTextColor(41, 80, 132);
         $this->Cell(0, 8, 'ສະຫຼຸບລາຍງານ', 0, 1, 'C');
@@ -314,30 +322,150 @@ class MYPDF extends TCPDF {
      * เพิ่มลายเซ็น
      */
     public function addSignature() {
-        $this->Ln(15);
+        // สร้างหน้าใหม่สำหรับลายเซ็น
+        $this->AddPage();
         
-        // ตำแหน่งลายเซ็น
-        $signature_x = $this->getPageWidth() - 80;
+        // เพิ่มระยะห่างด้านบน
+        $this->Ln(20);
+        
+        // ตำแหน่งลายเซ็น (กำหนดให้อยู่ตรงกลางหน้า)
+        $signature_x = ($this->getPageWidth() - 120) / 2;
         
         $this->SetX($signature_x);
-        $this->SetFont('phetsarathb', 'B', 12);
-        $this->Cell(60, 8, 'ຫ້ອງການບໍລິຫານ', 0, 1, 'C');
+        $this->SetFont('phetsarathb', 'B', 14);
+        $this->SetTextColor(0, 0, 0);
+        $this->Cell(120, 8, 'ຫ້ອງການບໍລິຫານ', 0, 1, 'C');
         
-        $this->Ln(15);
+        $this->Ln(30); // เพิ่มพื้นที่สำหรับลายเซ็น
         
         // เส้นสำหรับลายเซ็น
         $this->SetX($signature_x);
-        $this->Cell(60, 0, '', 'B', 1, 'C');
+        $this->Cell(120, 0, '', 'B', 1, 'C');
         
         $this->Ln(5);
         
         // ช่องใส่ชื่อ
         $this->SetX($signature_x);
-        $this->SetFont('phetsarathot', '', 10);
-        $this->Cell(60, 6, '(.................................................)', 0, 1, 'C');
+        $this->SetFont('phetsarathot', '', 12);
+        $this->Cell(120, 8, '(.................................................)', 0, 1, 'C');
+        
+        $this->Ln(5);
         
         $this->SetX($signature_x);
-        $this->Cell(60, 6, 'ວັນທີ່ ......./......./..........', 0, 1, 'C');
+        $this->Cell(120, 8, 'ວັນທີ່ ......./......./..........', 0, 1, 'C');
+    }
+
+    /**
+     * วาดส่วนหัวของเมือง
+     */
+    public function drawDistrictHeader($district_name) {
+        $this->Ln(5); // เพิ่มระยะห่าง
+        
+        // วาดแถบสีสำหรับหัวเมือง
+        $this->SetFillColor(230, 140, 30); // สีเหลืองส้มเข้ม
+        $this->SetTextColor(255, 255, 255);
+        $this->SetFont('phetsarathb', 'B', 11);
+        
+        // กำหนดตำแหน่ง X ให้เริ่มตรงกับตาราง
+        $this->SetX($this->left_margin);
+        
+        // ใช้ความกว้างเท่ากับความกว้างตารางรวม
+        $this->Cell(array_sum($this->col_widths), 8, 'ເມືອງ: '.$district_name, 0, 1, 'L', true);
+        
+        // รีเซ็ตสีกลับเป็นค่าเริ่มต้น
+        $this->SetTextColor(0, 0, 0);
+        $this->Ln(1);
+    }
+
+    /**
+     * เพิ่มสรุปท้ายรายงานแบบแยกตามเมือง
+     */
+    public function addDetailedSummary($temples, $province_filter = false) {
+        // สร้างหน้าใหม่สำหรับสรุปรายงาน
+        $this->AddPage(); // ยังคงสร้างหน้าใหม่สำหรับสรุปรายงาน
+        
+        // กรณีมีการกรองตามแขวง
+        if ($province_filter) {
+            // เพิ่มพื้นที่ว่างด้านบนเล็กน้อย
+            $this->Ln(1);
+            
+            $this->SetFont('phetsarathb', 'B', 16);
+            $this->SetTextColor(41, 80, 132);
+            $this->Cell(0, 8, 'ສະຫຼຸບລາຍງານຕາມເມືອງ', 0, 1, 'C');
+            
+            // จัดกลุ่มข้อมูลตามเมือง
+            $districts = [];
+            foreach ($temples as $temple) {
+                $district = $temple['district'] ?: 'ບໍ່ລະບຸ';
+                if (!isset($districts[$district])) {
+                    $districts[$district] = 0;
+                }
+                $districts[$district]++;
+            }
+            
+            // แสดงจำนวนวัดแยกตามเมือง
+            $this->Ln(1);
+            $this->SetFont('phetsarathot', '', 12);
+            $this->SetTextColor(50, 50, 50);
+            
+            // วาดตารางสรุป
+            $this->SetFillColor(240, 240, 240);
+            $this->Cell(100, 8, 'ເມືອງ', 1, 0, 'C', true);
+            $this->Cell(60, 8, 'ຈຳນວນວັດ', 1, 1, 'C', true);
+            
+            foreach ($districts as $district => $count) {
+                $this->Cell(100, 7, $district, 1, 0, 'L');
+                $this->Cell(60, 7, number_format($count) . ' ວັດ', 1, 1, 'C');
+            }
+            
+            // รวมทั้งหมด
+            $this->SetFont('phetsarathb', '', 12);
+            $this->Cell(100, 8, 'ລວມທັງໝົດ', 1, 0, 'R', true);
+            $this->Cell(60, 8, number_format(count($temples)) . ' ວັດ', 1, 1, 'C', true);
+            
+            // เพิ่มลายเซ็นในหน้าเดียวกัน (ใส่ที่นี่แทนการเรียก addSignature แยก)
+            $this->addSignatureSection();
+        } else {
+            // กรณีไม่ได้กรองตามแขวง ใช้สรุปแบบเดิม
+            $this->addSummary($temples);
+            
+            // เพิ่มลายเซ็นในหน้าเดียวกัน
+            $this->addSignatureSection();
+        }
+    }
+
+    /**
+     * เพิ่มส่วนลายเซ็น (ไม่สร้างหน้าใหม่)
+     */
+    public function addSignatureSection() {
+        // เพิ่มระยะห่าง
+        $this->Ln(25);
+        
+        // ตำแหน่งลายเซ็น (กำหนดให้อยู่ตรงกลางหน้า)
+        $signature_x = ($this->getPageWidth() - 120) / 2;
+        
+        $this->SetX($signature_x);
+        $this->SetFont('phetsarathb', 'B', 14);
+        $this->SetTextColor(0, 0, 0);
+        $this->Cell(120, 8, 'ຫ້ອງການບໍລິຫານ', 0, 1, 'C');
+        
+        $this->Ln(25); // เพิ่มพื้นที่สำหรับลายเซ็น
+        
+        // เส้นสำหรับลายเซ็น
+        $this->SetX($signature_x);
+        $this->Cell(120, 0, '', 'B', 1, 'C');
+        
+        $this->Ln(5);
+        
+        // ช่องใส่ชื่อ
+        $this->SetX($signature_x);
+        $this->SetFont('phetsarathot', '', 12);
+        $this->Cell(120, 8, '(.................................................)', 0, 1, 'C');
+        
+        $this->Ln(5);
+        
+        $this->SetX($signature_x);
+        $this->Cell(120, 8, 'ວັນທີ່ ......./......./..........', 0, 1, 'C');
     }
 }
 
@@ -373,6 +501,20 @@ if (!empty($search)) {
 if (!empty($province)) {
     $filter_parts[] = 'ແຂວງ: ' . $province;
 }
+if (!empty($district)) {
+    // ดึงชื่อเมืองจาก database (ทำก่อนการสร้าง conditions)
+    try {
+        $district_stmt = $pdo->prepare("SELECT district_name FROM districts WHERE district_id = ?");
+        $district_stmt->execute([$district]);
+        $district_data = $district_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($district_data) {
+            $filter_parts[] = 'ເມືອງ: ' . $district_data['district_name'];
+        }
+    } catch (PDOException $e) {
+        // ถ้าไม่สามารถดึงข้อมูลได้ ใช้แค่ ID
+        $filter_parts[] = 'ເມືອງ: ' . $district;
+    }
+}
 if (!empty($status)) {
     $status_text = ($status === 'active') ? 'ເປີດໃຊ້ງານ' : 'ປິດໃຊ້ງານ';
     $filter_parts[] = 'ສະຖານະ: ' . $status_text;
@@ -390,20 +532,51 @@ $pdf->AddPage();
 $pdf->Ln(8); // ลดจาก 25 เป็น 10 มิลลิเมตร เพื่อขยับหัวตารางขึ้น
 
 // วาดหัวตาราง (เฉพาะหน้าแรก)
-if ($pdf->getPage() == 1) {
-    $pdf->drawTableHeader();
-}
+// if ($pdf->getPage() == 1) {
+//     $pdf->drawTableHeader();
+// }
 
 // วาดข้อมูลตาราง
+$current_district = '';
+$row_counter = 1;
+
 foreach ($temples as $index => $temple) {
-    $pdf->drawDataRow($temple, $index + 1);
+    // ตรวจสอบว่ามีการเปลี่ยนเมืองหรือไม่ และมีการเลือกแขวงหรือไม่
+    if (!empty($province) && $current_district != $temple['district']) {
+        $current_district = $temple['district'];
+        
+        // วาดหัวตารางใหม่ทุกครั้งที่เปลี่ยนเมือง
+        if ($index > 0) {
+            $pdf->Ln(3);
+        }
+        
+        // วาดหัวเมือง
+        $pdf->drawDistrictHeader($current_district);
+        
+        // วาดหัวตาราง
+        $pdf->drawTableHeader();
+        
+        // รีเซ็ตเลขลำดับแถวให้เริ่มที่ 1 สำหรับแต่ละเมือง
+        $row_counter = 1;
+    } elseif ($index === 0) {
+        // กรณีแถวแรก ให้วาดหัวตารางเลย (ไม่ว่าจะมีการเลือกแขวงหรือไม่)
+        $pdf->drawTableHeader();
+        $current_district = $temple['district'];
+    }
+    
+    // วาดแถวข้อมูล
+    $pdf->drawDataRow($temple, $row_counter);
+    $row_counter++;
 }
 
-// เพิ่มสรุปรายงาน
-$pdf->addSummary($temples);
+// ไม่ต้องใส่สรุปรายงานธรรมดาถ้าเราแยกหน้าละเอียดอยู่แล้ว
+// $pdf->addSummary($temples);
 
-// เพิ่มลายเซ็น
-$pdf->addSignature();
+// เพิ่มสรุปรายงานแบบละเอียด (จะแสดงในหน้าใหม่พร้อมลายเซ็น)
+$pdf->addDetailedSummary($temples, !empty($province));
+
+// ไม่ต้องเรียก addSignature อีก เพราะรวมอยู่ใน addDetailedSummary แล้ว
+// $pdf->addSignature();
 
 // ส่งออกไฟล์ PDF
 try {

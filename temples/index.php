@@ -81,6 +81,29 @@ if (!empty($status)) {
     $params[] = $status;
 }
 
+// รับค่า district จาก GET
+$district = isset($_GET['district']) ? (int)$_GET['district'] : '';
+
+// ดึงรายชื่อเมืองตามจังหวัด
+$districts = [];
+if (!empty($province)) {
+    $district_stmt = $pdo->prepare("
+        SELECT d.district_id, d.district_name 
+        FROM districts d
+        JOIN provinces p ON d.province_id = p.province_id
+        WHERE p.province_name = ?
+        ORDER BY d.district_name
+    ");
+    $district_stmt->execute([$province]);
+    $districts = $district_stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// เพิ่มเงื่อนไขเลือกเมือง
+if (!empty($district)) {
+    $where_conditions[] = "t.district_id = ?";
+    $params[] = $district;
+}
+
 $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
 
 // Query หลักสำหรับดึงข้อมูลวัด
@@ -262,6 +285,12 @@ $can_delete_temple = ($user_role === 'superadmin');
                 $active_params[] = $province;
             }
 
+            // เพิ่มเงื่อนไขเมือง
+            if (!empty($district)) {
+                $active_count_query .= " AND t.district_id = ?";
+                $active_params[] = $district;
+            }
+
             $active_count_stmt = $pdo->prepare($active_count_query);
             $active_count_stmt->execute($active_params);
             $active_temples = $active_count_stmt->fetchColumn();
@@ -324,7 +353,7 @@ $can_delete_temple = ($user_role === 'superadmin');
                 <?php if (count($provinces) > 0): ?>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">ແຂວງ</label>
-                    <select name="province" class="form-select w-full">
+                    <select name="province" id="province-select" class="form-select w-full">
                         <option value="">-- ທຸກແຂວງ --</option>
                         <?php foreach($provinces as $prov): ?>
                         <option value="<?= htmlspecialchars($prov) ?>" <?= $province === $prov ? 'selected' : '' ?>>
@@ -335,6 +364,18 @@ $can_delete_temple = ($user_role === 'superadmin');
                 </div>
                 <?php endif; ?>
                 
+                <!-- เพิ่มฟิลด์เลือกเมือง (district) -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">ເມືອງ</label>
+                    <select name="district" id="district-select" class="form-select w-full" <?= empty($province) ? 'disabled' : '' ?>>
+                        <option value="">-- ທຸກເມືອງ --</option>
+                        <?php foreach($districts as $d): ?>
+                        <option value="<?= $d['district_id'] ?>" <?= $district == $d['district_id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($d['district_name']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">ສະຖານະ</label>
                     <select name="status" class="form-select w-full">
@@ -344,7 +385,7 @@ $can_delete_temple = ($user_role === 'superadmin');
                     </select>
                 </div>
                 
-                <div class="flex items-end">
+                <div class="flex items-end col-span-1 md:col-span-4">
                     <button type="submit" class="btn px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg mr-2 transition">
                         <i class="fas fa-filter mr-1"></i> ຕັງຄ່າຟິວເຕີ
                     </button>
@@ -799,6 +840,96 @@ document.addEventListener('DOMContentLoaded', function() {
                 exportMenu.classList.add('hidden');
             }
         });
+    }
+
+    // เพิ่มฟังก์ชันสำหรับโหลดข้อมูลเมือง (district) เมื่อเลือกแขวง
+    const provinceSelect = document.getElementById('province-select');
+    const districtSelect = document.getElementById('district-select');
+
+    if (provinceSelect && districtSelect) {
+        // ฟังก์ชัน loading state
+        function showLoadingState(elem, message = 'ກຳລັງໂຫຼດຂໍ້ມູນ...') {
+            elem.innerHTML = `<option value="" class="loading-indicator">${message}</option>`;
+            elem.disabled = true;
+        }
+        
+        // เมื่อเลือกแขวง (province) ให้โหลดข้อมูลเมือง (district)
+        provinceSelect.addEventListener('change', function() {
+            const selectedProvince = this.value;
+            console.log("เลือกแขวง:", selectedProvince); // debug
+            
+            // รีเซ็ต dropdown ถ้าไม่ได้เลือกแขวง
+            if (!selectedProvince) {
+                districtSelect.innerHTML = '<option value="">-- ທຸກເມືອງ --</option>';
+                districtSelect.disabled = true;
+                return;
+            }
+            
+            // แสดง loading state
+            showLoadingState(districtSelect);
+            
+            const apiUrl = `<?= $base_url ?>api/get-districts-by-province-name.php?province_name=${encodeURIComponent(selectedProvince)}`;
+            console.log("กำลังเรียก API:", apiUrl); // debug
+            
+            // ส่ง request ไปยัง API
+            fetch(apiUrl)
+                .then(response => {
+                    console.log("API Response Status:", response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("API Data:", data); // debug
+                    
+                    if (data.success) {
+                        const options = '<option value="">-- ທຸກເມືອງ --</option>' + 
+                            data.districts.map(district => 
+                                `<option value="${district.district_id}">${district.district_name}</option>`
+                            ).join('');
+                        
+                        districtSelect.innerHTML = options;
+                        districtSelect.disabled = false;
+                    } else {
+                        console.error('Error loading districts:', data.message);
+                        districtSelect.innerHTML = '<option value="">-- ເກີດຂໍ້ຜິດພາດ --</option>';
+                        
+                        // แสดง error notification
+                        showNotification('ບໍ່ສາມາດໂຫຼດຂໍ້ມູນເມືອງໄດ້: ' + data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('API Error:', error);
+                    districtSelect.innerHTML = '<option value="">-- ເກີດຂໍ້ຜິດພາດ --</option>';
+                    
+                    // แสดง error notification
+                    showNotification('ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນເມືອງ', 'error');
+                });
+        });
+        
+        // เพิ่ม CSS สำหรับ loading indicator
+        const styleTag = document.createElement('style');
+        styleTag.innerHTML = `
+            .loading-indicator {
+                position: relative;
+                padding-left: 25px;
+            }
+            .loading-indicator:before {
+                content: "";
+                position: absolute;
+                left: 0;
+                top: 50%;
+                width: 15px;
+                height: 15px;
+                margin-top: -7px;
+                border: 2px solid #D4A762;
+                border-radius: 50%;
+                border-top-color: transparent;
+                animation: loader-spin 0.6s linear infinite;
+            }
+            @keyframes loader-spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(styleTag);
     }
 });
 

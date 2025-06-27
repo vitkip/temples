@@ -51,7 +51,7 @@ function sanitizeInput($input) {
 /**
  * ฟังก์ชันสำหรับตรวจสอบและสร้างเงื่อนไขการค้นหา
  */
-function buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $province, $status) {
+function buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $province, $district, $status) {
     $where_conditions = [];
     $params = [];
 
@@ -82,6 +82,12 @@ function buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $p
         $where_conditions[] = "p.province_name = ?";
         $params[] = $province;
     }
+    
+    // เงื่อนไขเมือง (เพิ่มเข้ามาใหม่)
+    if (!empty($district)) {
+        $where_conditions[] = "t.district_id = ?";
+        $params[] = $district;
+    }
 
     // เงื่อนไขสถานะ
     if (!empty($status)) {
@@ -98,7 +104,7 @@ function buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $p
 /**
  * ฟังก์ชันสำหรับดึงข้อมูลวัด
  */
-function fetchTempleData($pdo, $where_clause, $params) {
+function fetchTempleData($pdo, $where_clause, $params, $province_filter = false) {
     try {
         $query = "
             SELECT 
@@ -112,6 +118,7 @@ function fetchTempleData($pdo, $where_clause, $params) {
                 t.created_at,
                 p.province_name,
                 d.district_name AS district,
+                d.district_id,
                 CASE 
                     WHEN t.status = 'active' THEN 'ເປີດໃຊ້ງານ'
                     WHEN t.status = 'inactive' THEN 'ປິດໃຊ້ງານ'
@@ -121,7 +128,7 @@ function fetchTempleData($pdo, $where_clause, $params) {
             LEFT JOIN provinces p ON t.province_id = p.province_id 
             LEFT JOIN districts d ON t.district_id = d.district_id
             {$where_clause}
-            ORDER BY p.province_name, t.name ASC
+            ORDER BY " . ($province_filter ? "d.district_name, t.name" : "p.province_name, t.name") . " ASC
         ";
 
         $stmt = $pdo->prepare($query);
@@ -136,17 +143,18 @@ function fetchTempleData($pdo, $where_clause, $params) {
 // รับพารามิเตอร์การกรอง
 $search = sanitizeInput($_GET['search'] ?? '');
 $province = sanitizeInput($_GET['province'] ?? '');
+$district = sanitizeInput($_GET['district'] ?? ''); // เพิ่มบรรทัดนี้
 $status = sanitizeInput($_GET['status'] ?? '');
 
 try {
     // สร้างเงื่อนไขการค้นหา
-    $conditions = buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $province, $status);
+    $conditions = buildWhereConditions($user_role, $user_id, $user_temple_id, $search, $province, $district, $status);
     
     // ดึงข้อมูลวัด
-    $temples = fetchTempleData($pdo, $conditions['where_clause'], $conditions['params']);
+    $temples = fetchTempleData($pdo, $conditions['where_clause'], $conditions['params'], !empty($province));
     
     if (empty($temples)) {
-        throw new Exception("ไม่พบข้อมูลที่ตรงตามเงื่อนไข");
+        throw new Exception("ບໍ່ມີວັດໃນແຂວງທີ່ເລືອກ");
     }
 
 } catch (Exception $e) {
@@ -206,6 +214,32 @@ $headerStyle = [
     ]
 ];
 
+// กำหนดสไตล์ส่วนหัวกลุ่มเมือง
+$districtHeaderStyle = [
+    'font' => [
+        'bold' => true,
+        'size' => 12,
+        'name' => 'Phetsarath OT',
+        'color' => ['rgb' => 'FFFFFF']
+    ],
+    'alignment' => [
+        'horizontal' => Alignment::HORIZONTAL_LEFT,
+        'vertical' => Alignment::VERTICAL_CENTER
+    ],
+    'fill' => [
+        'fillType' => Fill::FILL_SOLID,
+        'startColor' => [
+            'rgb' => 'E6891E' // สีเหลืองส้ม
+        ]
+    ],
+    'borders' => [
+        'allBorders' => [
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['rgb' => '000000']
+        ]
+    ]
+];
+
 // กำหนดสไตล์ข้อมูล
 $dataStyle = [
     'font' => [
@@ -234,20 +268,21 @@ $evenRowStyle = [
 ];
 
 // กำหนดสไตล์ส่วนสรุป
-$summaryStyle = [
+$summaryHeaderStyle = [
     'font' => [
         'bold' => true,
-        'size' => 12,
-        'name' => 'Phetsarath OT'
+        'size' => 14,
+        'name' => 'Phetsarath OT',
+        'color' => ['rgb' => 'FFFFFF']
     ],
     'alignment' => [
-        'horizontal' => Alignment::HORIZONTAL_RIGHT,
+        'horizontal' => Alignment::HORIZONTAL_CENTER,
         'vertical' => Alignment::VERTICAL_CENTER
     ],
     'fill' => [
         'fillType' => Fill::FILL_SOLID,
         'startColor' => [
-            'rgb' => 'E8EAF6' // สีฟ้าอ่อน
+            'rgb' => '2D3E50' // สีน้ำเงินเข้ม
         ]
     ],
     'borders' => [
@@ -258,25 +293,75 @@ $summaryStyle = [
     ]
 ];
 
-// กำหนดความกว้างคอลัมน์
+// สไตล์สรุปตาราง
+$summaryTableHeaderStyle = [
+    'font' => [
+        'bold' => true,
+        'size' => 12,
+        'name' => 'Phetsarath OT'
+    ],
+    'alignment' => [
+        'horizontal' => Alignment::HORIZONTAL_CENTER,
+        'vertical' => Alignment::VERTICAL_CENTER
+    ],
+    'fill' => [
+        'fillType' => Fill::FILL_SOLID,
+        'startColor' => [
+            'rgb' => 'F0F0F0' // สีเทาอ่อน
+        ]
+    ],
+    'borders' => [
+        'allBorders' => [
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['rgb' => '000000']
+        ]
+    ]
+];
+
+// สไตล์สรุปรวม
+$summaryTotalStyle = [
+    'font' => [
+        'bold' => true,
+        'size' => 12,
+        'name' => 'Phetsarath OT',
+        'color' => ['rgb' => '000096']
+    ],
+    'alignment' => [
+        'horizontal' => Alignment::HORIZONTAL_LEFT,
+        'vertical' => Alignment::VERTICAL_CENTER
+    ],
+    'fill' => [
+        'fillType' => Fill::FILL_SOLID,
+        'startColor' => [
+            'rgb' => 'E0E0FF'
+        ]
+    ],
+    'borders' => [
+        'allBorders' => [
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['rgb' => '000000']
+        ]
+    ]
+];
+
+// กำหนดความกว้างคอลัมน์ (ลบคอลัมน์สถานะออกเหมือนใน PDF)
 $sheet->getColumnDimension('A')->setWidth(8);  // No.
 $sheet->getColumnDimension('B')->setWidth(35); // ชื่อวัด
 $sheet->getColumnDimension('C')->setWidth(20); // แขวง
 $sheet->getColumnDimension('D')->setWidth(20); // เมือง
 $sheet->getColumnDimension('E')->setWidth(25); // เจ้าอาวาส
 $sheet->getColumnDimension('F')->setWidth(18); // โทรศัพท์
-$sheet->getColumnDimension('G')->setWidth(15); // สถานะ
 
 // เพิ่มหัวรายงาน
-$sheet->mergeCells('A1:G1');
+$sheet->mergeCells('A1:F1');
 $sheet->setCellValue('A1', 'ລາຍງານຂໍ້ມູນວັດ');
 $sheet->getStyle('A1')->applyFromArray($titleStyle);
 $sheet->getRowDimension(1)->setRowHeight(30);
 
 // วันที่และเวลา
-$sheet->mergeCells('A2:G2');
-$sheet->setCellValue('A2', 'ວັນທີ່: ' . date('d/m/Y H:i:s'));
-$sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+$sheet->mergeCells('A2:F2');
+$sheet->setCellValue('A2', 'ວັນທີ່ອອກລາຍງານ: ' . date('d/m/Y H:i:s'));
+$sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 $sheet->getStyle('A2')->getFont()->setSize(11)->setName('Phetsarath OT');
 
 // ตัวกรอง
@@ -287,6 +372,18 @@ if (!empty($search)) {
 if (!empty($province)) {
     $filter_parts[] = 'ແຂວງ: ' . $province;
 }
+if (!empty($district)) {
+    try {
+        $district_stmt = $pdo->prepare("SELECT district_name FROM districts WHERE district_id = ?");
+        $district_stmt->execute([$district]);
+        $district_data = $district_stmt->fetch(PDO::FETCH_ASSOC);
+        if ($district_data) {
+            $filter_parts[] = 'ເມືອງ: ' . $district_data['district_name'];
+        }
+    } catch (PDOException $e) {
+        $filter_parts[] = 'ເມືອງ: ' . $district;
+    }
+}
 if (!empty($status)) {
     $status_text = ($status === 'active') ? 'ເປີດໃຊ້ງານ' : 'ປິດໃຊ້ງານ';
     $filter_parts[] = 'ສະຖານະ: ' . $status_text;
@@ -294,152 +391,230 @@ if (!empty($status)) {
 
 $filter_text = !empty($filter_parts) ? 'ຕົວກອງ: ' . implode(' | ', $filter_parts) : 'ຕົວກອງ: ທັງໝົດ';
 
-$sheet->mergeCells('A3:G3');
+$sheet->mergeCells('A3:F3');
 $sheet->setCellValue('A3', $filter_text);
 $sheet->getStyle('A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 $sheet->getStyle('A3')->getFont()->setSize(11)->setName('Phetsarath OT');
 
-$sheet->mergeCells('A4:G4');
-$sheet->setCellValue('A4', 'ຈໍານວນລາຍການທັງໝົດ: ' . count($temples) . ' ວັດ');
-$sheet->getStyle('A4')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-$sheet->getStyle('A4')->getFont()->setSize(11)->setName('Phetsarath OT')->setBold(true);
-$sheet->getStyle('A4')->getFont()->getColor()->setRGB('CC0000'); // สีแดง
-
 // เว้นบรรทัด
-$currentRow = 6;
+$currentRow = 5;
 
-// เพิ่มหัวตาราง
-$headers = ['ລ/ດ', 'ຊື່ວັດ', 'ແຂວງ', 'ເມືອງ', 'ເຈົ້າອາວາດ', 'ໂທລະສັບ', 'ສະຖານະ'];
-$sheet->fromArray($headers, NULL, 'A' . $currentRow);
-$sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray($headerStyle);
-$sheet->getRowDimension($currentRow)->setRowHeight(20);
-
-// เพิ่มข้อมูลวัด
-$currentRow++;
-foreach ($temples as $index => $temple) {
-    $row = [
-        $index + 1,
-        $temple['name'],
-        $temple['province_name'] ?? '-', 
-        $temple['district'] ?? '-',
-        $temple['abbot_name'] ?? '-',
-        $temple['phone'] ?? '-',
-        $temple['status_text'] ?? '-'
-    ];
-    
-    $sheet->fromArray($row, NULL, 'A' . $currentRow);
-    
-    // จัดสไตล์แถว
-    $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray($dataStyle);
-    
-    // สลับสีพื้นหลังแถวคู่
-    if (($index + 1) % 2 == 0) {
-        $sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->applyFromArray($evenRowStyle);
+// จัดกลุ่มข้อมูลตามเมือง (ถ้ามีการเลือกแขวง)
+if (!empty($province)) {
+    // จัดกลุ่มข้อมูลตามเมือง
+    $districts = [];
+    foreach ($temples as $temple) {
+        $district_name = $temple['district'] ?: 'ບໍ່ລະບຸ';
+        $district_id = $temple['district_id'] ?: 0;
+        
+        if (!isset($districts[$district_id])) {
+            $districts[$district_id] = [
+                'name' => $district_name,
+                'temples' => []
+            ];
+        }
+        $districts[$district_id]['temples'][] = $temple;
     }
     
-    // จัดข้อความให้ตรงกลางสำหรับลำดับและโทรศัพท์
-    $sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    $sheet->getStyle('F' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-    
-    // จัดข้อความชิดซ้ายสำหรับข้อมูลอื่น
-    $sheet->getStyle('B' . $currentRow . ':E' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-    
-    // สีสถานะ
-    if ($temple['status'] == 'active') {
-        $sheet->getStyle('G' . $currentRow)->getFont()->getColor()->setRGB('009900'); // สีเขียว
-    } else {
-        $sheet->getStyle('G' . $currentRow)->getFont()->getColor()->setRGB('CC0000'); // สีแดง
+    // วาดข้อมูลแยกตามเมือง
+    foreach ($districts as $district_id => $district_data) {
+        // หัวข้อเมือง
+        $sheet->mergeCells("A{$currentRow}:F{$currentRow}");
+        $sheet->setCellValue("A{$currentRow}", 'ເມືອງ: ' . $district_data['name']);
+        $sheet->getStyle("A{$currentRow}:F{$currentRow}")->applyFromArray($districtHeaderStyle);
+        $sheet->getRowDimension($currentRow)->setRowHeight(20);
+        $currentRow++;
+        
+        // หัวตาราง
+        $headers = ['ລ/ດ', 'ຊື່ວັດ', 'ແຂວງ', 'ເມືອງ', 'ເຈົ້າອາວາດ', 'ໂທລະສັບ'];
+        $sheet->fromArray($headers, NULL, 'A' . $currentRow);
+        $sheet->getStyle('A' . $currentRow . ':F' . $currentRow)->applyFromArray($headerStyle);
+        $sheet->getRowDimension($currentRow)->setRowHeight(20);
+        $currentRow++;
+        
+        // ข้อมูลวัดในเมืองนี้
+        foreach ($district_data['temples'] as $index => $temple) {
+            $row = [
+                $index + 1,
+                $temple['name'],
+                $temple['province_name'] ?? '-',
+                $temple['district'] ?? '-',
+                $temple['abbot_name'] ?? '-',
+                $temple['phone'] ?? '-'
+            ];
+            
+            $sheet->fromArray($row, NULL, 'A' . $currentRow);
+            
+            // จัดสไตล์แถว
+            $sheet->getStyle('A' . $currentRow . ':F' . $currentRow)->applyFromArray($dataStyle);
+            
+            // สลับสีพื้นหลังแถวคู่
+            if (($index + 1) % 2 == 0) {
+                $sheet->getStyle('A' . $currentRow . ':F' . $currentRow)->applyFromArray($evenRowStyle);
+            }
+            
+            // จัดข้อความให้ตรงกลางสำหรับลำดับและโทรศัพท์
+            $sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('F' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            
+            // จัดข้อความชิดซ้ายสำหรับข้อมูลอื่น
+            $sheet->getStyle('B' . $currentRow . ':E' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+            
+            $currentRow++;
+        }
+        
+        // เว้นบรรทัด
+        $currentRow += 1;
     }
     
-    $sheet->getStyle('G' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+    // สรุปรายงานตามเมือง
+    $currentRow += 1;
     
+    // หัวข้อสรุปรายงาน
+    $sheet->mergeCells("A{$currentRow}:F{$currentRow}");
+    $sheet->setCellValue("A{$currentRow}", 'ສະຫຼຸບລາຍງານຕາມເມືອງ');
+    $sheet->getStyle("A{$currentRow}:F{$currentRow}")->applyFromArray($summaryHeaderStyle);
+    $sheet->getRowDimension($currentRow)->setRowHeight(25);
+    $currentRow++;
+    
+    // หัวตารางสรุป
+    $sheet->setCellValue("A{$currentRow}", 'ເມືອງ');
+    $sheet->mergeCells("A{$currentRow}:E{$currentRow}");
+    $sheet->setCellValue("F{$currentRow}", 'ຈຳນວນວັດ');
+    $sheet->getStyle("A{$currentRow}:F{$currentRow}")->applyFromArray($summaryTableHeaderStyle);
+    $currentRow++;
+    
+    // ข้อมูลสรุปตามเมือง
+    foreach ($districts as $district_id => $district_data) {
+        $sheet->mergeCells("A{$currentRow}:E{$currentRow}");
+        $sheet->setCellValue("A{$currentRow}", $district_data['name']);
+        $sheet->setCellValue("F{$currentRow}", count($district_data['temples']) . ' ວັດ');
+        $sheet->getStyle("A{$currentRow}:F{$currentRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+        $sheet->getStyle("F{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $currentRow++;
+    }
+    
+    // รวมทั้งหมด
+    $sheet->mergeCells("A{$currentRow}:E{$currentRow}");
+    $sheet->setCellValue("A{$currentRow}", 'ລວມທັງໝົດ');
+    $sheet->setCellValue("F{$currentRow}", count($temples) . ' ວັດ');
+    $sheet->getStyle("A{$currentRow}:F{$currentRow}")->applyFromArray($summaryTotalStyle);
+    $sheet->getStyle("F{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+} else {
+    // กรณีไม่ได้กรองตามแขวง - แสดงแบบรวม
+    $headers = ['ລ/ດ', 'ຊື່ວັດ', 'ແຂວງ', 'ເມືອງ', 'ເຈົ້າອາວາດ', 'ໂທລະສັບ'];
+    $sheet->fromArray($headers, NULL, 'A' . $currentRow);
+    $sheet->getStyle('A' . $currentRow . ':F' . $currentRow)->applyFromArray($headerStyle);
+    $sheet->getRowDimension($currentRow)->setRowHeight(20);
+    $currentRow++;
+    
+    // เพิ่มข้อมูลวัด
+    foreach ($temples as $index => $temple) {
+        $row = [
+            $index + 1,
+            $temple['name'],
+            $temple['province_name'] ?? '-',
+            $temple['district'] ?? '-',
+            $temple['abbot_name'] ?? '-',
+            $temple['phone'] ?? '-'
+        ];
+        
+        $sheet->fromArray($row, NULL, 'A' . $currentRow);
+        
+        // จัดสไตล์แถว
+        $sheet->getStyle('A' . $currentRow . ':F' . $currentRow)->applyFromArray($dataStyle);
+        
+        // สลับสีพื้นหลังแถวคู่
+        if (($index + 1) % 2 == 0) {
+            $sheet->getStyle('A' . $currentRow . ':F' . $currentRow)->applyFromArray($evenRowStyle);
+        }
+        
+        // จัดข้อความให้ตรงกลางสำหรับลำดับและโทรศัพท์
+        $sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('F' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        
+        // จัดข้อความชิดซ้ายสำหรับข้อมูลอื่น
+        $sheet->getStyle('B' . $currentRow . ':E' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+        
+        $currentRow++;
+    }
+    
+    // สรุปข้อมูล
+    $currentRow += 2;
+    
+    // หัวข้อสรุป
+    $sheet->mergeCells("A{$currentRow}:F{$currentRow}");
+    $sheet->setCellValue("A{$currentRow}", 'ສະຫຼຸບລາຍງານ');
+    $sheet->getStyle("A{$currentRow}:F{$currentRow}")->applyFromArray($summaryHeaderStyle);
+    $sheet->getRowDimension($currentRow)->setRowHeight(25);
+    $currentRow++;
+    
+    // จำนวนวัดแยกตามสถานะ
+    $active_temples = count(array_filter($temples, function($temple) {
+        return $temple['status'] === 'active';
+    }));
+    $inactive_temples = count($temples) - $active_temples;
+    $active_percent = count($temples) > 0 ? ($active_temples / count($temples)) * 100 : 0;
+    $inactive_percent = count($temples) > 0 ? ($inactive_temples / count($temples)) * 100 : 0;
+    
+    // แสดงจำนวนวัดที่เปิดใช้งาน
+    $sheet->mergeCells("A{$currentRow}:F{$currentRow}");
+    $sheet->setCellValue("A{$currentRow}", 'ວັດທີ່ເປີດໃຊ້ງານ: ' . $active_temples . ' ວັດ (' . number_format($active_percent, 1) . '%)');
+    $sheet->getStyle("A{$currentRow}:F{$currentRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+    $sheet->getStyle("A{$currentRow}")->getFont()->setSize(12)->setName('Phetsarath OT');
+    $sheet->getStyle("A{$currentRow}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F5F5F5');
+    $currentRow++;
+    
+    // แสดงจำนวนวัดที่ปิดใช้งาน
+    $sheet->mergeCells("A{$currentRow}:F{$currentRow}");
+    $sheet->setCellValue("A{$currentRow}", 'ວັດທີ່ປິດໃຊ້ງານ: ' . $inactive_temples . ' ວັດ (' . number_format($inactive_percent, 1) . '%)');
+    $sheet->getStyle("A{$currentRow}:F{$currentRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+    $sheet->getStyle("A{$currentRow}")->getFont()->setSize(12)->setName('Phetsarath OT');
+    $sheet->getStyle("A{$currentRow}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FCFCFC');
+    $currentRow++;
+    
+    // รวมทั้งหมด
+    $sheet->mergeCells("A{$currentRow}:F{$currentRow}");
+    $sheet->setCellValue("A{$currentRow}", 'ລວມທັງໝົດ: ' . count($temples) . ' ວັດ');
+    $sheet->getStyle("A{$currentRow}:F{$currentRow}")->applyFromArray($summaryTotalStyle);
     $currentRow++;
 }
 
-// สรุปข้อมูล
-$currentRow += 2;
-$summaryStartRow = $currentRow;
-
-// หัวข้อสรุป
-$sheet->mergeCells('A' . $currentRow . ':G' . $currentRow);
-$sheet->setCellValue('A' . $currentRow, 'ສະຫຼຸບລາຍງານ');
-$sheet->getStyle('A' . $currentRow)->getFont()->setBold(true)->setSize(14)->setName('Phetsarath OT');
-$sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-$sheet->getRowDimension($currentRow)->setRowHeight(25);
-$sheet->getStyle('A' . $currentRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('2D3E50');
-$sheet->getStyle('A' . $currentRow)->getFont()->getColor()->setRGB('FFFFFF');
-$currentRow++;
-
-// จำนวนวัดแยกตามสถานะ
-$active_temples = count(array_filter($temples, function($temple) {
-    return $temple['status'] === 'active';
-}));
-$inactive_temples = count($temples) - $active_temples;
-$active_percent = count($temples) > 0 ? ($active_temples / count($temples)) * 100 : 0;
-$inactive_percent = count($temples) > 0 ? ($inactive_temples / count($temples)) * 100 : 0;
-
-// แสดงจำนวนวัดที่เปิดใช้งาน
-$sheet->mergeCells('A' . $currentRow . ':G' . $currentRow);
-$sheet->setCellValue('A' . $currentRow, 'ວັດທີ່ເປີດໃຊ້ງານ: ' . $active_temples . ' ວັດ (' . number_format($active_percent, 1) . '%)');
-$sheet->getStyle('A' . $currentRow)->getFont()->setSize(12)->setName('Phetsarath OT');
-$sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-$sheet->getStyle('A' . $currentRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F5F5F5');
-$sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-$currentRow++;
-
-// แสดงจำนวนวัดที่ปิดใช้งาน
-$sheet->mergeCells('A' . $currentRow . ':G' . $currentRow);
-$sheet->setCellValue('A' . $currentRow, 'ວັດທີ່ປິດໃຊ້ງານ: ' . $inactive_temples . ' ວັດ (' . number_format($inactive_percent, 1) . '%)');
-$sheet->getStyle('A' . $currentRow)->getFont()->setSize(12)->setName('Phetsarath OT');
-$sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-$sheet->getStyle('A' . $currentRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('FCFCFC');
-$sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-$currentRow++;
-
-// รวมทั้งหมด
-$sheet->mergeCells('A' . $currentRow . ':G' . $currentRow);
-$sheet->setCellValue('A' . $currentRow, 'ລວມທັງໝົດ: ' . count($temples) . ' ວັດ');
-$sheet->getStyle('A' . $currentRow)->getFont()->setBold(true)->setSize(12)->setName('Phetsarath OT');
-$sheet->getStyle('A' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-$sheet->getStyle('A' . $currentRow)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('E0E0FF');
-$sheet->getStyle('A' . $currentRow)->getFont()->getColor()->setRGB('000096');
-$sheet->getStyle('A' . $currentRow . ':G' . $currentRow)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-
 // ลายเซ็น
 $currentRow += 3;
-$sheet->mergeCells('F' . $currentRow . ':G' . $currentRow);
-$sheet->setCellValue('F' . $currentRow, 'ຫ້ອງການບໍລິຫານ');
-$sheet->getStyle('F' . $currentRow)->getFont()->setBold(true)->setSize(12)->setName('Phetsarath OT');
-$sheet->getStyle('F' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+$sheet->mergeCells("E{$currentRow}:F{$currentRow}");
+$sheet->setCellValue("E{$currentRow}", 'ຫ້ອງການບໍລິຫານ');
+$sheet->getStyle("E{$currentRow}")->getFont()->setBold(true)->setSize(12)->setName('Phetsarath OT');
+$sheet->getStyle("E{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
 $currentRow += 2;
-$sheet->mergeCells('F' . $currentRow . ':G' . $currentRow);
-$sheet->setCellValue('F' . $currentRow, '___________________________');
-$sheet->getStyle('F' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+$sheet->mergeCells("E{$currentRow}:F{$currentRow}");
+$sheet->setCellValue("E{$currentRow}", '___________________________');
+$sheet->getStyle("E{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
 $currentRow += 1;
-$sheet->mergeCells('F' . $currentRow . ':G' . $currentRow);
-$sheet->setCellValue('F' . $currentRow, '(.....................................................)');
-$sheet->getStyle('F' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-$sheet->getStyle('F' . $currentRow)->getFont()->setSize(10)->setName('Phetsarath OT');
+$sheet->mergeCells("E{$currentRow}:F{$currentRow}");
+$sheet->setCellValue("E{$currentRow}", '(.....................................................)');
+$sheet->getStyle("E{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+$sheet->getStyle("E{$currentRow}")->getFont()->setSize(10)->setName('Phetsarath OT');
 
 $currentRow += 1;
-$sheet->mergeCells('F' . $currentRow . ':G' . $currentRow);
-$sheet->setCellValue('F' . $currentRow, 'ວັນທີ່ ......./......./...........');
-$sheet->getStyle('F' . $currentRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-$sheet->getStyle('F' . $currentRow)->getFont()->setSize(10)->setName('Phetsarath OT');
+$sheet->mergeCells("E{$currentRow}:F{$currentRow}");
+$sheet->setCellValue("E{$currentRow}", 'ວັນທີ່ ......./......./...........');
+$sheet->getStyle("E{$currentRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+$sheet->getStyle("E{$currentRow}")->getFont()->setSize(10)->setName('Phetsarath OT');
 
 // เพิ่มข้อมูลในส่วนท้าย (footer) ของเอกสาร
 $lastRow = $currentRow + 2;
-$sheet->mergeCells('A' . $lastRow . ':D' . $lastRow);
-$sheet->setCellValue('A' . $lastRow, 'ລະບົບຄຸ້ມຄອງວັດ | ຜູ້ໃຊ້: ' . ($_SESSION['user']['username'] ?? 'ລະບົບ'));
-$sheet->getStyle('A' . $lastRow)->getFont()->setSize(8)->setName('Phetsarath OT');
-$sheet->getStyle('A' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+$sheet->mergeCells("A{$lastRow}:C{$lastRow}");
+$sheet->setCellValue("A{$lastRow}", 'ລະບົບຄຸ້ມຄອງວັດ | ຜູ້ໃຊ້: ' . ($_SESSION['user']['username'] ?? 'ລະບົບ'));
+$sheet->getStyle("A{$lastRow}")->getFont()->setSize(8)->setName('Phetsarath OT');
+$sheet->getStyle("A{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-$sheet->mergeCells('E' . $lastRow . ':G' . $lastRow);
-$sheet->setCellValue('E' . $lastRow, 'ສ້າງເມື່ອ: ' . date('d/m/Y H:i:s'));
-$sheet->getStyle('E' . $lastRow)->getFont()->setSize(8)->setName('Phetsarath OT');
-$sheet->getStyle('E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+$sheet->mergeCells("D{$lastRow}:F{$lastRow}");
+$sheet->setCellValue("D{$lastRow}", 'ສ້າງເມື່ອ: ' . date('d/m/Y H:i:s'));
+$sheet->getStyle("D{$lastRow}")->getFont()->setSize(8)->setName('Phetsarath OT');
+$sheet->getStyle("D{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
 // ส่งออกไฟล์ Excel
 try {

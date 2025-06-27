@@ -519,7 +519,7 @@ if (!empty($province_filter)) {
                                     <?php endif; ?>
                                     
                                     <div class="card-footer mt-auto">
-                                        <a href="<?= $base_url ?>temples/view-detail.php?id=<?= $temple['id'] ?>" 
+                                        <a href="<?= $base_url ?>temples/view-detaile.php?id=<?= $temple['id'] ?>" 
                                            class="btn-primary w-full flex items-center justify-center text-sm py-2">
                                             <i class="fas fa-info-circle mr-1"></i> ເບິ່ງລາຍລະອຽດ
                                         </a>
