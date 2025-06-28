@@ -192,9 +192,9 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
             <i class="fas fa-place-of-worship"></i>
             <span>ວັດ</span>
         </a>
-        <a href="<?= $base_url ?>events/" class="mobile-nav-item">
-            <i class="fas fa-calendar-alt"></i>
-            <span>ກິດຈະກໍາ</span>
+        <a href="<?= $base_url ?>auth/register.php" class="mobile-nav-item">
+            <i class="fas fa-user-plus"></i>
+            <span>ລົງທະບຽນ</span>
         </a>
         <?php if ($logged_in): ?>
         <a href="<?= $base_url ?>dashboard.php" class="mobile-nav-item">
@@ -202,7 +202,7 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
             <span>ແຜງຄວບຄຸມ</span>
         </a>
         <?php else: ?>
-        <a href="<?= $base_url ?>auth/login.php" class="mobile-nav-item">
+        <a href="<?= $base_url ?>auth/" class="mobile-nav-item">
             <i class="fas fa-sign-in-alt"></i>
             <span>ເຂົ້າລະບົບ</span>
         </a>
@@ -478,13 +478,13 @@ $site_description = $settings['site_description'] ?? 'ລະບົບຈັດ�
                             </a>
                         </li>
                         <li>
-                            <a href="<?= $base_url ?>events/" class="text-base text-gray-300 hover:text-amber-200">
-                                ກິດຈະກໍາ
+                            <a href="<?= $base_url ?>auth/" class="text-base text-gray-300 hover:text-amber-200">
+                                ເຂົ້າລະບົບ
                             </a>
                         </li>
                         <li>
-                            <a href="<?= $base_url ?>contact.php" class="text-base text-gray-300 hover:text-amber-200">
-                                ຕິດຕໍ່ພວກເຮົາ
+                            <a href="<?= $base_url ?>auth/register.php" class="text-base text-gray-300 hover:text-amber-200">
+                                ລົງທະບຽນ
                             </a>
                         </li>
                     </ul>

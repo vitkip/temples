@@ -150,9 +150,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </h1>
                 <p class="text-sm text-amber-700 mt-1">ປ້ອນຂໍ້ມູນລາຍລະອຽດຂອງວັດ</p>
             </div>
-            <a href="<?= $base_url ?>temples/" class="btn flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
-                <i class="fas fa-arrow-left"></i> ກັບຄືນ
-            </a>
+            <div class="flex space-x-2">
+                <!-- เพิ่มปุ่มนำเข้า Excel -->
+                <a href="<?= $base_url ?>temples/import.php" class="btn flex items-center gap-2 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white transition">
+                    <i class="fas fa-file-excel"></i> ນຳເຂົ້າຈາກ Excel
+                </a>
+                <a href="<?= $base_url ?>temples/" class="btn flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
+                    <i class="fas fa-arrow-left"></i> ກັບຄືນ
+                </a>
+            </div>
         </div>
 
         <!-- Alert Messages -->
