@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // }
 
 // ตรวจสอบสิทธิ์
-if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] !== 'superadmin' && $_SESSION['user']['role'] !== 'admin')) {
+if (!isset($_SESSION['user']) || ($_SESSION['user']['role'] !== 'superadmin' && $_SESSION['user']['role'] !== 'admin' && $_SESSION['user']['role'] !== 'province_admin')) {
     error_log("Permission denied: User role - " . ($_SESSION['user']['role'] ?? 'not logged in'));
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'ທ່ານບໍ່ມີສິດໃນການອັບເດດສະຖານະ']);
@@ -99,3 +99,27 @@ try {
     http_response_code(500);
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
+
+// ตรวจสอบข้อมูลวัด
+$stmt = $pdo->prepare("
+    SELECT t.id, t.name, t.province_id
+    FROM temples t
+    WHERE t.id = ?
+");
+$stmt->execute([$temple_id]);
+$temple = $stmt->fetch(PDO::FETCH_ASSOC);
+
+$user_role = $_SESSION['user']['role'];
+if ($user_role === 'superadmin' || $user_role === 'admin') {
+    // Super Admin และ Admin สามารถเปลี่ยนสถานะวัดได้ทุกวัด
+    $can_edit = true;
+} elseif ($user_role === 'province_admin') {
+    // Province Admin มีสิทธิ์เปลี่ยนสถานะวัดในแขวงที่รับผิดชอบ
+    $check_province = $pdo->prepare("
+        SELECT COUNT(*) FROM user_province_access 
+        WHERE user_id = ? AND province_id = ?
+    ");
+    $check_province->execute([$user_id, $temple['province_id']]);
+    $can_edit = ($check_province->fetchColumn() > 0);
+}
+?>

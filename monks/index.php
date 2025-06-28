@@ -28,7 +28,7 @@ $pansa_filter = isset($_GET['pansa']) ? $_GET['pansa'] : '';
 
 // เริ่มสร้าง query
 $params = [];
-$query = "SELECT m.*, t.name as temple_name, p.province_name 
+$query = "SELECT m.*, t.name as temple_name, t.province_id, p.province_name 
           FROM monks m 
           LEFT JOIN temples t ON m.temple_id = t.id 
           LEFT JOIN provinces p ON t.province_id = p.province_id
@@ -166,7 +166,7 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
                  class="form-select" placeholder="ຄົ້ນຫາຊື່ພະ, ຊື່ແຜ່ນດິນ...">
         </div>
 
-        <?php if ($user_role === 'superadmin'): ?>
+        <?php if ($user_role === 'superadmin' || $user_role === 'province_admin'): ?>
         <!-- แสดงตัวกรองแขวงเฉพาะ superadmin -->
         <div>
           <label for="province_id" class="form-label">
@@ -296,7 +296,7 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
       <span class="font-medium">ຄຳແນະນຳສຳລັບ Superadmin:</span>
     </div>
     <p class="text-amber-600 text-sm mt-1 ml-6">
-      ທ່ານສາມາດເລືອກແຂວງເພື່ອສົ່ງອອກຂໍ້ມູນໄດ້ຈາກຕົວກອງແຂວງດ້ານເທິງ. ຖ້າບໍ່ເລືອກແຂວງ ລະບົບຈະສົ່ງອອກທຸກຂໍໍາູນພະສົງທັງໝົດ.
+      ທ່ານສາມາດເລືອກແຂວງເພື່ອສົ່ງອອກຂໍໍາູນໄດ້ຈາກຕົວກອງແຂວງດ້ານເທິງ. ຖ້າບໍ່ເລືອກແຂວງ ລະບົບຈະສົ່ງອອກທຸກຂໍໍາູນພະສົງທັງໝົດ.
     </p>
   </div>
   <?php endif; ?>
@@ -415,8 +415,7 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
               <?php
               $can_edit_monk = ($user_role === 'superadmin') || 
                               ($user_role === 'admin' && $user_temple_id == $monk['temple_id']) ||
-                              ($user_role === 'province_admin' && !empty($monk['province_id']) && 
-                               in_array($monk['province_id'], array_column($provinces, 'province_id')));
+                              ($user_role === 'province_admin' && !empty($monk['province_id']) && in_array($monk['province_id'], array_column($provinces, 'province_id')));
               ?>
               <?php if ($can_edit_monk): ?>
                 <button type="button" class="toggle-status-btn w-full text-left" data-monk-id="<?= $monk['id'] ?>" data-current-status="<?= $monk['status'] ?>">
@@ -458,7 +457,6 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
                    class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 p-1.5 rounded-full transition">
                   <i class="fas fa-edit"></i>
                 </a>
-                
                 <a href="javascript:void(0)" 
                    class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded-full transition delete-monk" 
                    data-id="<?= $monk['id'] ?>" data-name="<?= htmlspecialchars($monk['name']) ?>">
@@ -516,8 +514,7 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
               <?php
               $can_edit_monk = ($user_role === 'superadmin') || 
                               ($user_role === 'admin' && $user_temple_id == $monk['temple_id']) ||
-                              ($user_role === 'province_admin' && !empty($monk['province_id']) && 
-                               in_array($monk['province_id'], array_column($provinces, 'province_id')));
+                              ($user_role === 'province_admin' && !empty($monk['province_id']) && in_array($monk['province_id'], array_column($provinces, 'province_id')));
               ?>
               <?php if ($can_edit_monk): ?>
                 <button type="button" class="toggle-status-btn inline-flex" data-monk-id="<?= $monk['id'] ?>" data-current-status="<?= $monk['status'] ?>">
@@ -555,6 +552,12 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
               <i class="fas fa-eye mr-2"></i> ເບິ່ງ
             </a>
             
+            <?php
+            // province_admin (ระดับแขวง) สามารถแก้ไข/ลบได้ถ้าอยู่ในแขวงที่ตัวเองดูแล
+            $can_edit_monk = ($user_role === 'superadmin')
+              || ($user_role === 'admin' && $user_temple_id == $monk['temple_id'])
+              || ($user_role === 'province_admin' && !empty($monk['province_id']) && in_array($monk['province_id'], array_column($provinces, 'province_id')));
+            ?>
             <?php if ($can_edit_monk): ?>
             <a href="<?= $base_url ?>monks/edit.php?id=<?= $monk['id'] ?>" 
                class="flex items-center justify-center p-2 px-3 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition">
@@ -854,10 +857,10 @@ function reloadTable() {
                 // อัพเดตตารางด้วยข้อมูลใหม่...
                 table.style.opacity = '1';
             })
-        .catch(error => {
-            console.error('Error:', error);
-            table.style.opacity = '1';
-        });
+            .catch(error => {
+                console.error('Error:', error);
+                table.style.opacity = '1';
+            });
 }
 
 // เพิ่มฟังก์ชันสำหรับแสดง loading state

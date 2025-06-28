@@ -435,7 +435,7 @@ $can_delete_temple = ($user_role === 'superadmin');
                     <div class="text-gray-500"><?= htmlspecialchars($temple['abbot_name'] ?? '-') ?></div>
                 </td>
                 <td class="px-6 py-4">
-                    <?php if($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id))): ?>
+                    <?php if($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id) || ($user_role === 'province_admin'))): ?>
                     <!-- ปุ่มสลับสถานะแบบ toggle switch -->
                     <label class="status-toggle relative inline-block">
                         <input type="checkbox" 
@@ -473,9 +473,10 @@ $can_delete_temple = ($user_role === 'superadmin');
                         <i class="fas fa-eye"></i>
                     </a>
                     
-                    <?php if ($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id))): ?>
-                    <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" class="text-blue-600 hover:text-blue-800" title="ແກ້ໄຂຂໍ້ມູນ">
-                        <i class="fas fa-edit"></i>
+                    <?php if ($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id) || ($user_role === 'province_admin'))): ?>
+                    <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" 
+                       class="flex items-center text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-edit mr-1"></i> <span class="text-xs">ແກ້ໄຂ</span>
                     </a>
                     <?php endif; ?>
                     
@@ -563,7 +564,7 @@ $can_delete_temple = ($user_role === 'superadmin');
                     <i class="fas fa-eye mr-1"></i> <span class="text-xs">ເບິ່ງ</span>
                     </a>
                     
-                    <?php if ($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id))): ?>
+                    <?php if ($can_edit && ($user_role === 'superadmin' || ($user_role === 'admin' && $temple['id'] == $user_temple_id) || ($user_role === 'province_admin'))): ?>
                     <a href="<?= $base_url ?>temples/edit.php?id=<?= $temple['id'] ?>" 
                        class="flex items-center text-blue-600 hover:text-blue-800">
                     <i class="fas fa-edit mr-1"></i> <span class="text-xs">ແກ້ໄຂ</span>

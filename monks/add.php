@@ -7,34 +7,51 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['user'])) {
-    header('Location: ' . $base_url . 'auth/login.php');
-    exit;
-}
+// ตรวจสอบสิทธิ์การเข้าถึง
+$user_role = $_SESSION['user']['role'];
+$user_id = $_SESSION['user']['id'];
+$user_temple_id = $_SESSION['user']['temple_id'] ?? null;
 
-$user = $_SESSION['user'];
-$allowed_roles = ['superadmin', 'admin'];
-if (!in_array($user['role'], $allowed_roles)) {
+// อนุญาตให้ province_admin เข้าถึงหน้านี้ได้
+$allowed_roles = ['superadmin', 'admin', 'province_admin'];
+
+if (!in_array($user_role, $allowed_roles)) {
+    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດເຂົ້າເຖິງໜ້ານີ້";
     header('Location: ' . $base_url . 'dashboard.php');
     exit;
 }
-
 // ข้อความแจ้งเตือน
 $success_message = '';
 $error_message = '';
 
-// ดึงข้อมูลวัดสำหรับ dropdown
-try {
-    if ($user['role'] === 'superadmin') {
-        $temples_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active' ORDER BY name");
-    } else {
-        $temples_stmt = $pdo->prepare("SELECT id, name FROM temples WHERE id = ? AND status = 'active'");
-        $temples_stmt->execute([$user['temple_id']]);
-    }
-    $temples = $temples_stmt->fetchAll(PDO::FETCH_ASSOC);
-} catch (PDOException $e) {
-    $error_message = 'เกิดข้อผิดพลาดในการดึงข้อมูลวัด';
+// เพิ่มการจัดการข้อมูลวัดสำหรับแต่ละบทบาท
+if ($user_role === 'superadmin') {
+    // superadmin เห็นวัดทั้งหมด
+    $temple_query = "SELECT t.id, t.name, p.province_name 
+                     FROM temples t 
+                     LEFT JOIN provinces p ON t.province_id = p.province_id 
+                     ORDER BY p.province_name, t.name";
+    $temple_stmt = $pdo->prepare($temple_query);
+    $temple_stmt->execute();
+} elseif ($user_role === 'admin') {
+    // admin เห็นเฉพาะวัดของตัวเอง
+    $temple_query = "SELECT t.id, t.name FROM temples t WHERE t.id = ?";
+    $temple_stmt = $pdo->prepare($temple_query);
+    $temple_stmt->execute([$user_temple_id]);
+} elseif ($user_role === 'province_admin') {
+    // province_admin เห็นวัดในแขวงที่ดูแล
+    $temple_query = "SELECT t.id, t.name, p.province_name 
+                     FROM temples t 
+                     JOIN provinces p ON t.province_id = p.province_id
+                     WHERE t.province_id IN (
+                        SELECT province_id FROM user_province_access WHERE user_id = ?
+                     )
+                     ORDER BY t.name";
+    $temple_stmt = $pdo->prepare($temple_query);
+    $temple_stmt->execute([$user_id]);
 }
+
+$available_temples = $temple_stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // ประมวลผลฟอร์มเพิ่มข้อมูล
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_monk') {
@@ -71,9 +88,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         // ตรวจสอบสิทธิ์การเข้าถึงวัด
-        if ($user['role'] === 'admin' && $data['temple_id'] != $user['temple_id']) {
-            throw new Exception('ທ່ານບໍ່ມີສິດໃນການເພີ່ມຂໍ້ມູນໃນວັດນີ້');
-        }
+                if ($user_role === 'superadmin') {
+                $temples_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active'");
+            } elseif ($user_role === 'province_admin') {
+                $temples_stmt = $pdo->prepare("
+                    SELECT id, name FROM temples 
+                    WHERE province_id IN (
+                        SELECT province_id FROM user_province_access WHERE user_id = ?
+                    ) AND status = 'active'
+                ");
+                $temples_stmt->execute([$user_id]);
+            } else {
+                $temples_stmt = $pdo->prepare("SELECT id, name FROM temples WHERE id = ? AND status = 'active'");
+                $temples_stmt->execute([$user_temple_id]);
+            }
 
         // ตรวจสอบเลขบัตรประชาชนซ้ำ (ถ้ามีการกรอก)
         if (!empty($data['id_card'])) {
@@ -137,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $data['position'] ?: null,
             $photo_path,
             $data['status']
-        ]);
+            ]);
 
         $success_message = 'ເພີ່ມຂໍ້ມູນພຣະສົງສຳເລັດແລ້ວ';
         
@@ -170,15 +198,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         // ตรวจสอบว่ามีข้อมูลหรือไม่
         if (empty($rows) || count($rows) < 5) { // อย่างน้อย 5 แถว (header + ตัวอย่าง)
-            throw new Exception('ໄຟລ໌ Excel ວ່າງເປົ່າຫຼືບໍ່ມີຂໍ້ມູນ');
+            throw new Exception('ໄຟລ໌ Excel ວ່າງເປົ່າຫຼືບໍ່ມີຂໍໍມູນ');
         }
 
         // ดึงข้อมูลวัดสำหรับ validation
-        if ($user['role'] === 'superadmin') {
+        if ($user_role === 'superadmin') {
             $temples_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active'");
+        } elseif ($user_role === 'province_admin') {
+            $temples_stmt = $pdo->prepare("
+                SELECT id, name FROM temples 
+                WHERE province_id IN (
+                    SELECT province_id FROM user_province_access WHERE user_id = ?
+                ) AND status = 'active'
+            ");
+            $temples_stmt->execute([$user_id]);
         } else {
             $temples_stmt = $pdo->prepare("SELECT id, name FROM temples WHERE id = ? AND status = 'active'");
-            $temples_stmt->execute([$user['temple_id']]);
+            $temples_stmt->execute([$user_temple_id]);
         }
         $temples = $temples_stmt->fetchAll(PDO::FETCH_ASSOC);
         $temple_names = array_column($temples, 'name', 'id');
@@ -485,12 +521,11 @@ require_once '../includes/header.php';
                                             <div class="form-group">
                                                 <label for="lay_name" class="form-label">
                                                     <i class="fas fa-user-circle"></i>
-                                                    ຊື່ຄົນທົ່ວໄປ
-                                                </label>
+                                                    ນາມສະກຸນ                                                </label>
                                                 <input type="text" name="lay_name" id="lay_name" 
                                                        value="<?= htmlspecialchars($_POST['lay_name'] ?? '') ?>" 
                                                        class="form-control" 
-                                                       placeholder="ຊື່ກ່ອນບວດ"
+                                                       placeholder="ນາມສະກຸນ"
                                                        autocomplete="given-name">
                                             </div>
 
@@ -556,18 +591,20 @@ require_once '../includes/header.php';
                                             </div>
 
                                             <div class="form-group">
-                                                <label for="temple_id" class="form-label required">
-                                                    <i class="fas fa-place-of-worship"></i>
-                                                    ວັດ
+                                                <label class="form-label" for="temple_id">
+                                                    <i class="fas fa-place-of-worship text-amber-700 mr-1"></i> ວັດ <span class="text-red-500">*</span>
                                                 </label>
                                                 <select name="temple_id" id="temple_id" class="form-control" required>
                                                     <option value="">-- ເລືອກວັດ --</option>
-                                                    <?php foreach ($temples as $temple): ?>
-                                                    <option value="<?= $temple['id'] ?>" 
-                                                            <?= (isset($_POST['temple_id']) && $_POST['temple_id'] == $temple['id']) || 
-                                                                ($user['role'] === 'admin' && $temple['id'] == $user['temple_id']) ? 'selected' : '' ?>>
-                                                        <?= htmlspecialchars($temple['name']) ?>
-                                                    </option>
+                                                    <?php foreach ($available_temples as $temple): ?>
+                                                        <option value="<?= $temple['id'] ?>" <?= isset($_POST['temple_id']) && $_POST['temple_id'] == $temple['id'] ? 'selected' : '' ?>>
+                                                            <?= htmlspecialchars($temple['name']) ?>
+                                                            <?php if ($user_role === 'superadmin' || $user_role === 'province_admin'): ?>
+                                                                <?php if (isset($temple['province_name'])): ?>
+                                                                    (<?= htmlspecialchars($temple['province_name']) ?>)
+                                                                <?php endif; ?>
+                                                            <?php endif; ?>
+                                                        </option>
                                                     <?php endforeach; ?>
                                                 </select>
                                             </div>
