@@ -588,26 +588,50 @@ $can_delete_temple = ($user_role === 'superadmin');
             <!-- Pagination -->
             <?php if($total_pages > 1): ?>
             <div class="px-4 md:px-6 py-4 bg-white border-t border-gray-200">
-            <div class="flex flex-col md:flex-row md:justify-between md:items-center">
-                <div class="text-sm text-gray-500 mb-2 md:mb-0">
-                ສະແດງ <?= count($temples) ?> ຈາກທັງໝົດ <?= $total_temples ?> ວັດ
+                <div class="flex flex-col md:flex-row md:justify-between md:items-center">
+                    <div class="text-sm text-gray-500 mb-2 md:mb-0">
+                        ສະແດງ <?= count($temples) ?> ຈາກທັງໝົດ <?= $total_temples ?> ວັດ
+                    </div>
+                    <div class="flex flex-wrap gap-1 justify-center md:justify-end items-center">
+                        <?php 
+                        $prev_page = max(1, $page - 1);
+                        $next_page = min($total_pages, $page + 1);
+                        $query_params = $_GET;
+                        ?>
+                        <!-- ปุ่มย้อนกลับ -->
+                        <a 
+                            href="?<?= http_build_query(array_merge($query_params, ['page' => $prev_page])) ?>" 
+                            class="px-3 py-1 rounded text-center min-w-[2rem] <?= $page <= 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' ?>"
+                            <?= $page <= 1 ? 'tabindex="-1" aria-disabled="true"' : '' ?>
+                        >
+                            &laquo; ກ່ອນหน้า
+                        </a>
+                        <!-- เลขหน้า -->
+                        <?php
+                        $max_links = 15; // จำนวนเลขหน้าที่แสดง
+                        $start = max(1, $page - floor($max_links / 2));
+                        $end = min($total_pages, $start + $max_links - 1);
+                        if ($end - $start < $max_links - 1) {
+                            $start = max(1, $end - $max_links + 1);
+                        }
+                        ?>
+                        <?php for($i = $start; $i <= $end; $i++): ?>
+                            <a 
+                                href="?<?= http_build_query(array_merge($query_params, ['page' => $i])) ?>" 
+                                class="<?= $i === $page ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' ?> px-3 py-1 rounded text-center min-w-[2rem]">
+                                <?= $i ?>
+                            </a>
+                        <?php endfor; ?>
+                        <!-- ปุ่มถัดไป -->
+                        <a 
+                            href="?<?= http_build_query(array_merge($query_params, ['page' => $next_page])) ?>" 
+                            class="px-3 py-1 rounded text-center min-w-[2rem] <?= $page >= $total_pages ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' ?>"
+                            <?= $page >= $total_pages ? 'tabindex="-1" aria-disabled="true"' : '' ?>
+                        >
+                            ຕໍ່ມາ &raquo;
+                        </a>
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-1 justify-center md:justify-end">
-                <?php for($i = 1; $i <= $total_pages; $i++): ?>
-                    <?php 
-                    $query_params = $_GET;
-                    $query_params['page'] = $i;
-                    $query_string = http_build_query($query_params);
-                    ?>
-                    <a 
-                    href="?<?= $query_string ?>" 
-                    class="<?= $i === $page ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' ?> px-3 py-1 rounded text-center min-w-[2rem]"
-                    >
-                    <?= $i ?>
-                    </a>
-                <?php endfor; ?>
-                </div>
-            </div>
             </div>
             <?php endif; ?>
             
