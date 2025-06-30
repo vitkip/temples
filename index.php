@@ -587,19 +587,22 @@ try {
     </section>
 
     <!-- CTA Section -->
-    <section class="bg-gradient-to-r from-amber-700 to-amber-600 py-12 md:py-16">
+    <section class="bg-gradient-to-r from-red-600 to-red-700 py-12 md:py-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">
-                ພ້ອມເລີ່ມຕົ້ນແລ້ວບໍ?
+                ລົງທະບຽນໃຊ້ງານ YouTube Premium ແບບບໍ່ມີໂຄສະນາລາຍ
             </h2>
             <p class="text-amber-100 text-lg mb-8 max-w-2xl mx-auto">
-                ລົງທະບຽນເຂົ້າໃຊ້ງານລະບົບຈັດການຂໍ້ມູນວັດແບບຟຣີ ແລະ ເລີ່ມຈັດການຂໍ້ມູນຂອງທ່ານແບບມືອາຊີບ
+                ເບີ່ງ youtube ແບບບໍ່ມີໂຄສະນາ ລາຍເດືອນ 99,999 ກິບ ແລະ ຍັງເປັນການສະໜັບສະໜູນໃນການພັດທະນາລະບົບວັດ
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
-                <a href="<?= $base_url ?>auth/register.php" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-amber-700 bg-white hover:bg-amber-50 shadow-lg transition">
-                    <i class="fas fa-user-plus mr-2"></i> ລົງທະບຽນຟຣີ
+                <a href="<?= htmlspecialchars($settings['whatsapp_url'] ?? '#') ?>" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-red-700 bg-white hover:bg-red-50 shadow-lg transition">
+                    <i class="fab fa-youtube text-2xl"></i> ລົງທະບຽນຟຣີ
                 </a>
-                <a href="<?= $base_url ?>temples/" class="inline-flex items-center justify-center px-6 py-3 border-2 border-white text-base font-medium rounded-lg text-white hover:bg-white hover:text-amber-700 transition">
+                <a href="<?= htmlspecialchars($settings['whatsapp_url'] ?? '#') ?>" target="_blank" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-green-700 bg-white hover:bg-green-50 shadow-lg transition">
+                    <i class="fab fa-whatsapp text-2xl"></i> ຕິດຕໍ່ລົງທະບຽນ WhatsApp
+                </a>
+                <a href="<?= $base_url ?>all-temples.php" class="inline-flex items-center justify-center px-6 py-3 border-2 border-white text-base font-medium rounded-lg text-white hover:bg-white hover:text-red-700 transition">
                     <i class="fas fa-search mr-2"></i> ສຳຫຼວດວັດ
                 </a>
             </div>
@@ -620,15 +623,15 @@ try {
                     <p class="text-gray-300 mb-4">
                         <?= htmlspecialchars($site_description) ?>
                     </p>
-                    <div class="flex space-x-4">
-                        <a href="#" class="text-gray-400 hover:text-amber-400 transition">
-                            <i class="fab fa-facebook-f"></i>
+                      <div class="flex space-x-4">
+                        <a href="<?= htmlspecialchars($settings['facebook_url'] ?? '#') ?>" target="_blank" class="text-gray-400 hover:text-amber-400 transition">
+                            <i class="fab fa-facebook-f text-2xl"></i>
                         </a>
-                        <a href="#" class="text-gray-400 hover:text-amber-400 transition">
-                            <i class="fab fa-twitter"></i>
+                        <a href="<?= htmlspecialchars($settings['whatsapp_url'] ?? '#') ?>" target="_blank" class="text-gray-400 hover:text-amber-400 transition">
+                            <i class="fab fa-whatsapp text-2xl"></i>
                         </a>
-                        <a href="#" class="text-gray-400 hover:text-amber-400 transition">
-                            <i class="fab fa-instagram"></i>
+                        <a href="<?= htmlspecialchars($settings['youtube_url'] ?? '#') ?>" target="_blank" class="text-gray-400 hover:text-amber-400 transition">
+                            <i class="fab fa-youtube text-2xl"></i>
                         </a>
                     </div>
                 </div>
@@ -656,7 +659,7 @@ try {
                         </li>
                         <li class="flex items-center">
                             <i class="fas fa-envelope mr-2 text-amber-400"></i>
-                            <?= htmlspecialchars($settings['contact_email'] ?? 'contact@example.com') ?>
+                            <?= htmlspecialchars($settings['admin_email'] ?? 'contact@example.com') ?>
                         </li>
                     </ul>
                 </div>

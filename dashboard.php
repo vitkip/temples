@@ -155,6 +155,34 @@ if ($user_role === 'province_admin') {
     $stmt->execute([$user_id]);
     $provinceStats = $stmt->fetchAll();
 }
+
+
+// พระบวชใหม่แต่ละปี
+$stmt = $pdo->query("SELECT YEAR(ordination_date) AS year, COUNT(*) AS monks_ordination FROM monks WHERE ordination_date IS NOT NULL GROUP BY YEAR(ordination_date) ORDER BY year DESC");
+$ordination_stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// พระสึกแต่ละปี
+$stmt = $pdo->query("SELECT YEAR(resignation_date) AS year, COUNT(*) AS monks_resign FROM monks WHERE resignation_date IS NOT NULL GROUP BY YEAR(resignation_date) ORDER BY year DESC");
+$resign_stats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// พระบวชใหม่ปีนี้
+$monks_ordination = 0;
+$current_year = date('Y');
+foreach ($ordination_stats as $row) {
+    if ($row['year'] == $current_year) {
+        $monks_ordination = $row['monks_ordination'];
+        break;
+    }
+}
+
+// พระสึกปีนี้
+$monks_resign = 0;
+foreach ($resign_stats as $row) {
+    if ($row['year'] == $current_year) {
+        $monks_resign = $row['monks_resign'];
+        break;
+    }
+}
 ?>
 
 <!-- เพิ่ม link เพื่อนำเข้า monk-style.css -->
@@ -302,16 +330,17 @@ if ($user_role === 'province_admin') {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- Recent Events -->
             <div class="card">
+                
                 <div class="p-6 border-b border-amber-100">
                     <h3 class="text-xl font-semibold text-gray-800 flex items-center">
                         <div class="category-icon">
                             <i class="fas fa-calendar-day"></i>
                         </div>
-                        ກິດຈະກໍາທີ່ຈະມາເຖິງ
+                        ກິດຈະກໍາໃນວັນນີ້
                     </h3>
                 </div>
                 
-                <div class="p-6">
+                 <div class="p-6">
                     <?php if (count($recentEvents) > 0): ?>
                         <div class="divide-y divide-amber-100">
                             <?php foreach ($recentEvents as $event): ?>
@@ -354,11 +383,12 @@ if ($user_role === 'province_admin') {
                 </div>
             </div>
             
+            
             <!-- Chart -->
             <div class="card">
                 <div class="p-6 border-b border-amber-100">
                     <div class="flex justify-between items-center">
-                        <h3 class="text-xl font-semibold text-gray-800 flex items-center">
+                        <h3 class="text-xl font-semibold text-gray-800 flex items-center" style="font-family: 'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', sans-serif;">
                             <div class="category-icon">
                                 <i class="fas fa-chart-pie"></i>
                             </div>
@@ -383,81 +413,285 @@ if ($user_role === 'province_admin') {
 
         <!-- Quick Access -->
         <div class="card p-6">
-            <h3 class="text-xl font-semibold text-gray-800 mb-6 flex items-center">
-                <div class="category-icon">
-                    <i class="fas fa-bolt"></i>
-                </div>
-                ເຂົ້າເຖິງດ່ວນ
-            </h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <?php if ($user_role === 'superadmin'): ?>
-                <a href="<?= $base_url ?>temples/add.php" class="card p-6 text-center hover:bg-amber-50 transition">
-                    <div class="flex justify-center mb-3">
-                        <div class="icon-circle">
-                            <i class="fas fa-plus-circle text-xl"></i>
-                        </div>
-                    </div>
-                    <h4 class="font-medium text-gray-900">ເພີ່ມວັດໃໝ່</h4>
-                </a>
-                <?php endif; ?>
-                
-                <?php if (in_array($user_role, ['superadmin', 'admin', 'province_admin'])): ?>
-                <a href="<?= $base_url ?>monks/add.php" class="card p-6 text-center hover:bg-amber-50 transition">
-                    <div class="flex justify-center mb-3">
-                        <div class="icon-circle">
-                            <i class="fas fa-user-plus text-xl"></i>
-                        </div>
-                    </div>
-                    <h4 class="font-medium text-gray-900">ເພີ່ມພະສົງໃໝ່</h4>
-                </a>
-                
-                <a href="<?= $base_url ?>events/add.php" class="card p-6 text-center hover:bg-amber-50 transition">
-                    <div class="flex justify-center mb-3">
-                        <div class="icon-circle">
-                            <i class="fas fa-calendar-plus text-xl"></i>
-                        </div>
-                    </div>
-                    <h4 class="font-medium text-gray-900">ສ້າງກິດຈະກໍາໃໝ່</h4>
-                </a>
-                <?php endif; ?>
-                
-                <a href="<?= $base_url ?>reports/" class="card p-6 text-center hover:bg-amber-50 transition">
-                    <div class="flex justify-center mb-3">
-                        <div class="icon-circle">
-                            <i class="fas fa-chart-bar text-xl"></i>
-                        </div>
-                    </div>
-                    <h4 class="font-medium text-gray-900">ລາຍງານ</h4>
-                </a>
-                
-                <!-- Browse Links -->
-                <a href="<?= $base_url ?>temples/" class="card p-6 text-center hover:bg-amber-50 transition">
-                    <div class="flex justify-center mb-3">
-                        <div class="icon-circle">
-                            <i class="fas fa-gopuram text-xl"></i>
-                        </div>
-                    </div>
-                    <h4 class="font-medium text-gray-900">ເບິ່ງວັດ</h4>
-                </a>
-                
-                <a href="<?= $base_url ?>monks/" class="card p-6 text-center hover:bg-amber-50 transition">
-                    <div class="flex justify-center mb-3">
-                        <div class="icon-circle">
-                            <i class="fas fa-users text-xl"></i>
-                        </div>
-                    </div>
-                    <h4 class="font-medium text-gray-900">ເບິ່ງພະສົງ</h4>
-                </a>
-                
-                <a href="<?= $base_url ?>events/" class="card p-6 text-center hover:bg-amber-50 transition">
-                    <div class="flex justify-center mb-3">
-                        <div class="icon-circle">
-                            <i class="fas fa-calendar text-xl"></i>
-                        </div>
-                    </div>
-                    <h4 class="font-medium text-gray-900">ເບິ່ງກິດຈະກໍາ</h4>
-                </a>
-            </div>
+            <!-- กราฟแท่งแยกตาม แขวง เมือง และ วัด -->
+            <canvas id="ordinationBarChart" height="220"></canvas>
+            
+            <script>
+                let templeChartInstance = null;
+                let ordinationBarChartInstance = null;
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    initCharts();
+                    initOrdinationChart();
+                });
+
+                function initCharts() {
+                    const canvas = document.getElementById('templeChart');
+                    if (!canvas) {
+                        console.error('Chart canvas not found');
+                        return;
+                    }
+                    
+                    // Destroy existing chart if it exists
+                    if (templeChartInstance) {
+                        templeChartInstance.destroy();
+                        templeChartInstance = null;
+                    }
+                    
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Show loading
+                    ctx.fillStyle = '#9CA3AF';
+                    ctx.font = "16px 'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif";
+                    ctx.textAlign = 'center';
+                    ctx.fillText('ກຳລັງໂຫຼດຂໍ້ມູນ...', canvas.width/2, canvas.height/2);
+                    
+                    // Get user role and ID from PHP
+                    const userRole = '<?= $user_role ?>';
+                    const userId = '<?= $user_id ?>';
+                    
+                    // Call API
+                    const apiUrl = `<?= $base_url ?>api/temple_stats.php?user_role=${encodeURIComponent(userRole)}&user_id=${userId}`;
+                    console.log('Fetching data from:', apiUrl);
+                    
+                    fetch(apiUrl)
+                        .then(response => {
+                            console.log('Response status:', response.status);
+                            if (!response.ok) {
+                                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Parsed data:', data);
+                            
+                            if (data.error) {
+                                throw new Error(data.message || 'API Error');
+                            }
+                            
+                            createChart(ctx, data);
+                        })
+                        .catch(error => {
+                            console.error('Fetch Error:', error);
+                            showError(ctx, 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນໄດ້: ' + error.message);
+                        });
+                }
+
+                function createChart(ctx, data) {
+                    // Clear canvas first
+                    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                    
+                    // Check data
+                    if (!Array.isArray(data) || data.length === 0) {
+                        showError(ctx, 'ບໍ່ມີຂໍ້ມູນສະແດງ');
+                        return;
+                    }
+                    
+                    // Create Chart
+                    templeChartInstance = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: data.map(item => item.province || 'ບໍ່ຊີ້ແຈງ'),
+                            datasets: [{
+                                label: 'ຈໍານວນວັດ',
+                                data: data.map(item => parseInt(item.count) || 0),
+                                backgroundColor: [
+                                    'rgba(212, 167, 98, 0.8)',
+                                    'rgba(176, 133, 66, 0.8)',
+                                    'rgba(200, 169, 126, 0.8)',
+                                    'rgba(164, 113, 88, 0.8)',
+                                    'rgba(145, 111, 73, 0.8)',
+                                    'rgba(191, 154, 108, 0.8)',
+                                    'rgba(158, 132, 97, 0.8)',
+                                    'rgba(183, 147, 112, 0.8)',
+                                    'rgba(167, 124, 89, 0.8)',
+                                    'rgba(198, 162, 125, 0.8)'
+                                ],
+                                borderColor: 'rgba(176, 133, 66, 1)',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'bottom',
+                                    labels: {
+                                        padding: 15,
+                                        usePointStyle: true,
+                                        font: {
+                                            family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            const label = context.label || '';
+                                            const value = context.parsed || 0;
+                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                            return `${label}: ${value} ວັດ (${percentage}%)`;
+                                        }
+                                    },
+                                    bodyFont: {
+                                        family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                    },
+                                    titleFont: {
+                                        family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                function initOrdinationChart() {
+                    const userRole = '<?= $user_role ?>';
+                    const userId = '<?= $user_id ?>';
+                    
+                    fetch(`<?= $base_url ?>api/ordination_stats.php?user_role=${encodeURIComponent(userRole)}&user_id=${userId}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            // Prepare labels
+                            const provinces = [...new Set(data.map(item => item.province))];
+                            const districts = [...new Set(data.map(item => item.district))];
+                            const temples = [...new Set(data.map(item => item.temple))];
+
+                            // Prepare dataset for each level
+                            const provinceData = provinces.map(prov => {
+                                const filtered = data.filter(item => item.province === prov);
+                                return {
+                                    label: prov,
+                                    monks_ordination: filtered.reduce((sum, i) => sum + (+i.monks_ordination_this_year || 0), 0),
+                                    monks_resign: filtered.reduce((sum, i) => sum + (+i.monks_resign_this_year || 0), 0)
+                                };
+                            });
+                            const districtData = districts.map(dist => {
+                                const filtered = data.filter(item => item.district === dist);
+                                return {
+                                    label: dist,
+                                    monks_ordination: filtered.reduce((sum, i) => sum + (+i.monks_ordination_this_year || 0), 0),
+                                    monks_resign: filtered.reduce((sum, i) => sum + (+i.monks_resign_this_year || 0), 0)
+                                };
+                            });
+                            const templeData = temples.map(temp => {
+                                const filtered = data.filter(item => item.temple === temp);
+                                return {
+                                    label: temp,
+                                    monks_ordination: filtered.reduce((sum, i) => sum + (+i.monks_ordination_this_year || 0), 0),
+                                    monks_resign: filtered.reduce((sum, i) => sum + (+i.monks_resign_this_year || 0), 0)
+                                };
+                            });
+
+                            // Default: show by province
+                            renderOrdinationBarChart(provinceData, 'ຂໍ້ມູນພຣະບວດໃໝ່/ສຶກ (ແຍກຕາມແຂວງ)');
+
+                            // Add dropdown for switching level
+                            const container = document.getElementById('ordinationBarChart').parentNode;
+                            let select = document.getElementById('ordinationLevelSelect');
+                            if (!select) {
+                                select = document.createElement('select');
+                                select.id = 'ordinationLevelSelect';
+                                select.className = 'mb-4 border rounded px-2 py-1';
+                                select.style.fontFamily = "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif";
+                                select.innerHTML = `
+                                    <option value="province">ແຂວງ</option>
+                                    <option value="district">ເມືອງ</option>
+                                    <option value="temple">ວັດ</option>
+                                `;
+                                container.insertBefore(select, container.firstChild);
+                            }
+                            select.onchange = function() {
+                                if (this.value === 'province') {
+                                    renderOrdinationBarChart(provinceData, 'ຂໍ້ມູນພຣະບວດໃໝ່/ສຶກ (ແຍກຕາມແຂວງ)');
+                                } else if (this.value === 'district') {
+                                    renderOrdinationBarChart(districtData, 'ຂໍ້ມູນພຣະບວດໃໝ່/ສຶກ (ແຍກຕາມເມືອງ)');
+                                } else {
+                                    renderOrdinationBarChart(templeData, 'ຂໍ້ມູນພຣະບວດໃໝ່/ສຶກ (ແຍກຕາມວັດ)');
+                                }
+                            };
+
+                            function renderOrdinationBarChart(dataset, title) {
+                                const ctx = document.getElementById('ordinationBarChart').getContext('2d');
+                                if (ordinationBarChartInstance) {
+                                    ordinationBarChartInstance.destroy();
+                                }
+                                ordinationBarChartInstance = new Chart(ctx, {
+                                    type: 'bar',
+                                    data: {
+                                        labels: dataset.map(d => d.label),
+                                        datasets: [
+                                            {
+                                                label: 'ບວດໃໝ່ (ປີນີ້)',
+                                                data: dataset.map(d => d.monks_ordination),
+                                                backgroundColor: 'rgba(34,197,94,0.7)'
+                                            },
+                                            {
+                                                label: 'ສຶກ (ປີນີ້)',
+                                                data: dataset.map(d => d.monks_resign),
+                                                backgroundColor: 'rgba(239,68,68,0.7)'
+                                            }
+                                        ]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        plugins: {
+                                            title: {
+                                                display: true,
+                                                text: title,
+                                                font: { size: 16, family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif" }
+                                            },
+                                            legend: { 
+                                                position: 'top',
+                                                labels: {
+                                                    font: {
+                                                        family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        scales: {
+                                            x: { 
+                                                title: { display: false },
+                                                ticks: {
+                                                    font: {
+                                                        family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                                    }
+                                                }
+                                            },
+                                            y: { 
+                                                beginAtZero: true,
+                                                ticks: {
+                                                    font: {
+                                                        family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Ordination chart error:', error);
+                        });
+                }
+
+                function showError(ctx, message) {
+                    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                    ctx.fillStyle = '#EF4444';
+                    ctx.font = "14px 'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif";
+                    ctx.textAlign = 'center';
+                    ctx.fillText(message, ctx.canvas.width/2, ctx.canvas.height/2);
+                }
+
+                function refreshChart() {
+                    initCharts();
+                }
+            </script>
         </div>
     </div>
 </div>

@@ -10,19 +10,47 @@ require_once '../includes/header.php';
 // ກວດສອບການຕັ້ງຄ່າຕົວກອງ temple_id
 $temple_filter = isset($_GET['temple_id']) ? (int)$_GET['temple_id'] : null;
 
-// ກຽມຄິວລີຕາມຕົວກອງ ແລະ ສິດທິຂອງຜູ້ໃຊ້
+// ກຽມຄິວລີຕາມຕົວກອງ ແລະ ສິດທິຂອງຜູໃຊ້
 $params = [];
-$query = "SELECT e.*, t.name as temple_name FROM events e 
-          LEFT JOIN temples t ON e.temple_id = t.id WHERE 1=1";
+$query = "SELECT e.*, t.name as temple_name, p.province_name 
+          FROM events e 
+          LEFT JOIN temples t ON e.temple_id = t.id
+          LEFT JOIN provinces p ON t.province_id = p.province_id
+          WHERE 1=1";
 
-// ນໍາໃຊ້ຕົວກອງວັດ ຖ້າມີການລະບຸ
-if ($temple_filter) {
-    $query .= " AND e.temple_id = ?";
-    $params[] = $temple_filter;
+// superadmin: filter by temple if selected
+if ($_SESSION['user']['role'] === 'superadmin') {
+    if ($temple_filter) {
+        $query .= " AND e.temple_id = ?";
+        $params[] = $temple_filter;
+    }
+    // (optionally add province filter here if needed)
 }
 
-// ຖ້າຜູ້ໃຊ້ເປັນຜູ້ດູແລວັດ, ສະແດງສະເພາະກິດຈະກໍາໃນວັດຂອງເຂົາເທົ່ານັ້ນ
-if ($_SESSION['user']['role'] === 'admin') {
+// province_admin: filter by province(s) they have access to
+elseif ($_SESSION['user']['role'] === 'province_admin') {
+    // ดึง province_id ที่ user มีสิทธิ์
+    $province_stmt = $pdo->prepare("SELECT province_id FROM user_province_access WHERE user_id = ?");
+    $province_stmt->execute([$_SESSION['user']['id']]);
+    $province_ids = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    if ($province_ids) {
+        $in = str_repeat('?,', count($province_ids) - 1) . '?';
+        $query .= " AND t.province_id IN ($in)";
+        $params = array_merge($params, $province_ids);
+    } else {
+        // ไม่มีสิทธิ์ดูอะไรเลย
+        $query .= " AND 0";
+    }
+    // filter by temple if selected
+    if ($temple_filter) {
+        $query .= " AND e.temple_id = ?";
+        $params[] = $temple_filter;
+    }
+}
+
+// admin: filter by their own temple
+elseif ($_SESSION['user']['role'] === 'admin') {
     $query .= " AND e.temple_id = ?";
     $params[] = $_SESSION['user']['temple_id'];
 }
@@ -44,7 +72,7 @@ $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $events = $stmt->fetchAll();
 
-// ດຶງຂໍ້ມູນວັດສຳລັບ dropdown ຕົວກອງ (ຖ້າຜູ້ໃຊ້ເປັນ superadmin)
+// ດຶງຂໍ້ມູນວັດສຳລັບ dropdown ຕົວກອງ (ຖ້າຜູໃຊ້ເປັນ superadmin)
 $temples = [];
 if ($_SESSION['user']['role'] === 'superadmin') {
     $temple_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active' ORDER BY name");
@@ -52,7 +80,11 @@ if ($_SESSION['user']['role'] === 'superadmin') {
 }
 
 // ກວດສອບສິດໃນການເພີ່ມ/ແກ້ໄຂກິດຈະກໍາ
-$can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['role'] === 'admin');
+$can_add = (
+    $_SESSION['user']['role'] === 'superadmin' ||
+    $_SESSION['user']['role'] === 'admin' ||
+    $_SESSION['user']['role'] === 'province_admin'
+);
 ?>
 
 <!-- ສ່ວນຫົວຂອງໜ້າ -->
@@ -154,7 +186,7 @@ $can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['rol
             </thead>
             <tbody class="divide-y divide-gray-200">
                 <?php foreach($events as $event): 
-                    // ຄົ້ນຫາຈຳນວນພະສົງທີ່ເຂົ້າຮ່ວມກິດຈະກຳ
+                    // ຄົ້ນຫາຈຳນວນພະສົງທີ່ເຂົ້າຮ່ວມກິດຈະກຍ
                     $monk_stmt = $pdo->prepare("SELECT COUNT(*) FROM event_monk WHERE event_id = ?");
                     $monk_stmt->execute([$event['id']]);
                     $monk_count = $monk_stmt->fetchColumn();
@@ -187,11 +219,14 @@ $can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['rol
                                 <i class="fas fa-eye"></i>
                             </a>
                             
-                            <?php if ($_SESSION['user']['role'] === 'superadmin' || ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id'])): ?>
+                            <?php if (
+                                $_SESSION['user']['role'] === 'superadmin' ||
+                                ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id']) ||
+                                $_SESSION['user']['role'] === 'province_admin'
+                            ): ?>
                             <a href="<?= $base_url ?>events/edit.php?id=<?= $event['id'] ?>" class="text-blue-600 hover:text-blue-900">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            
                             <a href="javascript:void(0)" class="text-red-600 hover:text-red-900 delete-event" data-id="<?= $event['id'] ?>" data-title="<?= htmlspecialchars($event['title']) ?>">
                                 <i class="fas fa-trash"></i>
                             </a>
@@ -208,7 +243,7 @@ $can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['rol
     <div class="md:hidden">
         <div class="grid grid-cols-1 gap-4">
             <?php foreach($events as $event): 
-                // ຄົ້ນຫາຈຳນວນພະສົງທີ່ເຂົ້າຮ່ວມກິດຈະກຳ
+                // ຄົ້ນຫາຈຳນວນພະສົງທີ່ເຂົ້າຮ່ວມກິດຈະກຍ
                 $monk_stmt = $pdo->prepare("SELECT COUNT(*) FROM event_monk WHERE event_id = ?");
                 $monk_stmt->execute([$event['id']]);
                 $monk_count = $monk_stmt->fetchColumn();
@@ -249,11 +284,15 @@ $can_add = ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['rol
                         <i class="fas fa-eye mr-1"></i> ເບິ່ງ
                     </a>
                     
-                    <?php if ($_SESSION['user']['role'] === 'superadmin' || ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id'])): ?>
+                    <?php if (
+                        $_SESSION['user']['role'] === 'superadmin' ||
+                        ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id']) ||
+                        $_SESSION['user']['role'] === 'province_admin'
+                    ): ?>
                     <a href="<?= $base_url ?>events/edit.php?id=<?= $event['id'] ?>" class="text-blue-600 hover:text-blue-900 px-2 py-1">
                         <i class="fas fa-edit mr-1"></i> ແກ້ໄຂ
                     </a>
-                    
+
                     <a href="javascript:void(0)" class="text-red-600 hover:text-red-900 px-2 py-1 delete-event" data-id="<?= $event['id'] ?>" data-title="<?= htmlspecialchars($event['title']) ?>">
                         <i class="fas fa-trash mr-1"></i> ລຶບ
                     </a>

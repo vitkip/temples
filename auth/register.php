@@ -343,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <!-- ຊື່ຜູ້ໃຊ້ -->
                     <div>
                         <label for="username" class="block text-sm font-medium text-gray-700">
-                            ຊື່ຜູ້ໃຊ້ <span class="text-red-600">*</span>
+                            ຊື່ຜູ້ໃຊ້ ເຂ້າໃຊ້ລະບົບ ຕ້ອງເປັນພາສາອັງກິດເທົ່ານັ້ນ<span class="text-red-600">*</span>
                         </label>
                         <div class="mt-1 input-group">
                             <span class="input-icon">
@@ -351,7 +351,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </span>
                             <input type="text" name="username" id="username" 
                                 class="shadow-sm focus:ring-amber-500 focus:border-amber-500 block w-full sm:text-sm border-gray-300 rounded-lg input-with-icon form-input transition-all" 
-                                value="<?= htmlspecialchars($form_data['username']) ?>" required>
+                                value="<?= htmlspecialchars($form_data['username']) ?>" 
+                                pattern="[A-Za-z0-9_]+" 
+                                title="ພິມໄດ້ສະເພາະ a-z, A-Z, 0-9 ແລະ _ ເທົ່ານັ້ນ" 
+                                required
+                                oninput="this.value = this.value.replace(/[^A-Za-z0-9_]/g, '')">
                         </div>
                         <p class="mt-1 text-xs text-gray-500">ຊື່ຜູໃຊ້ສໍາລັບເຂົ້າສູ່ລະບົບ</p>
                     </div>

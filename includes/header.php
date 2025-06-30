@@ -24,6 +24,7 @@ if (!isset($_SESSION['user'])) {
     <meta property="og:description" content="ລະບົບຈັດການຂໍ້ມູນວັດ ພຣະສົງສາມະເນນ ແລະກິດຈະກຳທາງສາສະໜາ">
     <meta property="og:image" content="https://laotemples.com/assets/images/og-image.jpg">
     <meta property="og:url" content="https://laotemples.com">
+    <meta name="base-url" content="<?= $base_url ?>">
     <link rel="icon" href="<?= $base_url ?>assets/images/favicon.png" type="image/x-icon">
     <title>ລະບົບຈັດການຂໍ້ມູນວັດ - <?= $page_title ?? 'ໜ້າຫຼັກ' ?></title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -81,8 +82,8 @@ if (!isset($_SESSION['user'])) {
                 
                 </div>
                 
+                <!-- Admin Section เฉพาะ superadmin -->
                 <?php if ($_SESSION['user']['role'] === 'superadmin'): ?>
-                <!-- Admin Section -->
                 <div class="mt-8">
                   <div class="px-4 mb-3">
                     <h3 class="text-xs font-semibold text-indigo-200 uppercase tracking-wider">ການຈັດການລະບົບ</h3>
@@ -104,13 +105,8 @@ if (!isset($_SESSION['user'])) {
                         <i class="fas fa-chart-bar mr-3 w-5 text-center"></i>
                         <span>ລາຍງານ</span>
                       </a>
-                    <a href="<?= $base_url ?>users/" class="sidebar-link <?= isActiveNav($current_path, '/users/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
-                      <i class="fas fa-users mr-3 w-5 text-center"></i>
-                      <span>ຜູ້ໃຊ້ງານລະບົບ</span>
-                    </a>
                   </div>
                 </div>
-                <!-- Admin Section End -->
                 <div class="mt-8">
                     <div class="space-y-1">
                         <a href="<?= $base_url ?>admin/settings.php" class="sidebar-link <?= isActiveNav($current_path, '/admin/settings.php') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
@@ -120,6 +116,21 @@ if (!isset($_SESSION['user'])) {
                     </div>
                 </div>
                  <?php endif; ?>
+                
+                <!-- เมนูผู้ใช้งานระบบ แยกออกมาให้ superadmin และ province_admin เห็น -->
+                <?php if ($_SESSION['user']['role'] === 'superadmin' || $_SESSION['user']['role'] === 'province_admin'): ?>
+            <div class="mt-8">
+            <div class="px-4 mb-3">
+                <h3 class="text-xs font-semibold text-indigo-200 uppercase tracking-wider">ຈັດການຜູ່ໃຊ້</h3>
+            </div>
+            <div class="space-y-1">
+                <a href="<?= $base_url ?>users/" class="sidebar-link <?= isActiveNav($current_path, '/users/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                <i class="fas fa-users mr-3 w-5 text-center"></i>
+                <span>ຜູ້ໃຊ້ງານລະບົບ</span>
+                </a>
+            </div>
+    </div>
+<?php endif; ?>
             </nav>
             
             <div class="border-t border-indigo-800 p-4">

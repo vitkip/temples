@@ -361,7 +361,13 @@ require_once '../includes/header.php';
                         <?php if ($subscription['updated_at'] !== $subscription['created_at']): ?>
                         <div>
                             <p class="text-sm text-gray-500">ອັບເດດລ່າສຸດ</p>
-                            <p class="text-base text-gray-900"><?= date("d/m/Y H:i", strtotime($subscription['updated_at'])) ?></p>
+                            <p class="text-base text-gray-900"> <?php
+                            if (!empty($subscription['start_date'])) {
+                            echo date('d/m/Y H:i', strtotime($subscription['start_date']));
+                        } else {
+                            echo '-';
+                        }
+                        ?></p>
                         </div>
                         <?php endif; ?>
                         <div>

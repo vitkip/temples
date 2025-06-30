@@ -34,8 +34,10 @@ if (!$event) {
 }
 
 // ກວດສອບສິດໃນການລຶບຂໍ້ມູນ
+
 $can_delete = $_SESSION['user']['role'] === 'superadmin' || 
-           ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id']);
+           ($_SESSION['user']['role'] === 'admin' && $_SESSION['user']['temple_id'] == $event['temple_id']) ||
+           $_SESSION['user']['role'] === 'province_admin';
 
 if (!$can_delete) {
     $_SESSION['error'] = "ທ່ານບໍ່ມີສິດລຶບຂໍ້ມູນກິດຈະກໍ່ານີ້";

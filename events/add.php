@@ -15,12 +15,12 @@ if (!isset($_SESSION['csrf_token'])) {
 // ກວດສອບວ່າຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບແລ້ວຫຼືບໍ່
 if (!isset($_SESSION['user'])) {
     $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
-    header('Location: ' . $base_url . 'login.php');
+    header('Location: ' . $base_url . 'auth/');
     exit;
 }
 
 // ກວດສອບສິດທິຂອງຜູ້ໃຊ້ໃນການເພີ່ມກິດຈະກໍາ
-if (!in_array($_SESSION['user']['role'], ['superadmin', 'admin'])) {
+if (!in_array($_SESSION['user']['role'], ['superadmin', 'admin', 'province_admin'])) {
     $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃນການເພີ່ມກິດຈະກໍາ";
     header('Location: ' . $base_url . 'events/');
     exit;
@@ -30,6 +30,20 @@ if (!in_array($_SESSION['user']['role'], ['superadmin', 'admin'])) {
 if ($_SESSION['user']['role'] === 'superadmin') {
     $temple_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active' ORDER BY name");
     $temples = $temple_stmt->fetchAll();
+} elseif ($_SESSION['user']['role'] === 'province_admin') {
+    // ดึง province_id ที่ user มีสิทธิ์
+    $province_stmt = $pdo->prepare("SELECT province_id FROM user_province_access WHERE user_id = ?");
+    $province_stmt->execute([$_SESSION['user']['id']]);
+    $province_ids = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    if ($province_ids) {
+        $in = str_repeat('?,', count($province_ids) - 1) . '?';
+        $temple_stmt = $pdo->prepare("SELECT id, name FROM temples WHERE province_id IN ($in) AND status = 'active' ORDER BY name");
+        $temple_stmt->execute($province_ids);
+        $temples = $temple_stmt->fetchAll();
+    } else {
+        $temples = [];
+    }
 } else {
     $temple_stmt = $pdo->prepare("SELECT id, name FROM temples WHERE id = ? AND status = 'active'");
     $temple_stmt->execute([$_SESSION['user']['temple_id']]);
@@ -246,7 +260,7 @@ $monks = $monk_stmt->fetchAll();
                 
                 <!-- ຂໍ້ມູນພະສົງທີ່ເຂົ້າຮ່ວມ -->
                 <div class="space-y-6">
-                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3">ພະສົງທີ່ເຂົ້າຮ່ວມ</h2>
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3">ພະສົງທີເຂົ້າຮ່ວມ</h2>
                     
                     <div class="mb-4" id="monks-container">
                         <table class="w-full mb-4">

@@ -9,7 +9,7 @@ require_once '../config/base_url.php';
 // ກວດສອບວ່າຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບແລ້ວຫຼືບໍ່
 if (!isset($_SESSION['user'])) {
     $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
-    header('Location: ' . $base_url . 'login.php');
+    header('Location: ' . $base_url . 'auth/');
     exit;
 }
 

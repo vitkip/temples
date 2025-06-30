@@ -18,9 +18,15 @@ $event_id = (int)$_GET['id'];
 
 // ດຶງຂໍ້ມູນກິດຈະກໍາພ້ອມກັບຂໍ້ມູນວັດ
 $stmt = $pdo->prepare("
-    SELECT e.*, t.name as temple_name, t.district, t.province 
+    SELECT e.*, 
+           t.name as temple_name, 
+           t.id as temple_id,
+           d.district_name as district, 
+           p.province_name as province
     FROM events e
     LEFT JOIN temples t ON e.temple_id = t.id
+    LEFT JOIN districts d ON t.district_id = d.district_id
+    LEFT JOIN provinces p ON t.province_id = p.province_id
     WHERE e.id = ?
 ");
 $stmt->execute([$event_id]);
@@ -128,7 +134,7 @@ $can_edit = ($_SESSION['user']['role'] === 'superadmin' ||
             <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div class="p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-800">ພະສົງທີ່ເຂົ້າຮ່ວມ</h2>
+                        <h2 class="text-xl font-semibold text-gray-800">ພະສົງທີເຂົ້າຮ່ວມ</h2>
                         <?php if ($can_edit): ?>
                         <a href="<?= $base_url ?>events/add_monk.php?event_id=<?= $event_id ?>" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm py-1 px-3 rounded flex items-center transition">
                             <i class="fas fa-plus mr-1"></i> ເພີ່ມພະສົງ

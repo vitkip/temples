@@ -7,7 +7,7 @@ require_once '../config/base_url.php';
 // ตรวจสอบว่าผู้ใช้เข้าสู่ระบบหรือไม่
 if (!isset($_SESSION['user'])) {
     $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
-    header("Location: {$base_url}auth/login.php");
+    header("Location: {$base_url}auth/");
     exit;
 }
 

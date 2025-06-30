@@ -32,7 +32,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($user && password_verify($password, $user['password'])) {
                 // ตรวจสอบสถานะผู้ใช้
                 if ($user['status'] !== 'active') {
-                    $error = "ບັນຊີຂອງທ່ານຍັງບໍ່ໄດ້ຮັບການອະນຸມັດ ຈາກຜູ້ດູແລລະບົບ ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບ";
+                    $error = "ບັນຊີຂອງທ່ານຍັງບໍ່ໄດ້ຮັບການອະນຸມັດ ຈາກຜູ້ດູແລລະບົບ ກະລຸນາຕິດຕໍ່ຜູ້ດູແລລະບົບ <a href=\"https://wa.me/8562077772338\" target=\"_blank\" style=\"color:#25D366;text-decoration:underline;\"><i class=\"fab fa-whatsapp\"></i> WhatsApp admin</a>";
                     // หยุดการทำงาน ไม่สร้าง session และไม่ redirect ไปหน้า dashboard
                 } else {
                     // เฉพาะผู้ใช้ที่มีสถานะ active เท่านั้นที่จะถูกสร้าง session

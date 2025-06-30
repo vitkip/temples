@@ -579,7 +579,7 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
     <div class="py-8 sm:py-12 px-4 sm:px-8 text-center">
       <div class="bg-amber-50 rounded-xl py-8 sm:py-10 max-w-md mx-auto">
         <i class="fas fa-pray text-4xl sm:text-5xl mb-4 text-amber-300"></i>
-        <p class="text-amber-800 mb-4">ບໍ່ພົບຂໍໍາູນພະສົງ</p>
+        <p class="text-amber-800 mb-4">ບໍ່ມີຂໍ້ມູນພຣະສົງໃນວັດນີ້</p>
         <?php if (!empty($_GET['search']) || !empty($_GET['temple_id']) || !empty($_GET['province_id']) || (isset($_GET['status']) && $_GET['status'] !== 'active')): ?>
         <a href="<?= $base_url ?>monks/" 
            class="inline-block mt-2 text-amber-600 hover:text-amber-800 border border-amber-300 hover:border-amber-400 px-4 py-2 rounded-lg transition">

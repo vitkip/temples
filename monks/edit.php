@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: ' . $base_url . 'monks/edit.php?id=' . $monk_id);
         exit;
     }
-    
+
     // Validate input
     $id_card = trim($_POST['id_card'] ?? '');
     $prefix = trim($_POST['prefix'] ?? '');
@@ -164,7 +164,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     
-    // If validation passes
+    $new_status = $_POST['status'] ?? 'active';
+
+    // ถ้า validation ผ่าน
     if (empty($errors)) {
         try {
             // Handle photo upload
@@ -236,6 +238,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $monk_id
                 ]);
                 
+                // อัปเดตสถานะและ resignation_date
+                if ($new_status === 'inactive') {
+                    $resignation_date = date('Y-m-d');
+                    $stmt = $pdo->prepare("UPDATE monks SET status = ?, resignation_date = ? WHERE id = ?");
+                    $stmt->execute([$new_status, $resignation_date, $monk_id]);
+                } else {
+                    $stmt = $pdo->prepare("UPDATE monks SET status = ?, resignation_date = NULL WHERE id = ?");
+                    $stmt->execute([$new_status, $monk_id]);
+                }
+
                 $_SESSION['success'] = "ແກ້ໄຂຂໍ້ມູນພະສົງສໍາເລັດແລ້ວ";
                 header('Location: ' . $base_url . 'monks/view.php?id=' . $monk_id);
                 exit;
@@ -396,7 +408,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                             <option value="ສະຫວັນນະເຂດ" <?= $monk['birth_province'] === 'ສະຫວັນນະເຂດ' ? 'selected' : '' ?>>ສະຫວັນນະເຂດ</option>
                                             <option value="ຈໍາປາສັກ" <?= $monk['birth_province'] === 'ຈໍາປາສັກ' ? 'selected' : '' ?>>ຈໍາປາສັກ</option>
                                             <option value="ອຸດົມໄຊ" <?= $monk['birth_province'] === 'ອຸດົມໄຊ' ? 'selected' : '' ?>>ອຸດົມໄຊ</option>
-                                            <option value="ບໍ່ແກ້ວ" <?= $monk['birth_province'] === 'ບໍແກ້ວ' ? 'selected' : '' ?>>ບໍແກ້ວ</option>
+                                            <option value="ບໍແກ້ວ" <?= $monk['birth_province'] === 'ບໍແກ້ວ' ? 'selected' : '' ?>>ບໍແກ້ວ</option>
                                             <option value="ສາລະວັນ" <?= $monk['birth_province'] === 'ສາລະວັນ' ? 'selected' : '' ?>>ສາລະວັນ</option>
                                             <option value="ເຊກອງ" <?= $monk['birth_province'] === 'ເຊກອງ' ? 'selected' : '' ?>>ເຊກອງ</option>
                                             <option value="ອັດຕະປື" <?= $monk['birth_province'] === 'ອັດຕະປື' ? 'selected' : '' ?>>ອັດຕະປື</option>
