@@ -46,18 +46,29 @@ if (!$can_edit) {
 
 // ດຶງພະສົງທີ່ສາມາດເພີ່ມໄດ້ (ຈາກວັດດຽວກັນ ແລະ ຍັງບໍ່ໄດ້ເຂົ້າຮ່ວມກິດຈະກໍານີ້)
 $monk_stmt = $pdo->prepare("
-    SELECT m.* FROM monks m 
-    WHERE m.temple_id = ? 
-    AND m.status = 'active'
+    SELECT m.*, t.name as temple_name FROM monks m 
+    JOIN temples t ON m.temple_id = t.id
+    WHERE m.status = 'active'
     AND m.id NOT IN (SELECT monk_id FROM event_monk WHERE event_id = ?)
-    ORDER BY m.pansa DESC, m.name
+    ORDER BY m.temple_id = ? DESC, t.name, m.pansa DESC, m.name
 ");
-$monk_stmt->execute([$event['temple_id'], $event_id]);
+$monk_stmt->execute([$event_id, $event['temple_id']]);
 $available_monks = $monk_stmt->fetchAll();
 
 // ຖ້າບໍ່ມີພະສົງໃຫ້ເພີ່ມ
 if (count($available_monks) == 0) {
     $_SESSION['error'] = "ບໍ່ມີພະສົງທີ່ສາມາດເພີ່ມເຂົ້າຮ່ວມກິດຈະກໍານີ້ໄດ້";
+    header('Location: ' . $base_url . 'events/view.php?id=' . $event_id);
+    exit;
+}
+
+// ตรวจสอบว่ามีพระในวัดนี้หรือไม่
+$check_monks = $pdo->prepare("SELECT COUNT(*) FROM monks WHERE temple_id = ? AND status = 'active'");
+$check_monks->execute([$event['temple_id']]);
+$monk_count = $check_monks->fetchColumn();
+
+if ($monk_count == 0) {
+    $_SESSION['error'] = "ບໍ່ພົບພະສົງໃນວັດທີ່ຈັດກິດຈະກໍານີ້ ກະລຸນາເພີ່ມພະສົງໃນວັດກ່ອນ";
     header('Location: ' . $base_url . 'events/view.php?id=' . $event_id);
     exit;
 }
@@ -126,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
     
     <?php if (!empty($errors)): ?>
-    <!-- ສະແດງຂໍ້ຜິດພາດ -->
+    <!-- ສແດງຂໍ້ຜິດພາດ -->
     <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
         <div class="flex">
             <div class="flex-shrink-0">
@@ -160,6 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <?php if (!empty($monk['pansa'])): ?>
                             (<?= htmlspecialchars($monk['pansa']) ?> ພັນສາ)
                             <?php endif; ?>
+                            - <?= htmlspecialchars($monk['temple_name']) ?>
                         </option>
                         <?php endforeach; ?>
                     </select>

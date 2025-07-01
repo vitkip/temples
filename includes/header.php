@@ -77,7 +77,7 @@ if (!isset($_SESSION['user'])) {
                     </a>
                   <a href="<?= $base_url ?>events/" class="sidebar-link <?= isActiveNav($current_path, '/events/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                     <i class="fas fa-calendar-alt mr-3 w-5 text-center"></i>
-                    <span>ກິດຈະກໍາ</span>
+                    <span>ບັນທືກກິດນິມົນ</span>
                   </a>
                 
                 </div>

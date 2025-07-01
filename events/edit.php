@@ -150,8 +150,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-8">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">ແກ້ໄຂກິດຈະກໍາ</h1>
-            <p class="text-sm text-gray-600">ຟອມແກ້ໄຂຂໍ້ມູນກິດຈະກໍາ</p>
+            <h1 class="text-2xl font-bold text-gray-800">ແກ້ໄຂກິດນິມົນ</h1>
+            <p class="text-sm text-gray-600">ຟອມແກ້ໄຂຂໍ້ມູນກິດນິມົນ</p>
         </div>
         <div>
             <a href="<?= $base_url ?>events/view.php?id=<?= $event_id ?>" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg flex items-center transition">
@@ -184,23 +184,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <form action="" method="post" class="p-6">
             <div class="grid grid-cols-1 gap-6">
                 <div class="space-y-6">
-                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3">ຂໍ້ມູນກິດຈະກໍາ</h2>
+                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3">ຂໍ້ມູນກິດນິມົນ</h2>
                     <div class="mb-4">
-                        <label for="title" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ກິດຈະກໍາ <span class="text-red-600">*</span></label>
+                        <label for="title" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ກິດນິມົນ <span class="text-red-600">*</span></label>
                         <input type="text" name="title" id="title" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['title']) ?>" required>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="mb-4">
-                            <label for="event_date" class="block text-sm font-medium text-gray-700 mb-2">ວັນທີຈັດກິດຈະກໍາ <span class="text-red-600">*</span></label>
+                            <label for="event_date" class="block text-sm font-medium text-gray-700 mb-2">ວັນທີຈັດກິດນິມົນ <span class="text-red-600">*</span></label>
                             <input type="date" name="event_date" id="event_date" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['event_date']) ?>" required>
                         </div>
                         <div class="mb-4">
-                            <label for="event_time" class="block text-sm font-medium text-gray-700 mb-2">ເວລາຈັດກິດຈະກໍາ <span class="text-red-600">*</span></label>
+                            <label for="event_time" class="block text-sm font-medium text-gray-700 mb-2">ເວລາຈັດກິດນິມົນ <span class="text-red-600">*</span></label>
                             <input type="time" name="event_time" id="event_time" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['event_time']) ?>" required>
                         </div>
                     </div>
                     <div class="mb-4">
-                        <label for="location" class="block text-sm font-medium text-gray-700 mb-2">ສະຖານທີ່ຈັດກິດຈະກໍາ</label>
+                        <label for="location" class="block text-sm font-medium text-gray-700 mb-2">ສະຖານທີ່ຈັດກິດນິມົນ</label>
                         <input type="text" name="location" id="location" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['location']) ?>">
                     </div>
                     <div class="mb-4">
@@ -218,7 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
                     </div>
                     <div class="mb-4">
-                        <label for="description" class="block text-sm font-medium text-gray-700 mb-2">ລາຍລະອຽດກິດຈະກໍາ</label>
+                        <label for="description" class="block text-sm font-medium text-gray-700 mb-2">ລາຍລະອຽດກິດນິມົນ</label>
                         <textarea name="description" id="description" rows="4" class="form-textarea rounded-md w-full"><?= htmlspecialchars($form_data['description']) ?></textarea>
                     </div>
                 </div>

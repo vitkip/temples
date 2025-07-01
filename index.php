@@ -126,7 +126,7 @@ try {
     <meta property="og:image" content="https://laotemples.com/assets/images/og-image.jpg">
     <meta property="og:url" content="https://laotemples.com">
     <link rel="icon" href="<?= $base_url ?>assets/images/favicon.png" type="image/x-icon">
-    <title>ລະບົບຈັດການຂໍ້ມູນວັດ - <?= $page_title ?? 'ໜ້າຫຼັກ' ?></title>
+    
     <title><?= htmlspecialchars($site_name) ?></title>
     
     <!-- Preload critical fonts -->

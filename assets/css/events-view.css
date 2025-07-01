@@ -1,0 +1,51 @@
+
+/* เพิ่ม CSS เพื่อทำให้ปุ่มไอคอนดูดีขึ้น */
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-icon.edit {
+    background-color: rgba(79, 70, 229, 0.1);
+    color: #4f46e5;
+}
+
+.btn-icon.edit:hover {
+    background-color: rgba(79, 70, 229, 0.2);
+}
+
+.btn-icon.delete {
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+.btn-icon.delete:hover {
+    background-color: rgba(220, 38, 38, 0.2);
+}
+
+/* ปรับปรุง info-card ให้มีความโดดเด่นมากขึ้น */
+.info-card {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    background: white;
+    transition: box-shadow 0.3s ease;
+}
+
+.info-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.info-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-bottom: 2px;
+    letter-spacing: 0.05em;
+}

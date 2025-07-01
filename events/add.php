@@ -7,350 +7,249 @@ require_once '../config/db.php';
 require_once '../config/base_url.php';
 require_once '../includes/header.php';
 
-// ສ້າງ CSRF token ຖ້າບໍ່ມີ
-if (!isset($_SESSION['csrf_token'])) {
-    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-}
+// --- Existing PHP Logic (No changes needed here) ---
+if (!isset($_SESSION['csrf_token'])) { $_SESSION['csrf_token'] = bin2hex(random_bytes(32)); }
+if (!isset($_SESSION['user'])) { $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ"; header('Location: ' . $base_url . 'auth/'); exit; }
+if (!in_array($_SESSION['user']['role'], ['superadmin', 'admin', 'province_admin'])) { $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃນການເພີ່ມກິດຈະກໍາ"; header('Location: ' . $base_url . 'events/'); exit; }
 
-// ກວດສອບວ່າຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບແລ້ວຫຼືບໍ່
-if (!isset($_SESSION['user'])) {
-    $_SESSION['error'] = "ກະລຸນາເຂົ້າສູ່ລະບົບກ່ອນ";
-    header('Location: ' . $base_url . 'auth/');
-    exit;
-}
-
-// ກວດສອບສິດທິຂອງຜູ້ໃຊ້ໃນການເພີ່ມກິດຈະກໍາ
-if (!in_array($_SESSION['user']['role'], ['superadmin', 'admin', 'province_admin'])) {
-    $_SESSION['error'] = "ທ່ານບໍ່ມີສິດໃນການເພີ່ມກິດຈະກໍາ";
-    header('Location: ' . $base_url . 'events/');
-    exit;
-}
-
-// ດຶງຂໍ້ມູນວັດສໍາລັບ dropdown
+// ดึงข้อมูลวัดสำหรับ dropdown
 if ($_SESSION['user']['role'] === 'superadmin') {
     $temple_stmt = $pdo->query("SELECT id, name FROM temples WHERE status = 'active' ORDER BY name");
     $temples = $temple_stmt->fetchAll();
 } elseif ($_SESSION['user']['role'] === 'province_admin') {
-    // ดึง province_id ที่ user มีสิทธิ์
     $province_stmt = $pdo->prepare("SELECT province_id FROM user_province_access WHERE user_id = ?");
     $province_stmt->execute([$_SESSION['user']['id']]);
     $province_ids = $province_stmt->fetchAll(PDO::FETCH_COLUMN);
-
     if ($province_ids) {
         $in = str_repeat('?,', count($province_ids) - 1) . '?';
         $temple_stmt = $pdo->prepare("SELECT id, name FROM temples WHERE province_id IN ($in) AND status = 'active' ORDER BY name");
         $temple_stmt->execute($province_ids);
         $temples = $temple_stmt->fetchAll();
-    } else {
-        $temples = [];
-    }
+    } else { $temples = []; }
 } else {
     $temple_stmt = $pdo->prepare("SELECT id, name FROM temples WHERE id = ? AND status = 'active'");
     $temple_stmt->execute([$_SESSION['user']['temple_id']]);
     $temples = $temple_stmt->fetchAll();
 }
 
-// ກໍານົດຕົວແປເລີ່ມຕົ້ນ
 $errors = [];
-$form_data = [
-    'title' => '',
-    'description' => '',
-    'event_date' => '',
-    'event_time' => '08:00',
-    'location' => '',
-    'temple_id' => $_SESSION['user']['role'] === 'admin' ? $_SESSION['user']['temple_id'] : '',
-    'monks' => []
-];
+$form_data = ['title' => '', 'description' => '', 'event_date' => '', 'event_time' => '08:00', 'location' => '', 'temple_id' => $_SESSION['user']['role'] === 'admin' ? $_SESSION['user']['temple_id'] : '', 'monks' => []];
 
-// ປະມວນຜົນການສົ່ງຟອມ
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // ກວດສອບຄວາມຖືກຕ້ອງຂອງ CSRF token
-    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) {
-        $_SESSION['error'] = "ການຮ້ອງຂໍບໍ່ຖືກຕ້ອງ";
-        header('Location: ' . $base_url . 'events/add.php');
-        exit;
-    }
-    
-    // ກວດສອບຂໍ້ມູນທີ່ປ້ອນເຂົ້າມາ
-    $form_data = [
-        'title' => trim($_POST['title'] ?? ''),
-        'description' => trim($_POST['description'] ?? ''),
-        'event_date' => trim($_POST['event_date'] ?? ''),
-        'event_time' => trim($_POST['event_time'] ?? ''),
-        'location' => trim($_POST['location'] ?? ''),
-        'temple_id' => isset($_POST['temple_id']) ? (int)$_POST['temple_id'] : 0,
-        'monks' => isset($_POST['monks']) ? $_POST['monks'] : []
-    ];
-    
-    // ກົດລະບຽບການກວດສອບຂໍ້ມູນ
-    if (empty($form_data['title'])) {
-        $errors[] = "ກະລຸນາປ້ອນຊື່ກິດຈະກໍາ";
-    }
-    
-    if (empty($form_data['event_date'])) {
-        $errors[] = "ກະລຸນາປ້ອນວັນທີກິດຈະກໍາ";
-    }
-    
-    if (empty($form_data['event_time'])) {
-        $errors[] = "ກະລຸນາປ້ອນເວລາກິດຈະກໍາ";
-    }
-    
-    if (empty($form_data['temple_id'])) {
-        $errors[] = "ກະລຸນາເລືອກວັດ";
-    }
-    
-    // ຖ້າການກວດສອບຜ່ານ
+    if (!isset($_POST['csrf_token']) || $_POST['csrf_token'] !== $_SESSION['csrf_token']) { $_SESSION['error'] = "ການຮ້ອງຂໍບໍ່ຖືກຕ້ອງ"; header('Location: ' . $base_url . 'events/add.php'); exit; }
+    $form_data = ['title' => trim($_POST['title'] ?? ''), 'description' => trim($_POST['description'] ?? ''), 'event_date' => trim($_POST['event_date'] ?? ''), 'event_time' => trim($_POST['event_time'] ?? ''), 'location' => trim($_POST['location'] ?? ''), 'temple_id' => isset($_POST['temple_id']) ? (int)$_POST['temple_id'] : 0, 'monks' => isset($_POST['monks']) ? $_POST['monks'] : []];
+    if (empty($form_data['title'])) { $errors[] = "ກະລຸນາປ້ອນຊື່ກິດຈະກໍາ"; }
+    if (empty($form_data['event_date'])) { $errors[] = "ກະລຸນາປ້ອນວັນທີກິດຈະກໍາ"; }
+    if (empty($form_data['event_time'])) { $errors[] = "ກະລຸນາປ້ອນເວລາກິດຈະກໍາ"; }
+    if (empty($form_data['temple_id'])) { $errors[] = "ກະລຸນາເລືອກວັດ"; }
     if (empty($errors)) {
         try {
-            // ເພີ່ມຂໍ້ມູນກິດຈະກໍາໃນຖານຂໍ້ມູນ
-            $stmt = $pdo->prepare("
-                INSERT INTO events (temple_id, title, description, event_date, event_time, location)
-                VALUES (:temple_id, :title, :description, :event_date, :event_time, :location)
-            ");
-            
-            $stmt->execute([
-                ':temple_id' => $form_data['temple_id'],
-                ':title' => $form_data['title'],
-                ':description' => $form_data['description'],
-                ':event_date' => $form_data['event_date'],
-                ':event_time' => $form_data['event_time'],
-                ':location' => $form_data['location']
-            ]);
-            
+            $stmt = $pdo->prepare("INSERT INTO events (temple_id, title, description, event_date, event_time, location) VALUES (:temple_id, :title, :description, :event_date, :event_time, :location)");
+            $stmt->execute([':temple_id' => $form_data['temple_id'], ':title' => $form_data['title'], ':description' => $form_data['description'], ':event_date' => $form_data['event_date'], ':event_time' => $form_data['event_time'], ':location' => $form_data['location']]);
             $event_id = $pdo->lastInsertId();
-            
-            // ເພີ່ມຂໍ້ມູນພະສົງທີ່ເຂົ້າຮ່ວມກິດຈະກໍາ
             if (!empty($form_data['monks']) && is_array($form_data['monks'])) {
-                $monk_stmt = $pdo->prepare("
-                    INSERT INTO event_monk (event_id, monk_id, role, note)
-                    VALUES (:event_id, :monk_id, :role, :note)
-                ");
-                
+                $monk_stmt = $pdo->prepare("INSERT INTO event_monk (event_id, monk_id, role, note) VALUES (:event_id, :monk_id, :role, :note)");
                 foreach ($form_data['monks'] as $monk) {
-                    if (!isset($monk['id']) || empty($monk['id'])) {
-                        continue;
-                    }
-                    
-                    $monk_stmt->execute([
-                        ':event_id' => $event_id,
-                        ':monk_id' => $monk['id'],
-                        ':role' => $monk['role'] ?? null,
-                        ':note' => $monk['note'] ?? null
-                    ]);
+                    if (!isset($monk['id']) || empty($monk['id'])) { continue; }
+                    $monk_stmt->execute([':event_id' => $event_id, ':monk_id' => $monk['id'], ':role' => $monk['role'] ?? null, ':note' => $monk['note'] ?? null]);
                 }
             }
-            
             $_SESSION['success'] = "ເພີ່ມຂໍ້ມູນກິດຈະກໍາສໍາເລັດແລ້ວ";
             header('Location: ' . $base_url . 'events/view.php?id=' . $event_id);
             exit;
-            
-        } catch (PDOException $e) {
-            $errors[] = "ເກີດຂໍ້ຜິດພາດໃນການເພີ່ມຂໍ້ມູນ: " . $e->getMessage();
-        }
+        } catch (PDOException $e) { $errors[] = "ເກີດຂໍ້ຜິດພາດໃນການເພີ່ມຂໍ້ມູນ: " . $e->getMessage(); }
     }
 }
 
-// ດຶງຂໍ້ມູນພະສົງສຳລັບເລືອກເຂົ້າຮ່ວມກິດຈະກໍາ
 $monk_params = [];
-$monk_query = "SELECT m.id, m.name, m.pansa, t.name as temple_name FROM monks m 
-              LEFT JOIN temples t ON m.temple_id = t.id 
-              WHERE m.status = 'active'";
-
+$monk_query = "SELECT m.id, m.name, m.pansa, t.name as temple_name FROM monks m LEFT JOIN temples t ON m.temple_id = t.id WHERE m.status = 'active'";
 if ($_SESSION['user']['role'] === 'admin') {
     $monk_query .= " AND m.temple_id = ?";
     $monk_params[] = $_SESSION['user']['temple_id'];
-} elseif (!empty($form_data['temple_id'])) {
-    $monk_query .= " AND m.temple_id = ?";
-    $monk_params[] = $form_data['temple_id'];
 }
-
 $monk_query .= " ORDER BY m.pansa DESC, m.name ASC";
 $monk_stmt = $pdo->prepare($monk_query);
 $monk_stmt->execute($monk_params);
 $monks = $monk_stmt->fetchAll();
 ?>
 
-<!-- ສ່ວນຫົວຂອງໜ້າ -->
-<div class="max-w-4xl mx-auto">
-    <div class="flex justify-between items-center mb-8">
+<div class="page-container">
+    <!-- Page Header -->
+    <div class="header-section flex flex-col md:flex-row justify-between items-start md:items-center mb-6 p-6 rounded-lg">
         <div>
-            <h1 class="text-2xl font-bold text-gray-800">ເພີ່ມກິດຈະກໍາໃໝ່</h1>
-            <p class="text-sm text-gray-600">ຟອມເພີ່ມຂໍ້ມູນກິດຈະກໍາ</p>
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">ເພີ່ມກິດນິມົນໃໝ່</h1>
+            <p class="text-sm text-gray-600 mt-1">ຟອມເພີ່ມຂໍ້ມູນກິດນິມົມ ແລະ ພະສົງທີ່ເຂົ້າຮ່ວມ</p>
         </div>
-        <div>
-            <a href="<?= $base_url ?>events/" class="bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-4 rounded-lg flex items-center transition">
-                <i class="fas fa-arrow-left mr-2"></i> ກັບຄືນ
-            </a>
-        </div>
+        <a href="<?= $base_url ?>events/" class="btn btn-secondary mt-4 md:mt-0">
+            <i class="fas fa-arrow-left"></i> ກັບຄືນ
+        </a>
     </div>
-    
+
+    <!-- Display Errors -->
     <?php if (!empty($errors)): ?>
-    <!-- ສະແດງຂໍ້ຜິດພາດ -->
-    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <i class="fas fa-exclamation-circle text-red-500"></i>
-            </div>
-            <div class="ml-3">
-                <h3 class="text-sm font-medium text-red-800">ພົບຂໍ້ຜິດພາດ <?= count($errors) ?> ລາຍການ</h3>
-                <div class="mt-2 text-sm text-red-700">
-                    <ul class="list-disc pl-5 space-y-1">
-                        <?php foreach ($errors as $error): ?>
-                        <li><?= $error ?></li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
-            </div>
-        </div>
+    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded-r-lg shadow-sm">
+        <h3 class="text-sm font-medium text-red-800">ພົບຂໍ້ຜິດພາດ <?= count($errors) ?> ລາຍການ</h3>
+        <ul class="list-disc pl-5 space-y-1 mt-2 text-sm text-red-700">
+            <?php foreach ($errors as $error): ?><li><?= $error ?></li><?php endforeach; ?>
+        </ul>
     </div>
     <?php endif; ?>
-    
-    <!-- ຟອມເພີ່ມຂໍ້ມູນ -->
-    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-        <form action="<?= $base_url ?>events/add.php" method="post" class="p-6">
+
+    <!-- Add Event Form -->
+    <div class="flex justify-center">
+        <form action="<?= $base_url ?>events/add.php" method="post" class="space-y-8 w-full max-w-4xl">
             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
             
-            <div class="grid grid-cols-1 gap-6">
-                <!-- ຂໍ້ມູນພື້ນຖານ -->
-                <div class="space-y-6">
-                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3">ຂໍ້ມູນກິດຈະກໍາ</h2>
-                    
-                    <div class="mb-4">
-                        <label for="title" class="block text-sm font-medium text-gray-700 mb-2">ຊື່ກິດຈະກໍາ <span class="text-red-600">*</span></label>
-                        <input type="text" name="title" id="title" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['title']) ?>" required>
+            <!-- Event Details Card -->
+            <div class="card bg-white p-6 md:p-8 shadow-sm">
+                <h2 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6 flex items-center">
+                    <i class="fas fa-calendar-check text-amber-600 mr-3"></i>ຂໍ້ມູນກິດນິມົນ
+                </h2>
+                
+                <!-- Main event information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Title - Full width -->
+                    <div class="md:col-span-2">
+                        <label for="title" class="form-label block mb-1">ຊື່ງານທີ່ຈະໄປ <span class="text-red-600">*</span></label>
+                        <input type="text" name="title" id="title" class="form-input w-full" value="<?= htmlspecialchars($form_data['title']) ?>" required>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="mb-4">
-                            <label for="event_date" class="block text-sm font-medium text-gray-700 mb-2">ວັນທີຈັດກິດຈະກໍາ <span class="text-red-600">*</span></label>
-                            <input type="date" name="event_date" id="event_date" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['event_date']) ?>" required>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <label for="event_time" class="block text-sm font-medium text-gray-700 mb-2">ເວລາຈັດກິດຈະກໍາ <span class="text-red-600">*</span></label>
-                            <input type="time" name="event_time" id="event_time" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['event_time']) ?>" required>
-                        </div>
+                    <!-- Date and time - Side by side -->
+                    <div>
+                        <label for="event_date" class="form-label block mb-1">ວັນທີ <span class="text-red-600">*</span></label>
+                        <input type="date" name="event_date" id="event_date" class="form-input w-full" value="<?= htmlspecialchars($form_data['event_date']) ?>" required>
                     </div>
                     
-                    <div class="mb-4">
-                        <label for="location" class="block text-sm font-medium text-gray-700 mb-2">ສະຖານທີ່ຈັດກິດຈະກໍາ</label>
-                        <input type="text" name="location" id="location" class="form-input rounded-md w-full" value="<?= htmlspecialchars($form_data['location']) ?>">
+                    <div>
+                        <label for="event_time" class="form-label block mb-1">ເວລາ <span class="text-red-600">*</span></label>
+                        <input type="time" name="event_time" id="event_time" class="form-input w-full" value="<?= htmlspecialchars($form_data['event_time']) ?>" required>
                     </div>
                     
-                    <div class="mb-4">
-                        <label for="temple_id" class="block text-sm font-medium text-gray-700 mb-2">ວັດ <span class="text-red-600">*</span></label>
-                        <select name="temple_id" id="temple_id" class="form-select rounded-md w-full" required <?= $_SESSION['user']['role'] === 'admin' ? 'disabled' : '' ?>>
-                            <option value="">ເລືອກວັດ</option>
+                    <!-- Temple selection - Full width -->
+                    <div class="md:col-span-2">
+                        <label for="temple_id" class="form-label block mb-1">ວັດ <span class="text-red-600">*</span></label>
+                        <select name="temple_id" id="temple_id" class="form-select w-full" required <?= $_SESSION['user']['role'] === 'admin' ? 'disabled' : '' ?>>
+                            <option value="">-- ເລືອກວັດ --</option>
                             <?php foreach ($temples as $temple): ?>
-                            <option value="<?= $temple['id'] ?>" <?= $temple['id'] == $form_data['temple_id'] ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($temple['name']) ?>
-                            </option>
+                            <option value="<?= $temple['id'] ?>" <?= $temple['id'] == $form_data['temple_id'] ? 'selected' : '' ?>><?= htmlspecialchars($temple['name']) ?></option>
                             <?php endforeach; ?>
                         </select>
                         <?php if ($_SESSION['user']['role'] === 'admin'): ?>
-                        <input type="hidden" name="temple_id" value="<?= $_SESSION['user']['temple_id'] ?>">
+                            <input type="hidden" name="temple_id" value="<?= $_SESSION['user']['temple_id'] ?>">
                         <?php endif; ?>
                     </div>
                     
-                    <div class="mb-4">
-                        <label for="description" class="block text-sm font-medium text-gray-700 mb-2">ລາຍລະອຽດກິດຈະກໍາ</label>
-                        <textarea name="description" id="description" rows="4" class="form-textarea rounded-md w-full"><?= htmlspecialchars($form_data['description']) ?></textarea>
+                    <!-- Location and description -->
+                    <div class="md:col-span-2">
+                        <label for="location" class="form-label block mb-1">ສະຖານທີ່ (ຖ້າມີ)</label>
+                        <input type="text" name="location" id="location" class="form-input w-full" value="<?= htmlspecialchars($form_data['location']) ?>" placeholder="ເຊັ່ນ: ສາລາໂຮງທຳ">
                     </div>
-                </div>
-                
-                <!-- ຂໍ້ມູນພະສົງທີ່ເຂົ້າຮ່ວມ -->
-                <div class="space-y-6">
-                    <h2 class="text-xl font-semibold text-gray-800 border-b pb-3">ພະສົງທີເຂົ້າຮ່ວມ</h2>
                     
-                    <div class="mb-4" id="monks-container">
-                        <table class="w-full mb-4">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">ພະສົງ</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">ບົດບາດ</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">ໝາຍເຫດ</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">ຈັດການ</th>
-                                </tr>
-                            </thead>
-                            <tbody id="monk-rows">
-                                <!-- JavaScript will populate rows here -->
-                            </tbody>
-                        </table>
-                        
-                        <button type="button" id="add-monk" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 py-2 px-4 rounded-lg text-sm flex items-center transition">
-                            <i class="fas fa-plus mr-2"></i> ເພີ່ມພະສົງ
-                        </button>
+                    <div class="md:col-span-2">
+                        <label for="description" class="form-label block mb-1">ລາຍລະອຽດ</label>
+                        <textarea name="description" id="description" rows="4" class="form-textarea w-full resize-y"><?= htmlspecialchars($form_data['description']) ?></textarea>
                     </div>
                 </div>
             </div>
-            
-            <!-- ປຸ່ມດຳເນີນການ -->
-            <div class="mt-8 border-t border-gray-200 pt-6 flex justify-end space-x-3">
-                <a href="<?= $base_url ?>events/" class="px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">
-                    ຍົກເລີກ
+
+            <!-- Participating Monks Card -->
+            <div class="card bg-white p-6 md:p-8 shadow-sm">
+                <h2 class="text-xl font-semibold text-gray-800 border-b pb-4 mb-6 flex items-center">
+                    <i class="fas fa-users text-amber-600 mr-3"></i>ເອີນພຣະສົງທີ່ຈະເອີນໄປຮ່ວມກິດນິມົນ
+                </h2>
+                
+                <div class="overflow-x-auto rounded-lg border">
+                    <table class="w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ພະສົງ</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ບົດບາດ</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ໝາຍເຫດ</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 w-16"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="monk-rows">
+                            <!-- JS will populate this -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="no-monks-placeholder" class="text-center py-8 text-gray-500 border-2 border-dashed rounded-lg mt-4 bg-gray-50">
+                    <i class="fas fa-user-plus fa-2x mb-3"></i>
+                    <p>ຍັງບໍ່ມີພະສົງເຂົ້າຮ່ວມ</p>
+                </div>
+                
+                <button type="button" id="add-monk" class="btn btn-secondary mt-6 flex items-center mx-auto">
+                    <i class="fas fa-plus mr-2"></i> ເພີ່ມພະສົງ
+                </button>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="mt-8 border-t border-gray-200 pt-6 flex justify-end space-x-4">
+                <a href="<?= $base_url ?>events/" class="btn btn-secondary px-6 inline-block py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <i class="fas fa-times mr-2"></i>ຍົກເລີກ
                 </a>
-                <button type="submit" class="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex items-center">
+                <button type="submit" class="btn btn-primary px-6">
                     <i class="fas fa-save mr-2"></i> ບັນທຶກຂໍ້ມູນ
                 </button>
             </div>
         </form>
     </div>
-    
-    <!-- Modal ເພີ່ມພະສົງ -->
-    <div id="monkModal" class="hidden fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg max-w-xl w-full p-6 shadow-xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-900">ເລືອກພະສົງ</h3>
-                <button type="button" class="close-modal text-gray-400 hover:text-gray-500">
-                    <i class="fas fa-times"></i>
-                </button>
+</div>
+
+<!-- Monk Selection Modal -->
+<div id="monkModal" class="hidden fixed inset-0 bg-gray-800 bg-opacity-60 flex items-center justify-center z-50 p-4">
+    <div class="card bg-white max-w-2xl w-full shadow-xl" style="animation: fadeInUp 0.3s ease-out forwards;">
+        <div class="flex justify-between items-center p-4 border-b">
+            <h3 class="text-lg font-semibold text-gray-900">ເລືອກພະສົງ</h3>
+            <button type="button" class="close-modal text-gray-400 hover:text-gray-500"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6">
+            <input type="text" id="monk-search" class="form-input w-full mb-4" placeholder="ຄົ້ນຫາຕາມຊື່ ຫຼື ວັດ...">
+            <div class="flex justify-between items-center mb-2 text-sm">
+                <div class="space-x-2">
+                    <button type="button" id="select-all-monks" class="text-indigo-600 hover:text-indigo-800 font-medium">ເລືອກທັງໝົດ</button>
+                    <span class="text-gray-300">|</span>
+                    <button type="button" id="deselect-all-monks" class="text-gray-600 hover:text-gray-800 font-medium">ຍົກເລີກທັງໝົດ</button>
+                </div>
+                <span id="monk-count" class="text-gray-500"></span>
             </div>
-            
-            <div class="mb-4">
-                <input type="text" id="monk-search" class="form-input rounded-md w-full mb-4" placeholder="ຄົ້ນຫາພະສົງ...">
-                
-                <div class="max-h-80 overflow-y-auto">
-                    <table class="w-full">
-                        <thead class="bg-gray-50 sticky top-0">
-                            <tr>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">ເລືອກ</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">ພະສົງ</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">ພັນສາ</th>
-                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500">ວັດ</th>
-                            </tr>
-                        </thead>
-                        <tbody id="monks-list">
-                            <?php foreach ($monks as $monk): ?>
-                            <tr class="monk-item hover:bg-gray-50">
-                                <td class="px-3 py-2">
-                                    <input type="radio" name="monk_select" class="monk-select" value="<?= $monk['id'] ?>" data-name="<?= htmlspecialchars($monk['name']) ?>" data-pansa="<?= $monk['pansa'] ?>">
-                                </td>
-                                <td class="px-3 py-2"><?= htmlspecialchars($monk['name']) ?></td>
-                                <td class="px-3 py-2"><?= $monk['pansa'] ?></td>
-                                <td class="px-3 py-2"><?= htmlspecialchars($monk['temple_name']) ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+            <div class="max-h-64 overflow-y-auto border rounded-lg">
+                <table class="w-full">
+                    <thead class="bg-gray-50 sticky top-0">
+                        <tr>
+                            <th class="p-3 text-left"><input type="checkbox" id="select-all-header-checkbox"></th>
+                            <th class="p-3 text-left text-xs font-medium text-gray-500">ພະສົງ</th>
+                            <th class="p-3 text-left text-xs font-medium text-gray-500 hidden sm:table-cell">ພັນສາ</th>
+                            <th class="p-3 text-left text-xs font-medium text-gray-500 hidden sm:table-cell">ວັດ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="monks-list" class="divide-y divide-gray-200">
+                        <?php foreach ($monks as $monk): ?>
+                        <tr class="monk-item hover:bg-gray-50">
+                            <td class="p-3"><input type="checkbox" class="monk-select" value="<?= $monk['id'] ?>" data-name="<?= htmlspecialchars($monk['name']) ?>" data-pansa="<?= $monk['pansa'] ?>"></td>
+                            <td class="p-3 font-medium text-gray-800"><?= htmlspecialchars($monk['name']) ?></td>
+                            <td class="p-3 text-gray-600 hidden sm:table-cell"><?= $monk['pansa'] ?></td>
+                            <td class="p-3 text-gray-600 hidden sm:table-cell"><?= htmlspecialchars($monk['temple_name']) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                    <label for="monk-role" class="form-label text-sm">ບົດບາດ (ສຳລັບທຸກຄົນທີ່ເລືອກ)</label>
+                    <input type="text" id="monk-role" class="form-input w-full text-sm" placeholder="ເຊັ່ນ: ປະທານສົງ">
+                </div>
+                <div>
+                    <label for="monk-note" class="form-label text-sm">ໝາຍເຫດ</label>
+                    <input type="text" id="monk-note" class="form-input w-full text-sm" placeholder="ຂໍ້ມູນເພີ່ມເຕີມ">
                 </div>
             </div>
-            
-            <div class="border-t border-gray-200 pt-4">
-                <h4 class="text-sm font-medium text-gray-700 mb-2">ບົດບາດໃນກິດຈະກໍາ</h4>
-                <input type="text" id="monk-role" class="form-input rounded-md w-full mb-3" placeholder="ປະທານສົງ, ພະສົງຮ່ວມພິທີ, ຯລຯ">
-                
-                <h4 class="text-sm font-medium text-gray-700 mb-2">ໝາຍເຫດ</h4>
-                <textarea id="monk-note" class="form-textarea rounded-md w-full mb-4" rows="2" placeholder="ຂໍ້ມູນເພີ່ມເຕີມ"></textarea>
-            </div>
-            
-            <div class="flex justify-end space-x-3 mt-3">
-                <button id="cancelMonkSelect" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition">
-                    ຍົກເລີກ
-                </button>
-                <button id="confirmMonkSelect" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">
-                    ເພີ່ມພະສົງ
-                </button>
-            </div>
+        </div>
+        <div class="flex justify-end space-x-3 p-4 bg-gray-50 border-t">
+            <button id="cancelMonkSelect" type="button" class="btn btn-secondary">ຍົກເລີກ</button>
+            <button id="confirmMonkSelect" type="button" class="btn btn-primary">ເພີ່ມພະສົງທີ່ເລືອກ</button>
         </div>
     </div>
 </div>
@@ -363,122 +262,105 @@ document.addEventListener('DOMContentLoaded', function() {
     const monkSearch = document.getElementById('monk-search');
     const monksList = document.getElementById('monks-list');
     const confirmMonkSelect = document.getElementById('confirmMonkSelect');
-    const cancelMonkSelect = document.getElementById('cancelMonkSelect');
-    const closeModal = document.querySelector('.close-modal');
+    const noMonksPlaceholder = document.getElementById('no-monks-placeholder');
     
-    // อาเรย์เก็บข้อมูลพระที่เข้าร่วม
     let selectedMonks = [];
-    
-    // เปิด modal เมื่อกดปุ่มเพิ่มพระ
-    addMonkBtn.addEventListener('click', function() {
-        monkModal.classList.remove('hidden');
+
+    function toggleModal(show) {
+        monkModal.classList.toggle('hidden', !show);
+    }
+
+    addMonkBtn.addEventListener('click', () => {
         document.getElementById('monk-role').value = '';
         document.getElementById('monk-note').value = '';
-        
-        const monkSelects = document.querySelectorAll('.monk-select');
-        monkSelects.forEach(radio => radio.checked = false);
+        document.querySelectorAll('.monk-select').forEach(cb => cb.checked = false);
+        document.getElementById('select-all-header-checkbox').checked = false;
+        filterMonks();
+        toggleModal(true);
     });
-    
-    // ปิด modal
-    [closeModal, cancelMonkSelect].forEach(element => {
-        element.addEventListener('click', function() {
-            monkModal.classList.add('hidden');
-        });
+
+    monkModal.addEventListener('click', (e) => {
+        if (e.target.classList.contains('close-modal') || e.target.id === 'cancelMonkSelect' || e.target === monkModal) {
+            toggleModal(false);
+        }
     });
-    
-    // ค้นหาพระ
-    monkSearch.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const monkItems = document.querySelectorAll('.monk-item');
-        
+
+    function filterMonks() {
+        const searchTerm = monkSearch.value.toLowerCase();
+        const monkItems = monksList.querySelectorAll('.monk-item');
+        let visibleCount = 0;
         monkItems.forEach(item => {
             const monkName = item.querySelector('td:nth-child(2)').textContent.toLowerCase();
-            const templeName = item.querySelector('td:nth-child(4)').textContent.toLowerCase();
-            
-            if (monkName.includes(searchTerm) || templeName.includes(searchTerm)) {
-                item.style.display = '';
-            } else {
-                item.style.display = 'none';
-            }
+            const templeNameCell = item.querySelector('td:nth-child(4)');
+            const templeName = templeNameCell ? templeNameCell.textContent.toLowerCase() : '';
+            const isVisible = monkName.includes(searchTerm) || templeName.includes(searchTerm);
+            item.style.display = isVisible ? '' : 'none';
+            if(isVisible) visibleCount++;
         });
-    });
-    
-    // เมื่อกดปุ่มยืนยันเลือกพระ
+        document.getElementById('monk-count').textContent = `${visibleCount} ລາຍການ`;
+    }
+    monkSearch.addEventListener('input', filterMonks);
+
     confirmMonkSelect.addEventListener('click', function() {
-        const selectedRadio = document.querySelector('.monk-select:checked');
+        const selectedCheckboxes = document.querySelectorAll('.monk-select:checked');
+        if (selectedCheckboxes.length === 0) { alert('ກະລຸນາເລືອກພະສົງຢ່າງໜ້ອຍ 1 ອົງ'); return; }
         
-        if (!selectedRadio) {
-            alert('ກະລຸນາເລືອກພະສົງ');
-            return;
-        }
-        
-        const monkId = selectedRadio.value;
-        const monkName = selectedRadio.getAttribute('data-name');
-        const monkPansa = selectedRadio.getAttribute('data-pansa');
         const role = document.getElementById('monk-role').value;
         const note = document.getElementById('monk-note').value;
         
-        // ตรวจสอบว่าพระรูปนี้ถูกเลือกแล้วหรือไม่
-        if (selectedMonks.some(monk => monk.id === monkId)) {
-            alert('ພະສົງຮູບນີ້ຖືກເລືອກແລ້ວ');
-            return;
-        }
-        
-        // เพิ่มพระที่เลือกลงในอาเรย์
-        selectedMonks.push({
-            id: monkId,
-            name: monkName,
-            pansa: monkPansa,
-            role: role,
-            note: note
+        selectedCheckboxes.forEach(checkbox => {
+            const monkId = checkbox.value;
+            if (!selectedMonks.some(m => m.id === monkId)) {
+                selectedMonks.push({ id: monkId, name: checkbox.dataset.name, pansa: checkbox.dataset.pansa, role: role, note: note });
+            }
         });
-        
-        // อัปเดตการแสดงผล
         updateMonkRows();
-        
-        // ปิด modal
-        monkModal.classList.add('hidden');
+        toggleModal(false);
     });
-    
-    // อัปเดตการแสดงผลพระที่เลือก
+
     function updateMonkRows() {
         monkRows.innerHTML = '';
-        
+        const hasMonks = selectedMonks.length > 0;
+        noMonksPlaceholder.style.display = hasMonks ? 'none' : 'block';
+        monkRows.closest('table').style.display = hasMonks ? 'table' : 'none';
+
         selectedMonks.forEach((monk, index) => {
             const row = document.createElement('tr');
-            row.classList.add('border-b');
-            
+            row.className = 'border-b';
             row.innerHTML = `
-                <td class="px-3 py-2">
-                    <div class="font-medium">${monk.name}</div>
-                    <div class="text-xs text-gray-500">${monk.pansa} พันสา</div>
+                <td class="px-4 py-3">
+                    <div class="font-medium text-gray-800">${monk.name}</div>
+                    <div class="text-xs text-gray-500">${monk.pansa} ພັນສາ</div>
                     <input type="hidden" name="monks[${index}][id]" value="${monk.id}">
                 </td>
-                <td class="px-3 py-2">
-                    <input type="text" name="monks[${index}][role]" class="form-input text-sm w-full" value="${monk.role}">
-                </td>
-                <td class="px-3 py-2">
-                    <input type="text" name="monks[${index}][note]" class="form-input text-sm w-full" value="${monk.note}">
-                </td>
-                <td class="px-3 py-2">
-                    <button type="button" class="remove-monk text-red-500 hover:text-red-700" data-index="${index}">
-                        <i class="fas fa-times"></i>
-                    </button>
+                <td class="px-4 py-3"><input type="text" name="monks[${index}][role]" class="form-input text-sm w-full" value="${monk.role}"></td>
+                <td class="px-4 py-3"><input type="text" name="monks[${index}][note]" class="form-input text-sm w-full" value="${monk.note}"></td>
+                <td class="px-4 py-3 text-right">
+                    <button type="button" class="remove-monk text-red-500 hover:text-red-700" data-index="${index}"><i class="fas fa-trash-alt"></i></button>
                 </td>
             `;
-            
             monkRows.appendChild(row);
         });
-        
-        // เพิ่ม event listener สำหรับปุ่มลบ
+
         document.querySelectorAll('.remove-monk').forEach(button => {
             button.addEventListener('click', function() {
-                const index = parseInt(this.getAttribute('data-index'));
-                selectedMonks.splice(index, 1);
+                selectedMonks.splice(parseInt(this.dataset.index), 1);
                 updateMonkRows();
             });
         });
     }
+
+    const selectAllHeader = document.getElementById('select-all-header-checkbox');
+    selectAllHeader.addEventListener('change', function() {
+        document.querySelectorAll('#monks-list .monk-item:not([style*="display: none"]) .monk-select').forEach(cb => cb.checked = this.checked);
+    });
+    document.getElementById('select-all-monks').addEventListener('click', () => selectAllHeader.click());
+    document.getElementById('deselect-all-monks').addEventListener('click', () => {
+        selectAllHeader.checked = false;
+        selectAllHeader.dispatchEvent(new Event('change'));
+    });
+
+    updateMonkRows(); // Initial call
 });
 </script>
 
