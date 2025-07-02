@@ -26,7 +26,19 @@ $search_term = isset($_GET['search']) ? trim($_GET['search']) : '';
 $status_filter = isset($_GET['status']) ? $_GET['status'] : '';
 $pansa_filter = isset($_GET['pansa']) ? $_GET['pansa'] : '';
 
-// เริ่มสร้าง query
+// Pagination parameters
+$page = isset($_GET['page']) && is_numeric($_GET['page']) && $_GET['page'] > 0 ? (int)$_GET['page'] : 1;
+$records_per_page = 20; // จำนวนรายการต่อหน้า
+
+// เริ่มสร้าง query สำหรับนับจำนวนรายการทั้งหมด
+$count_params = [];
+$count_query = "SELECT COUNT(*) as total 
+                FROM monks m 
+                LEFT JOIN temples t ON m.temple_id = t.id 
+                LEFT JOIN provinces p ON t.province_id = p.province_id
+                WHERE 1=1";
+
+// เริ่มสร้าง query สำหรับดึงข้อมูล
 $params = [];
 $query = "SELECT m.*, t.name as temple_name, t.province_id, p.province_name 
           FROM monks m 
@@ -34,48 +46,79 @@ $query = "SELECT m.*, t.name as temple_name, t.province_id, p.province_name
           LEFT JOIN provinces p ON t.province_id = p.province_id
           WHERE 1=1";
 
-// การกรองตามสิทธิ์ผู้ใช้
+// การกรองตามสิทธิ์ผู้ใช้ - ใช้กับทั้ง count และ data query
+$role_condition = "";
 if ($user_role === 'admin') {
-    $query .= " AND m.temple_id = ?";
-    $params[] = $user_temple_id;
+    $role_condition = " AND m.temple_id = ?";
+    $role_params = [$user_temple_id];
 } elseif ($user_role === 'province_admin') {
-    $query .= " AND t.province_id IN (SELECT province_id FROM user_province_access WHERE user_id = ?)";
-
-    $params[] = $user_id;
+    $role_condition = " AND t.province_id IN (SELECT province_id FROM user_province_access WHERE user_id = ?)";
+    $role_params = [$user_id];
+} else {
+    $role_params = [];
 }
 
-// การกรองจากฟอร์ม
+$count_query .= $role_condition;
+$query .= $role_condition;
+$count_params = array_merge($count_params, $role_params);
+$params = array_merge($params, $role_params);
+
+// การกรองจากฟอร์ม - ใช้กับทั้ง count และ data query
+$filter_conditions = "";
+$filter_params = [];
+
 if ($province_filter) {
-    $query .= " AND t.province_id = ?";
-    $params[] = $province_filter;
+    $filter_conditions .= " AND t.province_id = ?";
+    $filter_params[] = $province_filter;
 }
 if ($district_filter) {
-    $query .= " AND t.district_id = ?";
-    $params[] = $district_filter;
+    $filter_conditions .= " AND t.district_id = ?";
+    $filter_params[] = $district_filter;
 }
 if ($temple_filter) {
-    $query .= " AND m.temple_id = ?";
-    $params[] = $temple_filter;
+    $filter_conditions .= " AND m.temple_id = ?";
+    $filter_params[] = $temple_filter;
 }
 if ($search_term) {
-    $query .= " AND (m.name LIKE ? OR m.lay_name LIKE ?)";
-    $params[] = "%$search_term%";
-    $params[] = "%$search_term%";
+    $filter_conditions .= " AND (m.name LIKE ? OR m.lay_name LIKE ?)";
+    $filter_params[] = "%$search_term%";
+    $filter_params[] = "%$search_term%";
 }
 if ($status_filter) {
-    $query .= " AND m.status = ?";
-    $params[] = $status_filter;
+    $filter_conditions .= " AND m.status = ?";
+    $filter_params[] = $status_filter;
 }
 if ($pansa_filter) {
     switch ($pansa_filter) {
-        case '0-5': $query .= " AND m.pansa BETWEEN 0 AND 5"; break;
-        case '6-10': $query .= " AND m.pansa BETWEEN 6 AND 10"; break;
-        case '11-20': $query .= " AND m.pansa BETWEEN 11 AND 20"; break;
-        case '21+': $query .= " AND m.pansa > 20"; break;
+        case '0-5': $filter_conditions .= " AND m.pansa BETWEEN 0 AND 5"; break;
+        case '6-10': $filter_conditions .= " AND m.pansa BETWEEN 6 AND 10"; break;
+        case '11-20': $filter_conditions .= " AND m.pansa BETWEEN 11 AND 20"; break;
+        case '21+': $filter_conditions .= " AND m.pansa > 20"; break;
     }
 }
 
-$query .= " ORDER BY m.created_at DESC";
+// เพิ่ม filter conditions ลงใน queries
+$count_query .= $filter_conditions;
+$query .= $filter_conditions;
+$count_params = array_merge($count_params, $filter_params);
+$params = array_merge($params, $filter_params);
+
+// นับจำนวนรายการทั้งหมด
+$count_stmt = $pdo->prepare($count_query);
+$count_stmt->execute($count_params);
+$total_records = $count_stmt->fetchColumn();
+$total_pages = ceil($total_records / $records_per_page);
+
+// Ensure page doesn't exceed available pages and calculate offset
+if ($total_records > 0 && $page > $total_pages) {
+    $page = $total_pages;
+}
+$offset = ($page - 1) * $records_per_page;
+
+// เพิ่ม ORDER BY และ LIMIT ลงใน data query
+$query .= " ORDER BY m.created_at DESC LIMIT ? OFFSET ?";
+$params[] = $records_per_page;
+$params[] = $offset;
 
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
@@ -83,12 +126,19 @@ $monks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // ดึงข้อมูลสำหรับ dropdown
 $provinces = [];
+$temples = [];
+
 if ($user_role === 'superadmin') {
     $provinces = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name")->fetchAll(PDO::FETCH_ASSOC);
+    $temples = $pdo->query("SELECT t.id, t.name, p.province_name FROM temples t LEFT JOIN provinces p ON t.province_id = p.province_id WHERE t.status = 'active' ORDER BY t.name")->fetchAll(PDO::FETCH_ASSOC);
 } elseif ($user_role === 'province_admin') {
     $stmt = $pdo->prepare("SELECT p.province_id, p.province_name FROM provinces p JOIN user_province_access upa ON p.province_id = upa.province_id WHERE upa.user_id = ? ORDER BY p.province_name");
     $stmt->execute([$user_id]);
     $provinces = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    $stmt = $pdo->prepare("SELECT t.id, t.name, p.province_name FROM temples t LEFT JOIN provinces p ON t.province_id = p.province_id JOIN user_province_access upa ON t.province_id = upa.province_id WHERE upa.user_id = ? AND t.status = 'active' ORDER BY t.name");
+    $stmt->execute([$user_id]);
+    $temples = $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 $can_add = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
@@ -100,6 +150,36 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
 <!-- เพิ่ม CSS นี้ในส่วนหัวของไฟล์ หรือในไฟล์ CSS แยก -->
  <link rel="stylesheet" href="<?= $base_url ?>assets/css/monk-style.css">
  <link rel="stylesheet" href="<?= $base_url ?>assets/css/style-monks.css">
+
+<style>
+/* Pagination Styles */
+.pagination-container {
+    background: white;
+    border-top: 1px solid #d97706;
+}
+
+.pagination-nav a, .pagination-nav span {
+    transition: all 0.2s ease;
+}
+
+.pagination-nav a:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(217, 119, 6, 0.1);
+}
+
+.pagination-nav .current-page {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    font-weight: 600;
+}
+
+@media (max-width: 640px) {
+    .pagination-nav {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+</style>
 
 <!-- ปรับคลาส HTML เพื่อใช้สไตล์ใหม่ -->
 <div class="page-container bg-temple-pattern">
@@ -235,7 +315,7 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
             <option value="ພຣະ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ພຣະ' ? 'selected' : '' ?>>ພຣະ</option>
             <option value="ຄຸນແມ່ຂາວ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ຄຸນແມ່ຂາວ' ? 'selected' : '' ?>>ຄຸນແມ່ຂາວ</option>
             <option value="ສ.ນ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສ.ນ' ? 'selected' : '' ?>>ສ.ນ</option>
-            <option value="ສັງກະລີ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສັງກະລີ' ? 'selected' : '' ?>>ສັງກະລີ</option>
+            <option value="ສັງກະລີ" <?= isset($_GET['prefix']) && $_GET['prefix'] === 'ສັງກະລี' ? 'selected' : '' ?>>ສັງກະລີ</option>
           </select>
         </div>
 
@@ -335,7 +415,10 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
     <div class="px-4 sm:px-6 py-4 bg-amber-50 border-b border-amber-200">
       <div class="flex flex-wrap justify-between items-center gap-2">
         <div class="text-amber-900">
-          <i class="fas fa-users-class mr-2"></i> ພົບຂໍ້ມູນ <span class="font-semibold text-amber-700"><?= count($monks) ?></span> ລາຍການ
+          <i class="fas fa-users-class mr-2"></i> ພົບຂໍ້ມູນ <span class="font-semibold text-amber-700"><?= $total_records ?></span> ລາຍການ
+          <span class="text-sm ml-2">
+            (ສະແດງ <?= (($page - 1) * $records_per_page) + 1 ?> - <?= min($page * $records_per_page, $total_records) ?> ຈາກທັງໝົດ <?= $total_records ?> ລາຍການ)
+          </span>
           <?php if ($user_role === 'province_admin' && !empty($provinces)): ?>
             <span class="text-xs ml-2">
               (ໃນແຂວງທີ່ຮັບຜິດຊອບ: <?= count($provinces) ?> ແຂວງ)
@@ -590,6 +673,119 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
     </div>
     <?php endif; ?>
   </div>
+
+  <!-- Pagination Navigation -->
+  <?php if ($total_pages > 1): ?>
+  <div class="bg-white px-4 py-3 border-t border-amber-200 sm:px-6">
+    <div class="flex items-center justify-between">
+      <div class="flex justify-between flex-1 sm:hidden">
+        <!-- Mobile pagination -->
+        <?php if ($page > 1): ?>
+        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" 
+           class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-amber-700 bg-white border border-amber-300 rounded-md hover:bg-amber-50">
+          ກ່ອນໜ້າ
+        </a>
+        <?php else: ?>
+        <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-md cursor-not-allowed">
+          ກ່ອນໜ້າ
+        </span>
+        <?php endif; ?>
+
+        <?php if ($page < $total_pages): ?>
+        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" 
+           class="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium text-amber-700 bg-white border border-amber-300 rounded-md hover:bg-amber-50">
+          ຕໍ່ໄປ
+        </a>
+        <?php else: ?>
+        <span class="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-md cursor-not-allowed">
+          ຕໍ່ໄປ
+        </span>
+        <?php endif; ?>
+      </div>
+
+      <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm text-amber-700">
+            ສະແດງ <span class="font-medium"><?= (($page - 1) * $records_per_page) + 1 ?></span> ເຖິງ <span class="font-medium"><?= min($page * $records_per_page, $total_records) ?></span> 
+            ຈາກທັງໝົດ <span class="font-medium"><?= $total_records ?></span> ລາຍການ
+          </p>
+        </div>
+        <div>
+          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <!-- Previous Page Link -->
+            <?php if ($page > 1): ?>
+            <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" 
+               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-amber-300 bg-white text-sm font-medium text-amber-500 hover:bg-amber-50">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+            <?php else: ?>
+            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+              <i class="fas fa-chevron-left"></i>
+            </span>
+            <?php endif; ?>
+
+            <?php
+            // Calculate pagination range
+            $start_page = max(1, $page - 2);
+            $end_page = min($total_pages, $page + 2);
+            
+            // Show first page if not in range
+            if ($start_page > 1): ?>
+              <a href="?<?= http_build_query(array_merge($_GET, ['page' => 1])) ?>" 
+                 class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-amber-700 hover:bg-amber-50">
+                1
+              </a>
+              <?php if ($start_page > 2): ?>
+                <span class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-gray-500">
+                  ...
+                </span>
+              <?php endif; ?>
+            <?php endif; ?>
+
+            <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+              <?php if ($i == $page): ?>
+                <span class="relative inline-flex items-center px-3 py-2 border border-amber-500 bg-amber-100 text-sm font-medium text-amber-600">
+                  <?= $i ?>
+                </span>
+              <?php else: ?>
+                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" 
+                   class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-amber-700 hover:bg-amber-50">
+                  <?= $i ?>
+                </a>
+              <?php endif; ?>
+            <?php endfor; ?>
+
+            <?php
+            // Show last page if not in range
+            if ($end_page < $total_pages): ?>
+              <?php if ($end_page < $total_pages - 1): ?>
+                <span class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-gray-500">
+                  ...
+                </span>
+              <?php endif; ?>
+              <a href="?<?= http_build_query(array_merge($_GET, ['page' => $total_pages])) ?>" 
+                 class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-amber-700 hover:bg-amber-50">
+                <?= $total_pages ?>
+              </a>
+            <?php endif; ?>
+
+            <!-- Next Page Link -->
+            <?php if ($page < $total_pages): ?>
+            <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" 
+               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-amber-300 bg-white text-sm font-medium text-amber-500 hover:bg-amber-50">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+            <?php else: ?>
+            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+              <i class="fas fa-chevron-right"></i>
+            </span>
+            <?php endif; ?>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </div>
+  <?php endif; ?>
 </div>
 
 <!-- Modal ยืนยันการลบ (ปรับปรุง) -->
