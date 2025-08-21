@@ -263,7 +263,7 @@ $page_title = 'ປ່ຽນລະຫັດຜ່ານ';
                         </p>
                         
                         <div class="mt-6">
-                            <a href="<?= $base_url ?>auth/login.php" class="btn-primary">
+                            <a href="<?= $base_url ?>auth/index.php" class="btn-primary">
                                 <i class="fas fa-sign-in-alt"></i>
                                 <span>ເຂົ້າສູ່ລະບົບ</span>
                             </a>
@@ -353,7 +353,7 @@ $page_title = 'ປ່ຽນລະຫັດຜ່ານ';
                             </button>
                             
                             <div class="mt-4 text-center">
-                                <a href="<?= $base_url ?>auth/login.php" class="text-amber-600 hover:text-amber-700 text-sm font-medium inline-flex items-center">
+                                <a href="<?= $base_url ?>auth/index.php" class="text-amber-600 hover:text-amber-700 text-sm font-medium inline-flex items-center">
                                     <i class="fas fa-arrow-left mr-1"></i> 
                                     ກັບໄປຫາໜ້າເຂົ້າສູ່ລະບົບ
                                 </a>

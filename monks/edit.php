@@ -403,6 +403,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         </label>
                                         <select name="birth_province" id="birth_province" class="form-control">
                                             <option value="">-- ເລືອກແຂວງ --</option>
+                                             <option value="ນະຄອນຫຼວງວຽງຈັນ" <?= $monk['birth_province'] === 'ນະຄອນຫຼວງວຽງຈັນ' ? 'selected' : '' ?>>ນະຄອນຫຼວງວຽງຈັນ</option>
                                             <option value="ວຽງຈັນ" <?= $monk['birth_province'] === 'ວຽງຈັນ' ? 'selected' : '' ?>>ວຽງຈັນ</option>
                                             <option value="ຫຼວງພະບາງ" <?= $monk['birth_province'] === 'ຫຼວງພະບາງ' ? 'selected' : '' ?>>ຫຼວງພະບາງ</option>
                                             <option value="ສະຫວັນນະເຂດ" <?= $monk['birth_province'] === 'ສະຫວັນນະເຂດ' ? 'selected' : '' ?>>ສະຫວັນນະເຂດ</option>

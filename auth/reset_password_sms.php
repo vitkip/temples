@@ -319,7 +319,7 @@ $page_title = 'ປ່ຽນລະຫັດຜ່ານຜ່ານ SMS';
                         </p>
                         
                         <div class="mt-6">
-                            <a href="<?= $base_url ?>auth/login.php" class="btn-primary">
+                            <a href="<?= $base_url ?>auth/index.php" class="btn-primary">
                                 <i class="fas fa-sign-in-alt"></i>
                                 <span>ເຂົ້າສູ່ລະບົບ</span>
                             </a>
@@ -374,7 +374,7 @@ $page_title = 'ປ່ຽນລະຫັດຜ່ານຜ່ານ SMS';
                                 </a>
                                 
                                 <div class="mt-4 pt-4 border-t border-gray-200">
-                                    <a href="<?= $base_url ?>auth/login.php" class="link-primary">
+                                    <a href="<?= $base_url ?>auth/index.php" class="link-primary">
                                         <i class="fas fa-arrow-left"></i> 
                                         ກັບໄປຫາໜ້າເຂົ້າສູ່ລະບົບ
                                     </a>

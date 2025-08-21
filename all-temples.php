@@ -27,6 +27,10 @@ $province = isset($_GET['province']) ? trim($_GET['province']) : '';
 $district = isset($_GET['district']) ? trim($_GET['district']) : '';
 $sort = isset($_GET['sort']) ? $_GET['sort'] : 'name_asc';
 
+// Pagination parameters
+$page = isset($_GET['page']) && is_numeric($_GET['page']) && $_GET['page'] > 0 ? (int)$_GET['page'] : 1;
+$records_per_page = 12; // จำนวนรายการต่อหน้า
+
 // สร้างเงื่อนไขสำหรับการค้นหา
 $where_clauses = ["status = 'active'"]; // แสดงวัดที่มีสถานะเป็น active เท่านั้น
 $params = [];
@@ -66,6 +70,28 @@ $where_clause = !empty($where_clauses) ? 'WHERE ' . implode(' AND ', $where_clau
 
 // ดึงข้อมูลวัดทั้งหมด
 try {
+    // สร้าง query สำหรับนับจำนวนรายการทั้งหมด
+    $count_sql = "SELECT COUNT(*) as total 
+                  FROM temples t 
+                  LEFT JOIN provinces p ON t.province_id = p.province_id 
+                  LEFT JOIN districts d ON t.district_id = d.district_id 
+                  $where_clause";
+    
+    $count_stmt = $pdo->prepare($count_sql);
+    foreach ($params as $index => $param) {
+        $count_stmt->bindValue($index + 1, $param);
+    }
+    $count_stmt->execute();
+    $total_temples = $count_stmt->fetchColumn();
+    $total_pages = ceil($total_temples / $records_per_page);
+    
+    // Ensure page doesn't exceed available pages
+    if ($total_temples > 0 && $page > $total_pages) {
+        $page = $total_pages;
+    }
+    $offset = ($page - 1) * $records_per_page;
+    
+    // สร้าง query สำหรับดึงข้อมูลแบบแบ่งหน้า
     $sql = "SELECT t.*, 
             p.province_name as province, 
             d.district_name as district 
@@ -73,16 +99,15 @@ try {
             LEFT JOIN provinces p ON t.province_id = p.province_id 
             LEFT JOIN districts d ON t.district_id = d.district_id 
             $where_clause 
-            ORDER BY $order_by";
+            ORDER BY $order_by
+            LIMIT $records_per_page OFFSET $offset";
+            
     $stmt = $pdo->prepare($sql);
     foreach ($params as $index => $param) {
         $stmt->bindValue($index + 1, $param);
     }
     $stmt->execute();
     $temples = $stmt->fetchAll();
-    
-    // นับจำนวนวัดทั้งหมด
-    $total_temples = count($temples);
     
     // ดึงรายชื่อจังหวัดทั้งหมด
     $province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
@@ -171,23 +196,6 @@ $sort_options = [
 $order_by = isset($sort_options[$sort]) ? $sort_options[$sort] : 't.name ASC';
 $query .= " ORDER BY $order_by";
 
-// Execute the query
-$stmt = $pdo->prepare($query);
-$stmt->execute($params);
-$temples = $stmt->fetchAll();
-$total_temples = count($temples);
-
-// ดึงรายชื่อจังหวัดทั้งหมด
-$province_stmt = $pdo->query("SELECT province_id, province_name FROM provinces ORDER BY province_name");
-$provinces = $province_stmt->fetchAll(PDO::FETCH_ASSOC);
-
-// ดึงรายชื่ออำเภอตามจังหวัดที่เลือก
-$districts = [];
-if (!empty($province_filter)) {
-    $district_stmt = $pdo->prepare("SELECT district_id, district_name FROM districts WHERE province_id = ? ORDER BY district_name");
-    $district_stmt->execute([$province_filter]);
-    $districts = $district_stmt->fetchAll();
-}
 ?>
 
 <!DOCTYPE html>
@@ -465,6 +473,11 @@ if (!empty($province_filter)) {
                     <?php else: ?>
                         ລາຍຊື່ວັດທີ່ມີໃນລະບົບທັງໝົດ
                     <?php endif; ?>
+                    <?php if ($total_temples > 0): ?>
+                        <span class="text-sm ml-2">
+                            (ສະແດງ <?= (($page - 1) * $records_per_page) + 1 ?> - <?= min($page * $records_per_page, $total_temples) ?> ຈາກທັງໝົດ <?= $total_temples ?> ລາຍການ)
+                        </span>
+                    <?php endif; ?>
                 </p>
             </div>
 
@@ -620,6 +633,119 @@ if (!empty($province_filter)) {
                         <i class="fas fa-redo mr-2"></i> ເບິ່ງວັດທັງໝົດ
                     </a>
                 </div>
+            <?php endif; ?>
+            
+            <!-- Pagination Navigation -->
+            <?php if ($total_pages > 1): ?>
+            <div class="mt-8 bg-white rounded-lg border border-gray-200 px-4 py-3 shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div class="flex justify-between flex-1 sm:hidden">
+                        <!-- Mobile pagination -->
+                        <?php if ($page > 1): ?>
+                        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" 
+                           class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-amber-700 bg-white border border-amber-300 rounded-md hover:bg-amber-50">
+                          ກ່ອນໜ້າ
+                        </a>
+                        <?php else: ?>
+                        <span class="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-md cursor-not-allowed">
+                          ກ່ອນໜ້າ
+                        </span>
+                        <?php endif; ?>
+
+                        <?php if ($page < $total_pages): ?>
+                        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" 
+                           class="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium text-amber-700 bg-white border border-amber-300 rounded-md hover:bg-amber-50">
+                          ຕໍ່ໄປ
+                        </a>
+                        <?php else: ?>
+                        <span class="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-300 rounded-md cursor-not-allowed">
+                          ຕໍ່ໄປ
+                        </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm text-amber-700">
+                                ສະແດງ <span class="font-medium"><?= (($page - 1) * $records_per_page) + 1 ?></span> ເຖິງ <span class="font-medium"><?= min($page * $records_per_page, $total_temples) ?></span> 
+                                ຈາກທັງໝົດ <span class="font-medium"><?= $total_temples ?></span> ລາຍການ
+                            </p>
+                        </div>
+                        <div>
+                            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                <!-- Previous Page Link -->
+                                <?php if ($page > 1): ?>
+                                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" 
+                                   class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-amber-300 bg-white text-sm font-medium text-amber-500 hover:bg-amber-50">
+                                  <i class="fas fa-chevron-left"></i>
+                                </a>
+                                <?php else: ?>
+                                <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                  <i class="fas fa-chevron-left"></i>
+                                </span>
+                                <?php endif; ?>
+
+                                <?php
+                                // Calculate pagination range
+                                $start_page = max(1, $page - 2);
+                                $end_page = min($total_pages, $page + 2);
+                                
+                                // Show first page if not in range
+                                if ($start_page > 1): ?>
+                                  <a href="?<?= http_build_query(array_merge($_GET, ['page' => 1])) ?>" 
+                                     class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-amber-700 hover:bg-amber-50">
+                                    1
+                                  </a>
+                                  <?php if ($start_page > 2): ?>
+                                    <span class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-gray-500">
+                                      ...
+                                    </span>
+                                  <?php endif; ?>
+                                <?php endif; ?>
+
+                                <?php for ($i = $start_page; $i <= $end_page; $i++): ?>
+                                  <?php if ($i == $page): ?>
+                                    <span class="relative inline-flex items-center px-3 py-2 border border-amber-500 bg-amber-100 text-sm font-medium text-amber-600">
+                                      <?= $i ?>
+                                    </span>
+                                  <?php else: ?>
+                                    <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" 
+                                       class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-amber-700 hover:bg-amber-50">
+                                      <?= $i ?>
+                                    </a>
+                                  <?php endif; ?>
+                                <?php endfor; ?>
+
+                                <?php
+                                // Show last page if not in range
+                                if ($end_page < $total_pages): ?>
+                                  <?php if ($end_page < $total_pages - 1): ?>
+                                    <span class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-gray-500">
+                                      ...
+                                    </span>
+                                  <?php endif; ?>
+                                  <a href="?<?= http_build_query(array_merge($_GET, ['page' => $total_pages])) ?>" 
+                                     class="relative inline-flex items-center px-3 py-2 border border-amber-300 bg-white text-sm font-medium text-amber-700 hover:bg-amber-50">
+                                    <?= $total_pages ?>
+                                  </a>
+                                <?php endif; ?>
+
+                                <!-- Next Page Link -->
+                                <?php if ($page < $total_pages): ?>
+                                <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" 
+                                   class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-amber-300 bg-white text-sm font-medium text-amber-500 hover:bg-amber-50">
+                                  <i class="fas fa-chevron-right"></i>
+                                </a>
+                                <?php else: ?>
+                                <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                                  <i class="fas fa-chevron-right"></i>
+                                </span>
+                                <?php endif; ?>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <?php endif; ?>
         </div>
     </div>
