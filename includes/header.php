@@ -152,9 +152,11 @@ if (!isset($_SESSION['user'])) {
                     <h2 class="text-xl font-semibold text-gray-800 ml-4"><?= $page_title ?? 'ໜ້າຫຼັກ' ?></h2>
                 </div>
                 
-                <div class="flex items-center">
+                <div class="flex items-center space-x-4">
                     <!-- Add Alpine.js first -->
                     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+                    
+                    <!-- Notification will be inserted here by notifications.js -->
                     
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" class="flex items-center text-gray-700 focus:outline-none hover:bg-gray-100 rounded-full px-3 py-1">

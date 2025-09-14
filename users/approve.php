@@ -4,6 +4,17 @@ ob_start();
 session_start();
 require_once '../config/db.php';
 require_once '../config/base_url.php';
+require_once '../config/notification_functions.php';
+
+// Helper function to mask phone number for display
+function mask_phone_number($phone) {
+    if (empty($phone)) return '';
+    $phone = preg_replace('/[^\d]/', '', $phone);
+    if (strlen($phone) >= 8) {
+        return substr($phone, 0, 3) . '****' . substr($phone, -2);
+    }
+    return $phone;
+}
 
 // ກວດສອບວ່າຜູ້ໃຊ້ເຂົ້າສູ່ລະບົບແລ້ວຫຼືບໍ່
 if (!isset($_SESSION['user'])) {
@@ -88,20 +99,10 @@ if ($user['status'] !== 'pending') {
 
 // ດໍາເນີນການອະນຸມັດຜູ້ໃຊ້
 try {
+    $pdo->beginTransaction();
+    
     $update_stmt = $pdo->prepare("UPDATE users SET status = 'active', updated_at = NOW() WHERE id = ?");
     $update_stmt->execute([$user_id]);
-    
-    // ບັນທຶກປະຫວັດການອະນຸມັດ (ຖ້າມີຕາຕະລາງ audit_log)
-    /*
-    $log_stmt = $pdo->prepare("INSERT INTO audit_log (user_id, action, target_id, target_type, details, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-    $log_stmt->execute([
-        $_SESSION['user']['id'],
-        'approve',
-        $user_id,
-        'user',
-        'ອະນຸມັດຜູ້ໃຊ້: ' . $user['username']
-    ]);
-    */
     
     // ບັນທຶກຂໍ້ມູນລະດັບແຂວງ (ຖ້າເປັນ province_admin ແລະ ອະນຸມັດໂດຍ province_admin)
     if ($is_province_admin) {
@@ -119,14 +120,46 @@ try {
         ]);
     }
     
-    // ສົ່ງອີເມວແຈ້ງເຕືອນຜູໃຊ້ວ່າໄດ້ຮັບການອະນຸມັດແລ້ວ (ຖ້າຕ້ອງການ)
-    // ໃສ່ໂຄດສົ່ງອີເມວຢູ່ນີ້...
+    $pdo->commit();
     
-    $_SESSION['success'] = "ອະນຸມັດຜູ້ໃຊ້ " . htmlspecialchars($user['name']) . " ສຳເລັດແລ້ວ";
+    // ສົ່ງການແຈ້ງເຕືອນໃຫ້ຜູ້ໃຊ້ທີ່ຖືກອະນຸມັດ
+    $notification_result = send_user_approval_notification($user_id, $_SESSION['user']['id']);
+    
+    // ສ້າງຂໍ້ຄວາມສຳເລັດ
+    $success_message = "ອະນຸມັດຜູ້ໃຊ້ " . htmlspecialchars($user['name']) . " ສຳເລັດແລ້ວ";
+    
+    // ເພີ່ມຂໍ້ມູນການແຈ້ງເຕືອນໃນຂໍ້ຄວາມສຳເລັດ
+    if ($notification_result) {
+        $notification_details = [];
+        
+        if ($notification_result['in_app']) {
+            $notification_details[] = "ການແຈ້ງເຕືອນໃນແອັບ";
+        }
+        
+        if ($notification_result['sms']) {
+            $notification_details[] = "SMS ໄປຫາ " . mask_phone_number($user['phone']);
+        }
+        
+        if (!empty($notification_details)) {
+            $success_message .= " | ສົ່ງ " . implode(" ແລະ ", $notification_details) . " ແລ້ວ";
+        }
+        
+        // ສະແດງຂໍ້ຜິດພາດຖ້າມີ
+        if (!empty($notification_result['errors'])) {
+            $success_message .= " (ຂໍ້ຜິດພາດການແຈ້ງເຕືອນ: " . implode(", ", $notification_result['errors']) . ")";
+        }
+    } else {
+        $success_message .= " (ບໍ່ສາມາດສົ່ງການແຈ້ງເຕືອນໄດ້)";
+    }
+    
+    $_SESSION['success'] = $success_message;
     header('Location: ' . $base_url . 'users/view.php?id=' . $user_id);
     exit;
     
 } catch (PDOException $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     $_SESSION['error'] = "ເກີດຂໍ້ຜິດພາດ: " . $e->getMessage();
     header('Location: ' . $base_url . 'users/view.php?id=' . $user_id);
     exit;

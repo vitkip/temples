@@ -173,10 +173,178 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
     font-weight: 600;
 }
 
+/* Bulk Actions Styles */
+.bulk-actions-bar {
+    background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: linear-gradient(135deg, #b91c1c, #991b1b);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.2);
+}
+
+.btn-danger:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Checkbox Alignment and Styling */
+.checkbox-cell {
+    width: 40px;
+    padding: 12px 8px !important;
+    vertical-align: middle;
+    text-align: center;
+    border-right: 1px solid #f3f4f6;
+}
+
+.checkbox-header {
+    width: 40px;
+    padding: 12px 8px !important;
+    vertical-align: middle;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    background: #f8fafc;
+    z-index: 10;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 2px solid #d97706;
+}
+
+/* Table row improvements */
+.table-row {
+    transition: background-color 0.2s ease;
+}
+
+.table-row:hover {
+    background-color: #fffbeb;
+}
+
+.table-row:hover .checkbox-cell {
+    background-color: #fef3c7;
+}
+
+.table-cell {
+    vertical-align: middle;
+    padding: 12px 16px;
+}
+
+.form-checkbox {
+    width: 16px;
+    height: 16px;
+    margin: 0 auto;
+    display: block;
+    cursor: pointer;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    background-color: #ffffff;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.form-checkbox:checked {
+    background-color: #f59e0b;
+    border-color: #f59e0b;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-7.5 7.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6 9.293l7.146-7.147a.5.5 0 0 1 .708.708z'/%3e%3c/svg%3e");
+    background-size: 12px 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.form-checkbox:indeterminate {
+    background-color: #f59e0b;
+    border-color: #f59e0b;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3e%3cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M4 8h8'/%3e%3c/svg%3e");
+    background-size: 12px 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.form-checkbox:hover {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.form-checkbox:focus {
+    outline: none;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+/* Row hover effect for better interaction */
+.table-row:hover .checkbox-cell .form-checkbox {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.1);
+}
+
+/* Mobile checkbox alignment */
+.mobile-checkbox-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.monk-checkbox-mobile {
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    flex-shrink: 0;
+    cursor: pointer;
+    border: 2px solid #d1d5db;
+    border-radius: 4px;
+    background-color: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.monk-checkbox-mobile:checked {
+    background-color: #f59e0b;
+    border-color: #f59e0b;
+    background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-7.5 7.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6 9.293l7.146-7.147a.5.5 0 0 1 .708.708z'/%3e%3c/svg%3e");
+    background-size: 12px 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.monk-checkbox-mobile:hover {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.1);
+}
+
+/* Selected count styling */
+#selected-count {
+    font-weight: 500;
+    color: #374151;
+}
+
 @media (max-width: 640px) {
     .pagination-nav {
         flex-direction: column;
         gap: 0.5rem;
+    }
+    
+    .bulk-actions-bar {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    
+    .bulk-actions-bar > div {
+        justify-content: space-between;
     }
 }
 </style>
@@ -434,130 +602,208 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
     </div>
 
     <?php if (count($monks) > 0): ?>
+    <!-- Bulk Actions Controls -->
+    <?php if (in_array($user_role, ['superadmin', 'admin', 'province_admin'])): ?>
+    <div class="px-4 sm:px-6 py-3 bg-gray-50 border-b border-gray-200 bulk-actions-bar">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <label class="flex items-center cursor-pointer">
+            <input type="checkbox" id="select-all" class="form-checkbox h-4 w-4 text-amber-600 rounded border-gray-300 focus:ring-amber-500">
+            <span class="ml-2 text-sm text-gray-700">ເລືອກທັງໝົດ</span>
+          </label>
+          <span id="selected-count" class="text-sm text-gray-500">ເລືອກ 0 ລາຍການ</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="bulk-delete-btn" 
+                  class="btn-danger disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <i class="fas fa-trash mr-1"></i> ລົບທີ່ເລືອກ
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Mobile Bulk Actions (ซ่อนบนหน้าจอใหญ่) -->
+    <div class="md:hidden px-4 py-3 bg-amber-50 border-b border-amber-200">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="select-all-mobile" class="form-checkbox h-4 w-4 text-amber-600 rounded border-gray-300">
+          <span class="text-sm text-gray-700">ເລືອກທັງໝົດ</span>
+        </div>
+        <button type="button" id="bulk-delete-btn-mobile" 
+                class="btn-danger text-sm px-3 py-1 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+          <i class="fas fa-trash mr-1"></i> ລົບ
+        </button>
+      </div>
+    </div>
+    <?php endif; ?>
+
     <!-- ตารางสำหรับหน้าจอใหญ่ (ซ่อนบนมือถือ) -->
     <div class="hidden md:block overflow-x-auto">
-      <table class="w-full">
-        <thead class="table-header">
-          <tr>
-            <th class="px-6 py-3.5 text-left">ຮູບພາບ</th>
-            <th class="px-6 py-3.5 text-left">ຊື່ ແລະ ນາມສະກຸນ</th>
-            <th class="px-6 py-3.5 text-left">ພັນສາ</th>
-            <th class="px-6 py-3.5 text-left">ວັດ / ແຂວງ</th>
-            <th class="px-6 py-3.5 text-left">ສະຖານະ</th>
-            <th class="px-6 py-3.5 text-left">ຈັດການ</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach($monks as $monk): ?>
-          <tr class="table-row">
-            <td class="table-cell">
-              <?php if (!empty($monk['photo']) && $monk['photo'] !== 'uploads/monks/default.png'): ?>
-                <img src="<?= $base_url . $monk['photo'] ?>" alt="<?= htmlspecialchars($monk['name']) ?>" 
-                     class="monk-image">
-              <?php else: ?>
-                <div class="monk-placeholder">
-                  <i class="fas fa-user"></i>
-                </div>
-              <?php endif; ?>
-            </td>
-            <td class="table-cell">
-              <div class="font-medium text-amber-900">
-                <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>" class="hover:text-amber-700 transition-colors">
-                  <?= htmlspecialchars($monk['prefix'] ?? '') ?> <?= htmlspecialchars($monk['name']) ?>
-                </a>
-              </div>
-              <?php if (!empty($monk['lay_name'])): ?>
-              <div class="text-sm text-gray-500"><?= htmlspecialchars($monk['lay_name']) ?></div>
-              <?php endif; ?>
-            </td>
-            <td class="table-cell">
-              <div class="text-gray-700"> <?php
-                  if (!empty($monk['ordination_date'])) {
-                  $ordination = new DateTime($monk['ordination_date']);
-                  $now = new DateTime();
-                  $years = $ordination->diff($now)->y;
-                  echo $years . ' ພັນສາ';
-                  } else {
-                  echo htmlspecialchars($monk['pansa']) . ' ພັນສາ';
-                  }
-                  ?> <span class="text-xs"></span></div>
-            </td>
-            <td class="table-cell">
-              <div class="text-gray-700 flex items-center mb-1">
-                <i class="fas fa-place-of-worship text-amber-500 mr-1.5 text-xs"></i>
-                <?= htmlspecialchars($monk['temple_name'] ?? '-') ?>
-              </div>
-              <?php if (!empty($monk['province_name'])): ?>
-              <div class="text-xs text-gray-500 flex items-center">
-                <i class="fas fa-map-marker-alt text-amber-400 mr-1"></i>
-                <?= htmlspecialchars($monk['province_name']) ?>
-              </div>
-              <?php endif; ?>
-            </td>
-            <td class="table-cell">
-              <?php
-              $can_edit_monk = ($user_role === 'superadmin') || 
-                              ($user_role === 'admin' && $user_temple_id == $monk['temple_id']) ||
-                              ($user_role === 'province_admin' && !empty($monk['province_id']) && in_array($monk['province_id'], array_column($provinces, 'province_id')));
-              ?>
-              <?php if ($can_edit_monk): ?>
-                <button type="button" class="toggle-status-btn w-full text-left" data-monk-id="<?= $monk['id'] ?>" data-current-status="<?= $monk['status'] ?>">
-                  <?php if($monk['status'] === 'active'): ?>
-                    <span class="status-active">
-                      <i class="fas fa-circle text-xs mr-1"></i> ບວດຢູ່
-                      <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>
-                    </span>
-                  <?php else: ?>
-                    <span class="status-inactive">
-                      <i class="fas fa-circle text-xs mr-1"></i> ສິກແລ້ວ
-                      <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>
-                    </span>
-                  <?php endif; ?>
-                </button>
-              <?php else: ?>
-                <div>
-                  <?php if($monk['status'] === 'active'): ?>
-                    <span class="status-active">
-                      <i class="fas fa-circle text-xs mr-1"></i> ບວດຢູ່
-                    </span>
-                  <?php else: ?>
-                    <span class="status-inactive">
-                      <i class="fas fa-circle text-xs mr-1"></i> ສິກແລ້ວ
-                    </span>
-                  <?php endif; ?>
-                </div>
-              <?php endif; ?>
-            </td>
-            <td class="table-cell">
-              <div class="flex items-center space-x-3">
-                <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>" 
-                   class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 p-1.5 rounded-full transition">
-                  <i class="fas fa-eye"></i>
-                </a>
-                
-                <?php if ($can_edit_monk): ?>
-                <a href="<?= $base_url ?>monks/edit.php?id=<?= $monk['id'] ?>" 
-                   class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 p-1.5 rounded-full transition">
-                  <i class="fas fa-edit"></i>
-                </a>
-                <a href="javascript:void(0)" 
-                   class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded-full transition delete-monk" 
-                   data-id="<?= $monk['id'] ?>" data-name="<?= htmlspecialchars($monk['name']) ?>">
-                  <i class="fas fa-trash"></i>
-                </a>
-                <?php endif; ?>
-              </div>
-            </td>
-          </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
+      <form id="bulk-delete-form" method="POST" action="<?= $base_url ?>monks/bulk_delete.php">
+        <table class="w-full">
+          <thead class="table-header">
+        <tr>
+          <?php if (in_array($user_role, ['superadmin', 'admin', 'province_admin'])): ?>
+          <th class="checkbox-header">
+            <input type="checkbox" id="select-all-header" class="form-checkbox">
+          </th>
+          <?php endif; ?>
+          <th class="px-6 py-3.5 text-left">ຮູບພາບ</th>
+          <th class="px-6 py-3.5 text-left">ຊື່ ແລະ ນາມສະກຸນ</th>
+          <th class="px-6 py-3.5 text-left">ພັນສາ</th>
+          <th class="px-6 py-3.5 text-left">ວັດ / ແຂວງ</th>
+          <th class="px-6 py-3.5 text-left">ສະຖານະ</th>
+          <th class="px-6 py-3.5 text-left">ຈັດການ</th>
+        </tr>
+          </thead>
+          <tbody>
+        <?php foreach($monks as $monk): ?>
+        <?php
+        $can_edit_monk = ($user_role === 'superadmin') || 
+                ($user_role === 'admin' && $user_temple_id == $monk['temple_id']) ||
+                ($user_role === 'province_admin' && !empty($monk['province_id']) && in_array($monk['province_id'], array_column($provinces, 'province_id')));
+        ?>
+        <tr class="table-row">
+          <?php if (in_array($user_role, ['superadmin', 'admin', 'province_admin'])): ?>
+          <td class="checkbox-cell">
+            <?php if ($can_edit_monk): ?>
+            <input type="checkbox" name="monk_ids[]" value="<?= $monk['id'] ?>" 
+               class="monk-checkbox form-checkbox"
+               data-monk-name="<?= htmlspecialchars($monk['name']) ?>">
+            <?php endif; ?>
+          </td>
+          <?php endif; ?>
+          <td class="table-cell">
+            <?php if (!empty($monk['photo']) && $monk['photo'] !== 'uploads/monks/default.png'): ?>
+          <img src="<?= $base_url . $monk['photo'] ?>" alt="<?= htmlspecialchars($monk['name']) ?>" 
+               class="monk-image">
+            <?php else: ?>
+          <div class="monk-placeholder">
+            <i class="fas fa-user"></i>
+          </div>
+            <?php endif; ?>
+          </td>
+          <td class="table-cell">
+            <div class="font-medium text-amber-900">
+          <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>" class="hover:text-amber-700 transition-colors">
+            <?= htmlspecialchars($monk['prefix'] ?? '') ?> <?= htmlspecialchars($monk['name']) ?>
+          </a>
+            </div>
+            <?php if (!empty($monk['lay_name'])): ?>
+            <div class="text-sm text-gray-500"><?= htmlspecialchars($monk['lay_name']) ?></div>
+            <?php endif; ?>
+          </td>
+          <td class="table-cell">
+            <div class="text-gray-700">
+            <?php
+            if (!empty($monk['ordination_date'])) {
+          $ordination = new DateTime($monk['ordination_date']);
+          $now = new DateTime();
+          $years = $ordination->diff($now)->y;
+          echo $years . ' ພັນສາ';
+            } else {
+          echo htmlspecialchars($monk['pansa']) . ' ພັນສາ';
+            }
+            ?>
+            </div>
+          </td>
+          <td class="table-cell">
+            <div class="text-gray-700 flex items-center mb-1">
+          <i class="fas fa-place-of-worship text-amber-500 mr-1.5 text-xs"></i>
+          <?= htmlspecialchars($monk['temple_name'] ?? '-') ?>
+            </div>
+            <?php if (!empty($monk['province_name'])): ?>
+            <div class="text-xs text-gray-500 flex items-center">
+          <i class="fas fa-map-marker-alt text-amber-400 mr-1"></i>
+          <?= htmlspecialchars($monk['province_name']) ?>
+            </div>
+            <?php endif; ?>
+          </td>
+          <td class="table-cell">
+            <?php if ($can_edit_monk): ?>
+          <button type="button" class="toggle-status-btn w-full text-left" data-monk-id="<?= $monk['id'] ?>" data-current-status="<?= $monk['status'] ?>">
+            <?php if($monk['status'] === 'active'): ?>
+              <span class="status-active">
+            <i class="fas fa-circle text-xs mr-1"></i> ບວດຢູ່
+            <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>
+              </span>
+            <?php else: ?>
+              <span class="status-inactive">
+            <i class="fas fa-circle text-xs mr-1"></i> ສິກແລ້ວ
+            <i class="fas fa-exchange-alt ml-1 text-xs opacity-70"></i>
+              </span>
+            <?php endif; ?>
+          </button>
+            <?php else: ?>
+          <div>
+            <?php if($monk['status'] === 'active'): ?>
+              <span class="status-active">
+            <i class="fas fa-circle text-xs mr-1"></i> ບວດຢູ່
+              </span>
+            <?php else: ?>
+              <span class="status-inactive">
+            <i class="fas fa-circle text-xs mr-1"></i> ສິກແລ້ວ
+              </span>
+            <?php endif; ?>
+          </div>
+            <?php endif; ?>
+          </td>
+          <td class="table-cell">
+            <div class="flex items-center space-x-3">
+          <a href="<?= $base_url ?>monks/view.php?id=<?= $monk['id'] ?>" 
+             class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 p-1.5 rounded-full transition">
+            <i class="fas fa-eye"></i>
+          </a>
+          
+          <?php if ($can_edit_monk): ?>
+          <a href="<?= $base_url ?>monks/edit.php?id=<?= $monk['id'] ?>" 
+             class="text-amber-600 hover:text-amber-800 hover:bg-amber-50 p-1.5 rounded-full transition">
+            <i class="fas fa-edit"></i>
+          </a>
+          <a href="javascript:void(0)" 
+             class="text-red-600 hover:text-red-800 hover:bg-red-50 p-1.5 rounded-full transition delete-monk" 
+             data-id="<?= $monk['id'] ?>" data-name="<?= htmlspecialchars($monk['name']) ?>">
+            <i class="fas fa-trash"></i>
+          </a>
+          <?php endif; ?>
+            </div>
+          </td>
+        </tr>
+        <?php endforeach; ?>
+          </tbody>
+        </table>
+      </form>
+      </form>
     </div>
     
     <!-- การ์ดสำหรับมือถือ (ซ่อนบนหน้าจอใหญ่) -->
     <div class="md:hidden">
+      <?php if (in_array($user_role, ['superadmin', 'admin', 'province_admin'])): ?>
+      <form id="bulk-delete-form-mobile" method="POST" action="<?= $base_url ?>monks/bulk_delete.php">
+      <?php endif; ?>
+      
       <?php foreach($monks as $monk): ?>
+        <?php
+        $can_edit_monk = ($user_role === 'superadmin') || 
+                        ($user_role === 'admin' && $user_temple_id == $monk['temple_id']) ||
+                        ($user_role === 'province_admin' && !empty($monk['province_id']) && in_array($monk['province_id'], array_column($provinces, 'province_id')));
+        ?>
         <div class="p-4 border-b border-amber-200 last:border-b-0">
+          <?php if (in_array($user_role, ['superadmin', 'admin', 'province_admin']) && $can_edit_monk): ?>
+          <div class="mobile-checkbox-container">
+            <input type="checkbox" name="monk_ids[]" value="<?= $monk['id'] ?>" 
+                   class="monk-checkbox-mobile"
+                   data-monk-name="<?= htmlspecialchars($monk['name']) ?>">
+            <div class="flex-1">
+              <div class="font-medium text-amber-900 text-lg">
+                <?= htmlspecialchars($monk['prefix'] ?? '') ?> <?= htmlspecialchars($monk['name']) ?>
+              </div>
+              <?php if (!empty($monk['lay_name'])): ?>
+                <div class="text-sm text-gray-500"><?= htmlspecialchars($monk['lay_name']) ?></div>
+              <?php endif; ?>
+            </div>
+          </div>
+          <?php else: ?>
           <div class="flex items-center gap-3 mb-3">
             <?php if (!empty($monk['photo']) && $monk['photo'] !== 'uploads/monks/default.png'): ?>
               <img src="<?= $base_url . $monk['photo'] ?>" alt="<?= htmlspecialchars($monk['name']) ?>" 
@@ -577,6 +823,21 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
               <?php endif; ?>
             </div>
           </div>
+          <?php endif; ?>
+          
+          <?php if (!(in_array($user_role, ['superadmin', 'admin', 'province_admin']) && $can_edit_monk)): ?>
+          <!-- แสดงรูปภาพสำหรับกรณีที่ไม่มี checkbox -->
+          <div class="flex items-center gap-3 mb-3">
+            <?php if (!empty($monk['photo']) && $monk['photo'] !== 'uploads/monks/default.png'): ?>
+              <img src="<?= $base_url . $monk['photo'] ?>" alt="<?= htmlspecialchars($monk['name']) ?>" 
+                   class="monk-image w-12 h-12">
+            <?php else: ?>
+              <div class="monk-placeholder w-12 h-12">
+                <i class="fas fa-user"></i>
+              </div>
+            <?php endif; ?>
+          </div>
+          <?php endif; ?>
           
           <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-sm mb-3">
             <div>
@@ -656,6 +917,10 @@ $can_export = in_array($user_role, ['superadmin', 'admin', 'province_admin']);
           </div>
         </div>
       <?php endforeach; ?>
+      
+      <?php if (in_array($user_role, ['superadmin', 'admin', 'province_admin'])): ?>
+      </form>
+      <?php endif; ?>
     </div>
     <?php else: ?>
     <!-- แสดงข้อความเมื่อไม่พบข้อมูล -->
@@ -849,6 +1114,119 @@ document.addEventListener('DOMContentLoaded', function() {
             deleteModal.classList.add('hidden');
         }
     });
+
+    // Bulk Delete Functionality
+    const selectAllCheckbox = document.getElementById('select-all');
+    const selectAllHeaderCheckbox = document.getElementById('select-all-header');
+    const selectAllMobileCheckbox = document.getElementById('select-all-mobile');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    const bulkDeleteBtnMobile = document.getElementById('bulk-delete-btn-mobile');
+    const selectedCountSpan = document.getElementById('selected-count');
+    const bulkDeleteForm = document.getElementById('bulk-delete-form');
+    const bulkDeleteFormMobile = document.getElementById('bulk-delete-form-mobile');
+    
+    // Function to update selected count and button state
+    function updateBulkDeleteState() {
+        const checkboxes = document.querySelectorAll('.monk-checkbox, .monk-checkbox-mobile');
+        const checkedBoxes = document.querySelectorAll('.monk-checkbox:checked, .monk-checkbox-mobile:checked');
+        const count = checkedBoxes.length;
+        
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = `ເລືອກ ${count} ລາຍການ`;
+        }
+        
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.disabled = count === 0;
+        }
+        
+        if (bulkDeleteBtnMobile) {
+            bulkDeleteBtnMobile.disabled = count === 0;
+        }
+        
+        // Update select all checkboxes
+        const allSelectCheckboxes = [selectAllCheckbox, selectAllHeaderCheckbox, selectAllMobileCheckbox];
+        allSelectCheckboxes.forEach(checkbox => {
+            if (checkbox) {
+                checkbox.checked = count > 0 && count === checkboxes.length;
+                checkbox.indeterminate = count > 0 && count < checkboxes.length;
+            }
+        });
+    }
+    
+    // Select/Deselect all functionality
+    function toggleSelectAll(checked) {
+        document.querySelectorAll('.monk-checkbox, .monk-checkbox-mobile').forEach(checkbox => {
+            checkbox.checked = checked;
+        });
+        updateBulkDeleteState();
+    }
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            toggleSelectAll(this.checked);
+        });
+    }
+    
+    if (selectAllHeaderCheckbox) {
+        selectAllHeaderCheckbox.addEventListener('change', function() {
+            toggleSelectAll(this.checked);
+        });
+    }
+    
+    if (selectAllMobileCheckbox) {
+        selectAllMobileCheckbox.addEventListener('change', function() {
+            toggleSelectAll(this.checked);
+        });
+    }
+    
+    // Individual checkbox change
+    document.querySelectorAll('.monk-checkbox, .monk-checkbox-mobile').forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkDeleteState);
+    });
+    
+    // Bulk delete functionality
+    function handleBulkDelete() {
+        const checkedBoxes = document.querySelectorAll('.monk-checkbox:checked, .monk-checkbox-mobile:checked');
+        if (checkedBoxes.length === 0) {
+            alert('ກະລຸນາເລືອກພະສົງທີ່ຕ້ອງການລົບ');
+            return;
+        }
+        
+        const monkNames = Array.from(checkedBoxes).map(cb => cb.getAttribute('data-monk-name')).slice(0, 5);
+        const displayNames = monkNames.join(', ');
+        const additionalCount = checkedBoxes.length - 5;
+        const namesList = additionalCount > 0 ? `${displayNames} ແລະອີກ ${additionalCount} ລາຍການ` : displayNames;
+        
+        if (confirm(`ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລົບພະສົງທັງໝົດ ${checkedBoxes.length} ລາຍການ?\n\n${namesList}`)) {
+            // Create hidden form to submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '<?= $base_url ?>monks/bulk_delete.php';
+            
+            checkedBoxes.forEach(checkbox => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'monk_ids[]';
+                input.value = checkbox.value;
+                form.appendChild(input);
+            });
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+    
+    // Bulk delete button clicks
+    if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener('click', handleBulkDelete);
+    }
+    
+    if (bulkDeleteBtnMobile) {
+        bulkDeleteBtnMobile.addEventListener('click', handleBulkDelete);
+    }
+    
+    // Initialize state
+    updateBulkDeleteState();
 });
 
 // ระบบเปลี่ยนสถานะพระสงฆ์แบบ AJAX

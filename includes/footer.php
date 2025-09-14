@@ -4,6 +4,9 @@
         </div>
     </div>
 
+    <!-- Notification System -->
+    <script src="<?= $base_url ?>assets/js/notifications.js"></script>
+    
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Mobile menu toggle

@@ -5,7 +5,7 @@ $environment = $_SERVER['SERVER_NAME'] ?? 'localhost';
 if ($environment === 'localhost' || $environment === '127.0.0.1') {
     // Development Environment
     $host = 'localhost';
-    $dbname = 'db_temples';
+    $dbname = 'laotemples';
     $username = 'root';
     $password = '';
     $charset = 'utf8mb4';
