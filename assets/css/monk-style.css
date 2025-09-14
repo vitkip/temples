@@ -602,3 +602,105 @@ body {
   padding: 8px;
   font-size: 0.95rem;
 }
+
+/* ===== เพิ่มฟอนต์ภาษาไทย/ลาว ===== */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap');
+
+/* ===== สไตล์เพิ่มเติมสำหรับ Monks Section ===== */
+.monks-container {
+  font-family: 'Noto Sans Lao', 'Noto Sans Thai', sans-serif;
+}
+
+.monk-card {
+  background: var(--color-lightest);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--border-radius, 0.75rem);
+  transition: all 0.3s ease;
+}
+
+.monk-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(138, 103, 57, 0.15));
+}
+
+.monk-status-active {
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.monk-status-inactive {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+/* การ์ดสถิติ */
+.stats-card {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: white;
+  border-radius: var(--border-radius);
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.stats-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.stats-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+/* ปุ่มเพิ่มเติม */
+.btn-monk-primary {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.btn-monk-primary:hover {
+  background: var(--color-primary-dark);
+  border-color: var(--color-primary-dark);
+  color: white;
+}
+
+/* ตารางข้อมูลพระ */
+.monks-table {
+  background: white;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(138, 103, 57, 0.12));
+}
+
+.monks-table th {
+  background: var(--color-light);
+  color: var(--color-dark);
+  font-weight: 600;
+  border: none;
+  padding: 1rem 0.75rem;
+}
+
+.monks-table td {
+  border-color: rgba(200, 169, 126, 0.1);
+  padding: 0.75rem;
+}
+
+/* สีพื้นหลังแถวสลับ */
+.monks-table tbody tr:nth-child(even) {
+  background-color: rgba(249, 245, 240, 0.3);
+}
+
+/* Responsive สำหรับตารางพระ */
+@media (max-width: 768px) {
+  .monks-table {
+    font-size: 0.85rem;
+  }
+  
+  .monks-table th,
+  .monks-table td {
+    padding: 0.5rem 0.3rem;
+  }
+}

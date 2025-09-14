@@ -326,6 +326,120 @@ foreach ($resign_stats as $row) {
         </div>
         <?php endif; ?>
 
+        <!-- Visitor Statistics Section (Only for Superadmin) -->
+        <?php if ($user_role === 'superadmin'): ?>
+        <div class="card p-6 mb-6">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                <div class="category-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                ສະຖິຕິຜູ້ເຂົ້າເບິງເວັບໄຊ
+            </h3>
+            
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-blue-600 text-sm font-medium">ມື້ນີ້</p>
+                            <p class="text-2xl font-bold text-blue-900" id="visitors-today">-</p>
+                        </div>
+                        <div class="text-blue-500">
+                            <i class="fas fa-eye text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-green-600 text-sm font-medium">ອາທິດນີ້</p>
+                            <p class="text-2xl font-bold text-green-900" id="visitors-week">-</p>
+                        </div>
+                        <div class="text-green-500">
+                            <i class="fas fa-calendar-week text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-purple-600 text-sm font-medium">ເດືອນນີ້</p>
+                            <p class="text-2xl font-bold text-purple-900" id="visitors-month">-</p>
+                        </div>
+                        <div class="text-purple-500">
+                            <i class="fas fa-calendar-alt text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-orange-600 text-sm font-medium">ທັງໝົດ</p>
+                            <p class="text-2xl font-bold text-orange-900" id="visitors-total">-</p>
+                        </div>
+                        <div class="text-orange-500">
+                            <i class="fas fa-users text-2xl"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Visitor Chart -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white p-4 border border-gray-200 rounded-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-lg font-medium text-gray-800">ສະຖິຕິ 30 ວັນທີ່ຜ່ານມາ</h4>
+                        <button onclick="refreshVisitorChart()" class="text-blue-600 hover:text-blue-800 p-1 rounded transition" title="ໂຫຼດຂໍ້ມູນໃໝ່">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <div class="h-64">
+                        <canvas id="visitorChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-white p-4 border border-gray-200 rounded-lg">
+                    <h4 class="text-lg font-medium text-gray-800 mb-4">ຂໍ້ມູນເພີ່ມເຕີມ</h4>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                            <span class="text-gray-600">ໜ້າທີ່ເບິງວັນນີ້:</span>
+                            <span class="font-medium text-gray-900" id="pageviews-today">-</span>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="text-sm text-gray-600 mb-2">ອຸປະກອນທີ່ໃຊ້ (ມື້ນີ້):</div>
+                            <div class="grid grid-cols-3 gap-2 text-sm">
+                                <div class="text-center">
+                                    <div class="text-blue-600"><i class="fas fa-mobile-alt"></i></div>
+                                    <div class="font-medium" id="device-mobile">-</div>
+                                    <div class="text-gray-500">Mobile</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-green-600"><i class="fas fa-desktop"></i></div>
+                                    <div class="font-medium" id="device-desktop">-</div>
+                                    <div class="text-gray-500">Desktop</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-purple-600"><i class="fas fa-tablet-alt"></i></div>
+                                    <div class="font-medium" id="device-tablet">-</div>
+                                    <div class="text-gray-500">Tablet</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="text-sm text-gray-600 mb-2">ປະເທດທີ່ເຂົ້າເບິງຫຼາຍສຸດ:</div>
+                            <div id="top-countries" class="space-y-1 text-sm">
+                                <div class="text-gray-500">ກຳລັງໂຫຼດ...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <!-- Recent Events & Chart Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <!-- Recent Events -->
@@ -691,6 +805,207 @@ foreach ($resign_stats as $row) {
                 function refreshChart() {
                     initCharts();
                 }
+
+                // Visitor Statistics Functions
+                let visitorChartInstance = null;
+
+                // Initialize visitor statistics
+                <?php if ($user_role === 'superadmin'): ?>
+                // Load visitor statistics on page load
+                document.addEventListener('DOMContentLoaded', function() {
+                    loadVisitorSummary();
+                    initVisitorChart();
+                });
+
+                function loadVisitorSummary() {
+                    fetch('<?= $base_url ?>api/visitor_summary.php')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update summary cards
+                                document.getElementById('visitors-today').textContent = data.today || 0;
+                                document.getElementById('visitors-week').textContent = data.week || 0;
+                                document.getElementById('visitors-month').textContent = data.month || 0;
+                                document.getElementById('visitors-total').textContent = data.total || 0;
+                                
+                                // Update additional info
+                                if (data.today_pageviews) {
+                                    document.getElementById('pageviews-today').textContent = data.today_pageviews;
+                                }
+                                
+                                // Update device breakdown
+                                if (data.device_breakdown) {
+                                    document.getElementById('device-mobile').textContent = data.device_breakdown.mobile || 0;
+                                    document.getElementById('device-desktop').textContent = data.device_breakdown.desktop || 0;
+                                    document.getElementById('device-tablet').textContent = data.device_breakdown.tablet || 0;
+                                }
+                                
+                                // Update top countries
+                                if (data.top_countries && data.top_countries.length > 0) {
+                                    const countriesDiv = document.getElementById('top-countries');
+                                    countriesDiv.innerHTML = '';
+                                    data.top_countries.forEach(country => {
+                                        const div = document.createElement('div');
+                                        div.className = 'flex justify-between items-center';
+                                        div.innerHTML = `
+                                            <span>${country.country}</span>
+                                            <span class="font-medium">${country.count}</span>
+                                        `;
+                                        countriesDiv.appendChild(div);
+                                    });
+                                } else {
+                                    document.getElementById('top-countries').innerHTML = '<div class="text-gray-500">ບໍ່ມີຂໍ້ມູນ</div>';
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading visitor summary:', error);
+                        });
+                }
+
+                function initVisitorChart() {
+                    const canvas = document.getElementById('visitorChart');
+                    if (!canvas) {
+                        console.error('Visitor chart canvas not found');
+                        return;
+                    }
+
+                    // Destroy existing chart if it exists
+                    if (visitorChartInstance) {
+                        visitorChartInstance.destroy();
+                        visitorChartInstance = null;
+                    }
+
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Show loading
+                    ctx.fillStyle = '#9CA3AF';
+                    ctx.font = "14px 'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif";
+                    ctx.textAlign = 'center';
+                    ctx.fillText('ກຳລັງໂຫຼດຂໍ້ມູນ...', canvas.width/2, canvas.height/2);
+
+                    // Fetch visitor statistics
+                    fetch('<?= $base_url ?>api/visitor_stats.php?period=30')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.daily_stats) {
+                                createVisitorChart(ctx, data.daily_stats);
+                            } else {
+                                showError(ctx, 'ບໍ່ສາມາດໂຫຼດຂໍ້ມູນໄດ້');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading visitor stats:', error);
+                            showError(ctx, 'ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນ');
+                        });
+                }
+
+                function createVisitorChart(ctx, data) {
+                    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+                    if (!Array.isArray(data) || data.length === 0) {
+                        showError(ctx, 'ບໍ່ມີຂໍ້ມູນສະແດງ');
+                        return;
+                    }
+
+                    visitorChartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.map(item => {
+                                const date = new Date(item.date);
+                                return date.toLocaleDateString('lo-LA', { 
+                                    month: 'short', 
+                                    day: 'numeric' 
+                                });
+                            }),
+                            datasets: [{
+                                label: 'ຜູ້ເຂົ້າເບິງປະຈໍາວັນ',
+                                data: data.map(item => item.visitors),
+                                borderColor: 'rgba(59, 130, 246, 1)',
+                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                borderWidth: 2,
+                                fill: true,
+                                tension: 0.3,
+                                pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(0, 0, 0, 0.1)'
+                                    },
+                                    ticks: {
+                                        font: {
+                                            family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif",
+                                            size: 11
+                                        }
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        color: 'rgba(0, 0, 0, 0.1)'
+                                    },
+                                    ticks: {
+                                        font: {
+                                            family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif",
+                                            size: 11
+                                        }
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    labels: {
+                                        font: {
+                                            family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif",
+                                            size: 12
+                                        },
+                                        usePointStyle: true,
+                                        padding: 15
+                                    }
+                                },
+                                tooltip: {
+                                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                    titleColor: '#ffffff',
+                                    bodyColor: '#ffffff',
+                                    borderColor: 'rgba(59, 130, 246, 1)',
+                                    borderWidth: 1,
+                                    titleFont: {
+                                        family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                    },
+                                    bodyFont: {
+                                        family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                    },
+                                    callbacks: {
+                                        label: function(context) {
+                                            return `ຜູ້ເຂົ້າເບິງ: ${context.parsed.y} ຄົນ`;
+                                        }
+                                    }
+                                }
+                            },
+                            interaction: {
+                                intersect: false,
+                                mode: 'index'
+                            }
+                        }
+                    });
+                }
+
+                function refreshVisitorChart() {
+                    loadVisitorSummary();
+                    initVisitorChart();
+                }
+                <?php endif; ?>
             </script>
         </div>
     </div>

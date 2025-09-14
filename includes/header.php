@@ -5,10 +5,12 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // Check if user is logged in
 if (!isset($_SESSION['user'])) {
-    header("Location: {$base_url}auth/login.php");
+    header("Location: {$base_url}auth/index.php");
     exit;
 }
 
+// Track visitor (after authentication check)
+include_once __DIR__ . '/track_visitor.php';
 
 ?>
 <!DOCTYPE html>
@@ -34,6 +36,7 @@ if (!isset($_SESSION['user'])) {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Lao:wght@100..900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
     <link rel="stylesheet" href="<?= $base_url ?>assets/css/head.css">
 </head>
 <body>
@@ -71,13 +74,13 @@ if (!isset($_SESSION['user'])) {
                     <i class="fas fa-pray mr-3 w-5 text-center"></i>
                     <span>ຈັດການພະສົງ</span>
                   </a>
-                   <a href="<?= $base_url ?>temples/" class="sidebar-link <?= isActiveNav($current_path, '/temples/') ? 'temples' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
+                   <a href="<?= $base_url ?>temples/" class="sidebar-link <?= isActiveNav($current_path, '/temples/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                       <i class="fas fa-gopuram mr-3 w-5 text-center"></i>
                       <span>ຈັດການວັດ</span>
                     </a>
                   <a href="<?= $base_url ?>events/" class="sidebar-link <?= isActiveNav($current_path, '/events/') ? 'active' : '' ?> flex items-center py-3 px-4 rounded-lg text-sm font-medium">
                     <i class="fas fa-calendar-alt mr-3 w-5 text-center"></i>
-                    <span>ບັນທືກກິດນິມົນ</span>
+                    <span>ບັນທຶກກິດນິມົນ</span>
                   </a>
                 
                 </div>
@@ -144,41 +147,44 @@ if (!isset($_SESSION['user'])) {
         <!-- Main Content -->
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- Top Navigation -->
-            <header class="bg-white shadow-sm flex items-center justify-between h-16 px-6">
-                <div class="flex items-center">
-                    <button id="toggleSidebar" class="text-gray-500 focus:outline-none md:hidden">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    <h2 class="text-xl font-semibold text-gray-800 ml-4"><?= $page_title ?? 'ໜ້າຫຼັກ' ?></h2>
+            <header class="bg-white shadow-sm flex items-center h-16 px-6 relative">
+                <!-- Mobile Menu Button -->
+                <button id="toggleSidebar" class="text-gray-500 focus:outline-none md:hidden mr-4">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                
+                <!-- Centered Title -->
+                <div class="flex-1 flex justify-center">
+                    <h2 class="text-xl font-semibold text-gray-800"><?= $page_title ?? 'ໜ້າຫຼັກ' ?></h2>
                 </div>
                 
-                <div class="flex items-center space-x-4">
-                    <!-- Add Alpine.js first -->
-                    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-                    
-                    <!-- Notification will be inserted here by notifications.js -->
-                    
+                <!-- User Menu -->
+                <div class="flex items-center">
                     <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="flex items-center text-gray-700 focus:outline-none hover:bg-gray-100 rounded-full px-3 py-1">
-                            <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white">
+                        <button @click="open = !open" class="flex items-center text-gray-700 focus:outline-none hover:bg-gray-100 rounded-full px-3 py-1 transition-colors">
+                            <div class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                                 <?= substr($_SESSION['user']['name'], 0, 1) ?>
                             </div>
-                            <span class="ml-2"><?= $_SESSION['user']['name'] ?></span>
+                            <span class="ml-2 hidden sm:block"><?= $_SESSION['user']['name'] ?></span>
                             <i class="fas fa-chevron-down ml-1 text-xs"></i>
                         </button>
                         
-                        <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-100" 
+                        <div x-show="open" 
+                             @click.away="open = false" 
+                             x-transition:enter="transition ease-out duration-100" 
                              x-transition:enter-start="transform opacity-0 scale-95"
                              x-transition:enter-end="transform opacity-100 scale-100"
-                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50" style="display: none;">
-                            <div class="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-                                <div class="font-medium"><?= $_SESSION['user']['name'] ?></div> 
+                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border" 
+                             style="display: none;">
+                            <div class="px-4 py-3 text-sm text-gray-700 border-b border-gray-100">
+                                <div class="font-medium"><?= $_SESSION['user']['name'] ?></div>
+                                <div class="text-xs text-gray-500 mt-1"><?= $_SESSION['user']['role'] ?></div>
                             </div>
-                            <a href="<?= $base_url ?>auth/profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                <i class="fas fa-cog mr-2"></i>
+                            <a href="<?= $base_url ?>auth/profile.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                                <i class="fas fa-user mr-2"></i>
                                 ຂໍ້ມູນສ່ວນຕົວ
                             </a>
-                            <a href="<?= $base_url ?>auth/logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <a href="<?= $base_url ?>auth/logout.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
                                 <i class="fas fa-sign-out-alt mr-2"></i>
                                 ອອກຈາກລະບົບ
                             </a>

@@ -3,6 +3,9 @@ session_start();
 require_once 'config/db.php';
 require_once 'config/base_url.php';
 
+// Track visitor
+require_once 'includes/track_visitor.php';
+
 // เช็คสถานะการเข้าสู่ระบบ
 $logged_in = isset($_SESSION['user']);
 
@@ -325,6 +328,13 @@ try {
                             </div>
                             ການກະຈາຍວັດຕາມແຂວງ
                         </h3>
+                        <!-- แสดงสถานะข้อมูล -->
+                        <div id="temple-chart-status" class="hidden mt-2">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                ຂໍ້ມູນຕົວຢ່າງ
+                            </span>
+                        </div>
                     </div>
                     <div class="p-6">
                         <div class="chart-mobile h-64">
@@ -333,19 +343,46 @@ try {
                     </div>
                 </div>
 
-                <!-- Monthly Events Chart -->
+                <!-- Website Visitor Statistics Chart -->
                 <div class="card bg-white shadow-lg">
                     <div class="p-4 border-b border-gray-100">
                         <h3 class="text-lg font-semibold text-gray-800 flex items-center">
                             <div class="category-icon mr-3">
                                 <i class="fas fa-chart-line"></i>
                             </div>
-                            ກິດຈະກໍາປະຈໍາເດືອນ
+                            ສະຖິຕິຜູ້ເຂົ້າຊົມເວັບໄຊທ໌
                         </h3>
+                        <p class="text-sm text-gray-500 mt-1">ຈຳນວນຜູ້ເຂົ້າຊົມປະຈຳເດືອນ</p>
+                        <!-- แสดงสถานะข้อมูล -->
+                        <div id="visitor-chart-status" class="hidden mt-2">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                ຂໍ້ມູນຕົວຢ່າງ
+                            </span>
+                        </div>
                     </div>
                     <div class="p-6">
                         <div class="chart-mobile h-64">
-                            <canvas id="activitiesChart"></canvas>
+                            <canvas id="visitorChart"></canvas>
+                        </div>
+                        <!-- Visitor stats summary -->
+                        <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                            <div class="bg-blue-50 p-3 rounded-lg">
+                                <div class="text-lg font-bold text-blue-600" id="todayVisitors">-</div>
+                                <div class="text-xs text-gray-600">ມື້ນີ້</div>
+                            </div>
+                            <div class="bg-green-50 p-3 rounded-lg">
+                                <div class="text-lg font-bold text-green-600" id="weekVisitors">-</div>
+                                <div class="text-xs text-gray-600">ອາທິດນີ້</div>
+                            </div>
+                            <div class="bg-purple-50 p-3 rounded-lg">
+                                <div class="text-lg font-bold text-purple-600" id="monthVisitors">-</div>
+                                <div class="text-xs text-gray-600">ເດືອນນີ້</div>
+                            </div>
+                            <div class="bg-orange-50 p-3 rounded-lg">
+                                <div class="text-lg font-bold text-orange-600" id="totalVisitors">-</div>
+                                <div class="text-xs text-gray-600">ທັງໝົດ</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -590,10 +627,10 @@ try {
     <section class="bg-gradient-to-r from-red-600 to-red-700 py-12 md:py-16">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <h2 class="text-2xl md:text-3xl font-bold text-white mb-4">
-                ລົງທະບຽນໃຊ້ງານ YouTube Premium ແບບບໍ່ມີໂຄສະນາລາຍ
+                ລົງທະບຽນໃຊ້ງານ ລະບົບບໍລິຫານຈັດການ ພຣະສົງພາຍໃນວັດ
             </h2>
             <p class="text-amber-100 text-lg mb-8 max-w-2xl mx-auto">
-                ເບີ່ງ youtube ແບບບໍ່ມີໂຄສະນາ ລາຍເດືອນ 99,999 ກິບ ແລະ ຍັງເປັນການສະໜັບສະໜູນໃນການພັດທະນາລະບົບວັດ
+                ລົງທະບຽນໃຊ້ງານຟຣີ ຕິດຕໍ່ລົງທະບຽນ
             </p>
             <div class="flex flex-col sm:flex-row gap-4 justify-center">
                 <a href="<?= htmlspecialchars($settings['whatsapp_url'] ?? '#') ?>" class="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-red-700 bg-white hover:bg-red-50 shadow-lg transition">
@@ -672,10 +709,43 @@ try {
     </footer>
 
     <script>
+        // Debug function to check API status
+        async function checkAllAPIs() {
+            console.log('🔍 Checking All APIs Status...');
+            
+            try {
+                // Test temple distribution API
+                const templeResponse = await fetch('<?= $base_url ?>api/temple_distribution.php');
+                console.log('🏛️ temple_distribution.php:', templeResponse.ok ? '✅ OK' : '❌ Error', templeResponse.status);
+                
+                // Test visitor_summary.php
+                const summaryResponse = await fetch('<?= $base_url ?>api/visitor_summary.php');
+                console.log('📊 visitor_summary.php:', summaryResponse.ok ? '✅ OK' : '❌ Error', summaryResponse.status);
+                
+                // Test visitor_stats.php  
+                const statsResponse = await fetch('<?= $base_url ?>api/visitor_stats.php');
+                console.log('📈 visitor_stats.php:', statsResponse.ok ? '✅ OK' : '❌ Error', statsResponse.status);
+                
+                // Test legacy temple_stats.php (if exists)
+                try {
+                    const legacyResponse = await fetch('<?= $base_url ?>api/temple_stats.php');
+                    console.log('🏛️ temple_stats.php (legacy):', legacyResponse.ok ? '✅ OK' : '❌ Error', legacyResponse.status);
+                } catch (e) {
+                    console.log('🏛️ temple_stats.php (legacy): ❌ Not Found');
+                }
+                
+            } catch (error) {
+                console.error('❌ API Check Error:', error);
+            }
+        }
+
         // Chart initialization
         document.addEventListener('DOMContentLoaded', function() {
+            // Check all APIs first (for debugging)
+            checkAllAPIs();
+            
             loadTempleChart();
-            loadActivitiesChart();
+            loadVisitorChart();
             
             // Observer for animation effects
             const observerOptions = {
@@ -736,24 +806,50 @@ try {
         // Temple distribution chart
         async function loadTempleChart() {
             try {
-                const response = await fetch('<?= $base_url ?>api/temple_stats.php');
-                const data = await response.json();
+                console.log('🏛️ Loading temple distribution chart...');
                 
+                const response = await fetch('<?= $base_url ?>api/temple_distribution.php');
+                console.log('📡 Temple distribution API response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('📊 Temple distribution data:', result);
+                
+                if (!result || !result.success || !result.data || result.data.length === 0) {
+                    console.log('⚠️ No temple distribution data available, using fallback');
+                    fallbackTempleChart();
+                    return;
+                }
+                
+                const data = result.data;
                 const ctx = document.getElementById('templesChart').getContext('2d');
                 const isMobile = window.innerWidth < 640;
+                
+                // สีสำหรับกราฟ (รองรับได้หลายแขวง)
+                const colors = [
+                    '#D4A762', '#B08542', '#9B7C59', '#E9CDA8', 
+                    '#F0E5D3', '#E8D8B8', '#C6AA7B', '#D9BA85',
+                    '#A67C4A', '#C19A6B', '#E6D5B8', '#F2E9D3',
+                    '#8B6F47', '#B8956D', '#DCC5A0', '#F5EFE0'
+                ];
+                
+                console.log('✅ Creating temple distribution chart with real data');
+                console.log(`📈 Showing ${data.length} provinces with ${result.summary?.total_temples || 0} total temples`);
                 
                 new Chart(ctx, {
                     type: 'doughnut',
                     data: {
-                        labels: data.map(item => item.province || 'ບໍ່ລະບຸ'),
+                        labels: data.map(item => item.province || item.label || 'ບໍ່ລະບຸ'),
                         datasets: [{
                             data: data.map(item => parseInt(item.count) || 0),
-                            backgroundColor: [
-                                '#D4A762', '#B08542', '#9B7C59', '#E9CDA8', 
-                                '#F0E5D3', '#E8D8B8', '#C6AA7B', '#D9BA85'
-                            ],
+                            backgroundColor: colors.slice(0, data.length),
                             borderWidth: 2,
-                            borderColor: '#fff'
+                            borderColor: '#fff',
+                            hoverBorderWidth: 3,
+                            hoverBorderColor: '#333'
                         }]
                     },
                     options: {
@@ -766,11 +862,38 @@ try {
                                     boxWidth: isMobile ? 12 : 20,
                                     padding: isMobile ? 8 : 15,
                                     font: {
-                                        size: isMobile ? 10 : 12
+                                        size: isMobile ? 10 : 12,
+                                        family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                    },
+                                    usePointStyle: true,
+                                    generateLabels: function(chart) {
+                                        const original = Chart.defaults.plugins.legend.labels.generateLabels;
+                                        const labels = original.call(this, chart);
+                                        
+                                        // เพิ่มจำนวนวัดในป้ายกำกับ
+                                        labels.forEach((label, index) => {
+                                            const count = data[index]?.count || 0;
+                                            label.text = `${label.text} (${count})`;
+                                        });
+                                        
+                                        return labels;
                                     }
                                 }
                             },
                             tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#D4A762',
+                                borderWidth: 1,
+                                titleFont: {
+                                    family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif",
+                                    size: 14
+                                },
+                                bodyFont: {
+                                    family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif",
+                                    size: 13
+                                },
                                 callbacks: {
                                     label: function(context) {
                                         const label = context.label || '';
@@ -778,87 +901,215 @@ try {
                                         const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                         const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
                                         return `${label}: ${value} ວັດ (${percentage}%)`;
+                                    },
+                                    afterLabel: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        return `สัดส่วน: ${((context.parsed / total) * 100).toFixed(1)}% ของทั้งหมด`;
                                     }
                                 }
                             }
+                        },
+                        interaction: {
+                            intersect: false
+                        },
+                        animation: {
+                            animateRotate: true,
+                            animateScale: true,
+                            duration: 1000
                         }
                     }
                 });
+                
+                // แสดงข้อมูลสรุปใน console
+                if (result.summary) {
+                    console.log(`📊 Summary: ${result.summary.total_temples} temples across ${result.summary.total_provinces} provinces`);
+                }
+                
             } catch (error) {
-                console.error('Error loading temple chart:', error);
+                console.error('❌ Error loading temple distribution chart:', error.message);
+                console.log('⚠️ Using fallback chart with sample data');
                 fallbackTempleChart();
             }
         }
 
-        // Activities chart
-        async function loadActivitiesChart() {
+        // Visitor statistics chart
+        async function loadVisitorChart() {
             try {
-                const response = await fetch('<?= $base_url ?>api/event_stats.php');
+                console.log('📈 Loading visitor chart...');
+                
+                // First load visitor stats summary
+                loadVisitorStats();
+                
+                const response = await fetch('<?= $base_url ?>api/visitor_stats.php');
+                console.log('📡 Visitor stats API response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const data = await response.json();
+                console.log('📊 Visitor chart data:', data);
 
-                const ctx = document.getElementById('activitiesChart').getContext('2d');
+                // ตรวจสอบว่ามีข้อมูลหรือไม่
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    console.log('⚠️ No visitor chart data available, using fallback');
+                    fallbackVisitorChart();
+                    return;
+                }
+
+                const ctx = document.getElementById('visitorChart').getContext('2d');
+                const isMobile = window.innerWidth < 640;
+                
+                console.log('✅ Creating visitor chart with real data');
                 new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: data.map(item => item.month),
+                        labels: data.map(item => item.date || item.month),
                         datasets: [{
-                            label: 'ກິດຈະກຳ',
-                            data: data.map(item => item.count),
-                            borderColor: '#D4A762',
-                            backgroundColor: 'rgba(212, 167, 98, 0.1)',
+                            label: 'ຜູ້ເຂົ້າຊົມ',
+                            data: data.map(item => parseInt(item.visitors) || 0),
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             fill: true,
                             tension: 0.4,
-                            pointBackgroundColor: '#B08542',
+                            pointBackgroundColor: '#1D4ED8',
                             pointBorderColor: '#fff',
-                            pointBorderWidth: 2
+                            pointBorderWidth: 2,
+                            pointRadius: isMobile ? 3 : 4,
+                            pointHoverRadius: isMobile ? 5 : 6
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
                         scales: {
                             y: {
                                 beginAtZero: true,
                                 ticks: {
                                     stepSize: 1,
                                     font: {
-                                        size: window.innerWidth < 640 ? 10 : 12
+                                        size: isMobile ? 10 : 12
+                                    },
+                                    callback: function(value) {
+                                        return value + ' ຄົນ';
                                     }
+                                },
+                                grid: {
+                                    color: 'rgba(0,0,0,0.05)'
                                 }
                             },
                             x: {
                                 ticks: {
                                     font: {
-                                        size: window.innerWidth < 640 ? 10 : 12
-                                    }
+                                        size: isMobile ? 9 : 11
+                                    },
+                                    maxTicksLimit: isMobile ? 6 : 10
+                                },
+                                grid: {
+                                    display: false
                                 }
                             }
                         },
                         plugins: {
                             legend: {
                                 display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0,0,0,0.8)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: '#3B82F6',
+                                borderWidth: 1,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `ຜູ້ເຂົ້າຊົມ: ${context.parsed.y} ຄົນ`;
+                                    }
+                                }
+                            }
+                        },
+                        elements: {
+                            line: {
+                                borderWidth: 3
                             }
                         }
                     }
                 });
+                
             } catch (error) {
-                console.error('Error loading activities chart:', error);
-                fallbackActivitiesChart();
+                console.error('❌ Error loading visitor chart:', error.message);
+                console.log('⚠️ Using fallback chart with sample data');
+                fallbackVisitorChart();
+            }
+        }
+
+        // Load visitor statistics summary
+        async function loadVisitorStats() {
+            try {
+                console.log('🔍 Loading visitor summary stats...');
+                const response = await fetch('<?= $base_url ?>api/visitor_summary.php');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('📊 Visitor summary data:', data);
+                
+                if (data && data.success) {
+                    // แสดงข้อมูลจริงจาก API
+                    document.getElementById('todayVisitors').textContent = data.today || '0';
+                    document.getElementById('weekVisitors').textContent = data.week || '0';
+                    document.getElementById('monthVisitors').textContent = data.month || '0';
+                    document.getElementById('totalVisitors').textContent = data.total || '0';
+                    console.log('✅ Visitor stats loaded successfully');
+                } else {
+                    throw new Error('Invalid API response format');
+                }
+            } catch (error) {
+                console.error('❌ Error loading visitor stats:', error);
+                console.log('⚠️ Using fallback visitor summary data');
+                
+                // ใช้ข้อมูลสำรองคงที่
+                document.getElementById('todayVisitors').textContent = '23';
+                document.getElementById('weekVisitors').textContent = '162';
+                document.getElementById('monthVisitors').textContent = '720';
+                document.getElementById('totalVisitors').textContent = '1,234';
+                
+                // แสดงข้อความแจ้งเตือนใน console
+                console.log('📝 Note: Displaying sample data due to API error');
             }
         }
 
         // Fallback charts
         function fallbackTempleChart() {
             const ctx = document.getElementById('templesChart').getContext('2d');
+            const isMobile = window.innerWidth < 640;
+            
+            // ข้อมูลตัวอย่างที่สมจริงมากขึ้น
+            const sampleData = [
+                { label: 'ນະຄອນຫຼວງວຽງຈັນ', count: 8 },
+                { label: 'ຫຼວງພຣະບາງ', count: 5 },
+                { label: 'ຈຳປາສັກ', count: 4 },
+                { label: 'ສະຫວັນນະເຂດ', count: 3 },
+                { label: 'ອື່ນໆ', count: 2 }
+            ];
+            
             new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['ນະຄອນຫຼວງວຽງຈັນ', 'ຫຼວງພຣະບາງ', 'ອື່ນໆ'],
+                    labels: sampleData.map(item => item.label),
                     datasets: [{
-                        data: [5, 3, 2],
-                        backgroundColor: ['#D4A762', '#B08542', '#E9CDA8'],
+                        data: sampleData.map(item => item.count),
+                        backgroundColor: [
+                            '#D4A762', '#B08542', '#9B7C59', '#E9CDA8', '#F0E5D3'
+                        ],
                         borderWidth: 2,
-                        borderColor: '#fff'
+                        borderColor: '#fff',
+                        hoverBorderWidth: 3
                     }]
                 },
                 options: {
@@ -866,28 +1117,96 @@ try {
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: window.innerWidth < 640 ? 'bottom' : 'right'
+                            position: isMobile ? 'bottom' : 'right',
+                            labels: {
+                                boxWidth: isMobile ? 12 : 20,
+                                padding: isMobile ? 8 : 15,
+                                font: {
+                                    size: isMobile ? 10 : 12,
+                                    family: "'Noto Sans Lao', 'Phetsarath OT', 'Saysettha OT', Arial, sans-serif"
+                                },
+                                usePointStyle: true,
+                                generateLabels: function(chart) {
+                                    const original = Chart.defaults.plugins.legend.labels.generateLabels;
+                                    const labels = original.call(this, chart);
+                                    
+                                    // เพิ่มจำนวนวัดในป้ายกำกับ
+                                    labels.forEach((label, index) => {
+                                        const count = sampleData[index]?.count || 0;
+                                        label.text = `${label.text} (${count})`;
+                                    });
+                                    
+                                    return labels;
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#D4A762',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                    return `${label}: ${value} ວັດ (${percentage}%) - ຕົວຢ່າງ`;
+                                }
+                            }
                         }
+                    },
+                    animation: {
+                        animateRotate: true,
+                        animateScale: true,
+                        duration: 1000
                     }
                 }
             });
+            
+            // แสดงข้อความแจ้งเตือนว่าเป็นข้อมูลตัวอย่าง
+            const statusElement = document.getElementById('temple-chart-status');
+            if (statusElement) {
+                statusElement.classList.remove('hidden');
+            }
+            
+            console.log('📝 Note: Displaying sample temple distribution data');
         }
 
-        function fallbackActivitiesChart() {
-            const ctx = document.getElementById('activitiesChart').getContext('2d');
-            const months = ['ມັງກອນ', 'ກຸມພາ', 'ມີນາ', 'ເມສາ', 'ພຶດສະພາ', 'ມິຖຸນາ'];
+        function fallbackVisitorChart() {
+            const ctx = document.getElementById('visitorChart').getContext('2d');
+            
+            // ใช้ข้อมูลตัวอย่างคงที่ (ไม่สุ่ม) สำหรับ 30 วันที่ผ่านมา
+            const fixedVisitors = [
+                12, 18, 15, 22, 19, 25, 28, 31, 27, 24,
+                20, 16, 21, 26, 30, 33, 29, 25, 22, 18,
+                24, 28, 32, 35, 31, 28, 25, 21, 17, 23
+            ]; // ข้อมูลคงที่ 30 วัน
+            
+            const dates = [];
+            const today = new Date();
+            
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                dates.push(date.toLocaleDateString('lo-LA', { month: 'short', day: 'numeric' }));
+            }
             
             new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: months,
+                    labels: dates,
                     datasets: [{
-                        label: 'ກິດຈະກຳ',
-                        data: [3, 2, 5, 4, 6, 3],
-                        borderColor: '#D4A762',
-                        backgroundColor: 'rgba(212, 167, 98, 0.1)',
+                        label: 'ຜູ້ເຂົ້າຊົມ (ຕົວຢ່າງ)',
+                        data: fixedVisitors, // ← ใช้ข้อมูลคงที่
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         fill: true,
-                        tension: 0.4
+                        tension: 0.4,
+                        pointBackgroundColor: '#1D4ED8',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
                     }]
                 },
                 options: {
@@ -896,14 +1215,45 @@ try {
                     scales: {
                         y: {
                             beginAtZero: true,
-                            ticks: { stepSize: 1 }
+                            ticks: { 
+                                stepSize: 10,
+                                callback: function(value) {
+                                    return value + ' ຄົນ';
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxTicksLimit: window.innerWidth < 640 ? 6 : 10
+                            }
                         }
                     },
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `ຜູ້ເຂົ້າຊົມ: ${context.parsed.y} ຄົນ (ຕົວຢ່າງ)`;
+                                }
+                            }
+                        }
                     }
                 }
             });
+            
+            // ตั้งค่าสถิติสรุปคงที่
+            document.getElementById('todayVisitors').textContent = '23';
+            document.getElementById('weekVisitors').textContent = '162';
+            document.getElementById('monthVisitors').textContent = '720';
+            document.getElementById('totalVisitors').textContent = '1,234';
+            
+            // แสดงข้อความแจ้งเตือนว่าเป็นข้อมูลตัวอย่าง
+            const statusElement = document.getElementById('visitor-chart-status');
+            if (statusElement) {
+                statusElement.classList.remove('hidden');
+            }
+            
+            console.log('📝 Note: Displaying fixed sample data to prevent random changes');
         }
 
         // Smooth scrolling for mobile
